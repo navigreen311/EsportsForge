@@ -21,6 +21,7 @@ import FatigueAnalytics from '@/components/analytics/FatigueAnalytics';
 import SessionLoopAIDetails from '@/components/analytics/SessionLoopAIDetails';
 import AnalyticsFilters from '@/components/analytics/AnalyticsFilters';
 import ExportDropdown from '@/components/analytics/ExportDropdown';
+import FilmRoom from '@/components/analytics/FilmRoom';
 import {
   BarChart3,
   Trophy,
@@ -113,6 +114,7 @@ function LoopAITooltip({ active, payload, label }: any) {
 
 export default function AnalyticsPage() {
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
+  const [analyticsTab, setAnalyticsTab] = useState<'performance' | 'film-room'>('performance');
 
   return (
     <div className="space-y-6">
@@ -128,6 +130,30 @@ export default function AnalyticsPage() {
         {/* 9. Export Dropdown */}
         <ExportDropdown />
       </div>
+
+      {/* Tab Bar: Performance | Film Room */}
+      <div className="flex gap-1 p-1 rounded-lg bg-dark-900/50 border border-dark-700 w-fit">
+        {(['performance', 'film-room'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setAnalyticsTab(tab)}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              analyticsTab === tab
+                ? 'bg-dark-700 text-dark-50 shadow-sm'
+                : 'text-dark-400 hover:text-dark-200'
+            }`}
+          >
+            {tab === 'performance' ? 'Performance' : 'Film Room'}
+          </button>
+        ))}
+      </div>
+
+      {/* Film Room Tab */}
+      {analyticsTab === 'film-room' && <FilmRoom />}
+
+      {/* Performance Tab */}
+      {analyticsTab === 'performance' && (
+      <div className="space-y-6">
 
       {/* 8. Analytics Filters Bar */}
       <AnalyticsFilters />
@@ -335,6 +361,9 @@ export default function AnalyticsPage() {
           </table>
         </div>
       </div>
+
+      </div>
+      )}
     </div>
   );
 }

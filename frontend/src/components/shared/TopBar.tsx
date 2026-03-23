@@ -9,6 +9,7 @@ import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import VoiceCommandButton from '@/components/voice/VoiceCommandButton';
+import VisionStatusIcon from '@/components/shared/VisionStatusIcon';
 import { clsx } from 'clsx';
 import {
   Bell,
@@ -196,6 +197,9 @@ export function TopBar() {
 
         {/* Voice Command */}
         <VoiceCommandButton />
+
+        {/* VisionAudioForge Status */}
+        <VisionStatusIcon />
 
         {/* User avatar / dropdown */}
         <UserMenu />

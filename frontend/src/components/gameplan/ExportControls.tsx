@@ -2,6 +2,7 @@
 
 import { FileText, BookOpen, FileJson, Copy, Check } from 'lucide-react';
 import { useState, useCallback } from 'react';
+import ClipExportButton from '@/components/gameplan/ClipExportButton';
 
 interface ExportControlsProps {
   gameplanName: string;
@@ -48,6 +49,8 @@ export default function ExportControls({ gameplanName }: ExportControlsProps) {
         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         {copied ? 'Copied!' : 'Copy to Clipboard'}
       </button>
+
+      <ClipExportButton gameplanName={gameplanName} />
     </div>
   );
 }

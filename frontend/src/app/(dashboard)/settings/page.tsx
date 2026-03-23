@@ -25,6 +25,7 @@ import PerTitleConfig from '@/components/settings/PerTitleConfig';
 import InputLabCalibration from '@/components/settings/InputLabCalibration';
 import VoiceSettings from '@/components/settings/VoiceSettings';
 import ForgeIntegrations from '@/components/settings/ForgeIntegrations';
+import VisionSettings from '@/components/settings/VisionSettings';
 import TiltGuardConfig from '@/components/settings/TiltGuardConfig';
 import ProgressionPreferences from '@/components/settings/ProgressionPreferences';
 import IntegrityModeSelector from '@/components/settings/IntegrityModeSelector';
@@ -136,6 +137,7 @@ export default function SettingsPage() {
             <TiltGuardConfig />
             <ProgressionPreferences />
             <VoiceSettings />
+            <VisionSettings />
             <ForgeIntegrations />
           </div>
         )}
