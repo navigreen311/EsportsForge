@@ -1,0 +1,266 @@
+# =============================================================================
+# EsportsForge Deploy Pipeline
+# - Push to main  -> auto-deploy to staging
+# - Manual dispatch -> deploy to production
+# =============================================================================
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+      skip_tests:
+        description: "Skip pre-deploy tests (emergency only)"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  # -- Update these for your AWS account ----------------------------------- #
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: "123456789012.dkr.ecr.us-east-1.amazonaws.com"
+  ECR_REPO_BACKEND: esportsforge/backend
+  ECR_REPO_FRONTEND: esportsforge/frontend
+  ECS_CLUSTER_STAGING: esportsforge-staging
+  ECS_CLUSTER_PROD: esportsforge-prod
+  ECS_SERVICE_BACKEND: esportsforge-backend
+  ECS_SERVICE_FRONTEND: esportsforge-frontend
+
+# Only one deploy at a time
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Determine target environment
+  # ---------------------------------------------------------------------------
+  resolve-env:
+    name: Resolve Environment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      cluster: ${{ steps.env.outputs.cluster }}
+    steps:
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ENV="${{ github.event.inputs.environment }}"
+          else
+            ENV="staging"
+          fi
+          echo "environment=${ENV}" >> "$GITHUB_OUTPUT"
+          if [ "$ENV" = "production" ]; then
+            echo "cluster=${{ env.ECS_CLUSTER_PROD }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "cluster=${{ env.ECS_CLUSTER_STAGING }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Pre-deploy validation (re-run tests unless skipped)
+  # ---------------------------------------------------------------------------
+  validate:
+    name: Pre-deploy Validation
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip_tests != 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run backend tests
+        working-directory: backend
+        run: |
+          pip install -r requirements.txt
+          pytest -x -q
+
+      - name: Run frontend tests
+        working-directory: frontend
+        run: |
+          npm ci
+          npm test -- --passWithNoTests
+
+  # ---------------------------------------------------------------------------
+  # Build & push Docker images to ECR
+  # ---------------------------------------------------------------------------
+  build-and-push:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    needs: [resolve-env, validate]
+    if: always() && needs.resolve-env.result == 'success' && (needs.validate.result == 'success' || needs.validate.result == 'skipped')
+    environment: ${{ needs.resolve-env.outputs.environment }}
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate image tag
+        id: meta
+        run: |
+          TAG="${{ needs.resolve-env.outputs.environment }}-$(echo ${{ github.sha }} | cut -c1-8)-$(date +%Y%m%d%H%M%S)"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Image tag: ${TAG}"
+
+      # ---------------------------------------------------------------
+      # NOTE: Replace this section with real AWS credentials config.
+      # Uses OIDC or access keys stored in GitHub Secrets.
+      # ---------------------------------------------------------------
+      - name: Configure AWS credentials
+        # uses: aws-actions/configure-aws-credentials@v4
+        # with:
+        #   role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+        #   aws-region: ${{ env.AWS_REGION }}
+        run: echo "TODO — configure AWS credentials via OIDC or secrets"
+
+      - name: Login to Amazon ECR
+        # uses: aws-actions/amazon-ecr-login@v2
+        run: echo "TODO — aws ecr get-login-password | docker login"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: false  # Change to true when ECR is configured
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO_BACKEND }}:${{ steps.meta.outputs.tag }}
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO_BACKEND }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: false  # Change to true when ECR is configured
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO_FRONTEND }}:${{ steps.meta.outputs.tag }}
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO_FRONTEND }}:latest
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------------------
+  # Deploy to ECS
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    needs: [resolve-env, build-and-push]
+    environment: ${{ needs.resolve-env.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy backend service
+        run: |
+          echo "=== Deploying backend to ${{ needs.resolve-env.outputs.environment }} ==="
+          echo "Cluster : ${{ needs.resolve-env.outputs.cluster }}"
+          echo "Image   : ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO_BACKEND }}:${{ needs.build-and-push.outputs.image-tag }}"
+          echo ""
+          echo "TODO — Run these commands when AWS is configured:"
+          echo "  aws ecs update-service \\"
+          echo "    --cluster ${{ needs.resolve-env.outputs.cluster }} \\"
+          echo "    --service ${{ env.ECS_SERVICE_BACKEND }} \\"
+          echo "    --force-new-deployment"
+          echo ""
+          echo "  aws ecs wait services-stable \\"
+          echo "    --cluster ${{ needs.resolve-env.outputs.cluster }} \\"
+          echo "    --services ${{ env.ECS_SERVICE_BACKEND }}"
+
+      - name: Deploy frontend service
+        run: |
+          echo "=== Deploying frontend to ${{ needs.resolve-env.outputs.environment }} ==="
+          echo "TODO — Run these commands when AWS is configured:"
+          echo "  aws ecs update-service \\"
+          echo "    --cluster ${{ needs.resolve-env.outputs.cluster }} \\"
+          echo "    --service ${{ env.ECS_SERVICE_FRONTEND }} \\"
+          echo "    --force-new-deployment"
+          echo ""
+          echo "  aws ecs wait services-stable \\"
+          echo "    --cluster ${{ needs.resolve-env.outputs.cluster }} \\"
+          echo "    --services ${{ env.ECS_SERVICE_FRONTEND }}"
+
+  # ---------------------------------------------------------------------------
+  # Post-deploy smoke tests
+  # ---------------------------------------------------------------------------
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [resolve-env, deploy]
+    steps:
+      - name: Wait for services to stabilize
+        run: sleep 30
+
+      - name: Smoke test — backend health
+        run: |
+          echo "TODO — Replace with real URLs from Route53/ALB"
+          echo "curl -sf https://api.\$ENV.esportsforge.gg/api/health"
+          # Example:
+          # HEALTH=$(curl -sf "https://api.${{ needs.resolve-env.outputs.environment }}.esportsforge.gg/api/health")
+          # echo "$HEALTH" | jq -e '.status == "healthy"'
+
+      - name: Smoke test — frontend loads
+        run: |
+          echo "TODO — Replace with real URLs"
+          echo "curl -sf https://\$ENV.esportsforge.gg/ | grep -q 'EsportsForge'"
+          # Example:
+          # curl -sf "https://${{ needs.resolve-env.outputs.environment }}.esportsforge.gg/" | grep -q "EsportsForge"
+
+  # ---------------------------------------------------------------------------
+  # Rollback on failure
+  # ---------------------------------------------------------------------------
+  rollback:
+    name: Rollback
+    runs-on: ubuntu-latest
+    needs: [resolve-env, deploy, smoke-tests]
+    if: failure()
+    steps:
+      - name: Rollback ECS services
+        run: |
+          echo "=== ROLLBACK triggered for ${{ needs.resolve-env.outputs.environment }} ==="
+          echo ""
+          echo "TODO — Run these commands when AWS is configured:"
+          echo ""
+          echo "# 1. Find the previous task definition revision"
+          echo "  PREV_TASK_DEF=\$(aws ecs describe-services \\"
+          echo "    --cluster ${{ needs.resolve-env.outputs.cluster }} \\"
+          echo "    --services ${{ env.ECS_SERVICE_BACKEND }} \\"
+          echo "    --query 'services[0].deployments[1].taskDefinition' \\"
+          echo "    --output text)"
+          echo ""
+          echo "# 2. Update service to previous task definition"
+          echo "  aws ecs update-service \\"
+          echo "    --cluster ${{ needs.resolve-env.outputs.cluster }} \\"
+          echo "    --service ${{ env.ECS_SERVICE_BACKEND }} \\"
+          echo "    --task-definition \$PREV_TASK_DEF"
+          echo ""
+          echo "# 3. Wait for rollback to stabilize"
+          echo "  aws ecs wait services-stable \\"
+          echo "    --cluster ${{ needs.resolve-env.outputs.cluster }} \\"
+          echo "    --services ${{ env.ECS_SERVICE_BACKEND }}"
+
+      - name: Notify team of rollback
+        run: |
+          echo "TODO — Send Slack/Discord notification about rollback"
+          echo "Environment: ${{ needs.resolve-env.outputs.environment }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Actor: ${{ github.actor }}"
