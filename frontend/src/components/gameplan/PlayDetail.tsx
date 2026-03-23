@@ -1,13 +1,18 @@
 'use client';
 
-import { Target, Lightbulb, GitBranch, Zap } from 'lucide-react';
+import { Target, Lightbulb, Zap } from 'lucide-react';
 import { Badge } from '@/components/shared/Badge';
 import { ConfidenceBar } from '@/components/shared/ConfidenceBar';
 import { Card } from '@/components/shared/Card';
+import { ImpactScore } from '@/components/gameplan/ImpactScore';
+import SimLabButton from '@/components/gameplan/SimLabButton';
+import EvidencePanel from '@/components/gameplan/EvidencePanel';
+import ThreeLayerAudible from '@/components/gameplan/ThreeLayerAudible';
 import type { Play } from '@/types/gameplan';
 
 interface PlayDetailProps {
   play: Play | null;
+  opponentName?: string;
 }
 
 const situationLabels: Record<string, string> = {
@@ -21,7 +26,7 @@ const situationLabels: Record<string, string> = {
   'hurry-up': 'No-huddle tempo',
 };
 
-export default function PlayDetail({ play }: PlayDetailProps) {
+export default function PlayDetail({ play, opponentName = 'Opponent' }: PlayDetailProps) {
   if (!play) {
     return (
       <Card className="flex h-full items-center justify-center min-h-[400px]">
@@ -38,12 +43,19 @@ export default function PlayDetail({ play }: PlayDetailProps) {
 
   return (
     <Card padding="lg" className="space-y-5">
-      {/* Header */}
+      {/* Header + 3. SimLab Button */}
       <div>
         <p className="text-xs font-medium uppercase tracking-wider text-dark-500">
           {play.formation}
         </p>
-        <h2 className="mt-1 text-2xl font-bold text-dark-50">{play.name}</h2>
+        <div className="mt-1 flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-dark-50">{play.name}</h2>
+          <SimLabButton
+            playId={play.id}
+            playName={play.name}
+            opponentName={opponentName}
+          />
+        </div>
         {play.isKillSheetPlay && (
           <Badge variant="success" size="sm" dot className="mt-2">
             Kill Sheet Play
@@ -88,47 +100,37 @@ export default function PlayDetail({ play }: PlayDetailProps) {
         </div>
       )}
 
-      {/* Expected Success Rate */}
+      {/* Expected Success Rate + 6. ImpactRank Score */}
       <div>
         <h3 className="mb-3 text-sm font-semibold text-dark-200">
           Expected Success Rate
         </h3>
-        <ConfidenceBar
-          value={play.confidenceScore}
-          label="Confidence"
-          size="lg"
-          showValue
-        />
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <ConfidenceBar
+              value={play.confidenceScore}
+              label="Confidence"
+              size="lg"
+              showValue
+            />
+          </div>
+          <ImpactScore playId={play.id} layout="detail" />
+        </div>
       </div>
 
-      {/* Audible Options */}
+      {/* 2. ProofAI Evidence Panel */}
+      <EvidencePanel playId={play.id} />
+
+      {/* 5. Three-Layer Call Structure (replaces flat audible list) */}
       {play.audibleOptions && play.audibleOptions.length > 0 && (
         <div>
           <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-dark-200">
-            <GitBranch className="h-4 w-4 text-sky-400" />
-            Audible Options
+            Call Structure
           </h3>
-          <div className="space-y-2">
-            {play.audibleOptions.map((aud) => (
-              <div
-                key={aud.id}
-                className="rounded-lg border border-dark-700/50 bg-dark-800/50 p-3"
-              >
-                <p className="text-sm font-medium text-dark-200">
-                  {aud.label}
-                </p>
-                <p className="mt-0.5 text-xs text-amber-400/80">
-                  Trigger: {aud.trigger}
-                </p>
-                <p className="mt-0.5 text-xs text-dark-400">
-                  Audible to:{' '}
-                  <span className="font-medium text-forge-400">
-                    {aud.targetPlay}
-                  </span>
-                </p>
-              </div>
-            ))}
-          </div>
+          <ThreeLayerAudible
+            playName={play.name}
+            audibles={play.audibleOptions}
+          />
         </div>
       )}
 

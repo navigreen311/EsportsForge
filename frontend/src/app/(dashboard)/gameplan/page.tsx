@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Gamepad2, ChevronDown, Sparkles, Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useGameplan } from '@/hooks/useGameplan';
@@ -7,14 +8,20 @@ import GameplanList from '@/components/gameplan/GameplanList';
 import PlayDetail from '@/components/gameplan/PlayDetail';
 import MetaStatusBar from '@/components/gameplan/MetaStatusBar';
 import ExportControls from '@/components/gameplan/ExportControls';
+import OpponentTendencyPanel from '@/components/gameplan/OpponentTendencyPanel';
+import First15ScriptView from '@/components/gameplan/First15ScriptView';
+import { AntiBlitzHealthBadge, AntiBlitzHealthBanner } from '@/components/gameplan/AntiBlitzHealth';
 import type { PackageTab } from '@/types/gameplan';
 
-const tabs: { key: PackageTab; label: string; count?: (gp: ReturnType<typeof useGameplan>['gameplan']) => number }[] = [
+type ViewTab = PackageTab | 'script';
+
+const tabs: { key: ViewTab; label: string; count?: (gp: ReturnType<typeof useGameplan>['gameplan']) => number }[] = [
   { key: 'all', label: 'All Plays', count: (gp) => gp.plays.length },
   { key: 'kill-sheet', label: 'Kill Sheet', count: (gp) => gp.killSheet.length },
   { key: 'red-zone', label: 'Red Zone', count: (gp) => gp.redZonePackage.length },
   { key: 'anti-blitz', label: 'Anti-Blitz', count: (gp) => gp.antiBlitzPackage.length },
   { key: '2-min-drill', label: '2-Min Drill', count: (gp) => gp.twoMinDrillPackage.length },
+  { key: 'script', label: 'Script View' },
 ];
 
 export default function GameplanPage() {
@@ -32,6 +39,15 @@ export default function GameplanPage() {
     isGenerating,
     generateGameplan,
   } = useGameplan();
+
+  const [viewTab, setViewTab] = useState<ViewTab>('all');
+
+  const handleTabChange = (key: ViewTab) => {
+    setViewTab(key);
+    if (key !== 'script') {
+      setActiveTab(key as PackageTab);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -80,15 +96,18 @@ export default function GameplanPage() {
         </div>
       </div>
 
-      {/* Tab Bar */}
+      {/* 7. Opponent Tendency Panel */}
+      <OpponentTendencyPanel opponentName={opponent.name} />
+
+      {/* Tab Bar with 8. Anti-Blitz Health Badge */}
       <div className="flex gap-1 overflow-x-auto rounded-lg border border-dark-700/50 bg-dark-900/60 p-1">
         {tabs.map((tab) => {
           const count = tab.count?.(gameplan);
-          const isActive = activeTab === tab.key;
+          const isActive = viewTab === tab.key;
           return (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => handleTabChange(tab.key)}
               className={clsx(
                 'flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 isActive
@@ -109,27 +128,43 @@ export default function GameplanPage() {
                   {count}
                 </span>
               )}
+              {/* Anti-Blitz health indicator */}
+              {tab.key === 'anti-blitz' && (
+                <AntiBlitzHealthBadge plays={gameplan.antiBlitzPackage} />
+              )}
             </button>
           );
         })}
       </div>
 
-      {/* Two-Column Layout */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-        {/* Left: Play List */}
-        <div className="lg:col-span-5 xl:col-span-4">
-          <GameplanList
-            plays={filteredPlays}
-            selectedPlayId={selectedPlay?.id ?? null}
-            onSelectPlay={selectPlay}
-          />
-        </div>
+      {/* Content: Script View or Two-Column Layout */}
+      {viewTab === 'script' ? (
+        <First15ScriptView opponentName={opponent.name} />
+      ) : (
+        <>
+          {/* Anti-Blitz Health Banner */}
+          {viewTab === 'anti-blitz' && (
+            <AntiBlitzHealthBanner plays={gameplan.antiBlitzPackage} />
+          )}
 
-        {/* Right: Detail Panel */}
-        <div className="lg:col-span-7 xl:col-span-8">
-          <PlayDetail play={selectedPlay} />
-        </div>
-      </div>
+          {/* Two-Column Layout */}
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+            {/* Left: Play List */}
+            <div className="lg:col-span-5 xl:col-span-4">
+              <GameplanList
+                plays={filteredPlays}
+                selectedPlayId={selectedPlay?.id ?? null}
+                onSelectPlay={selectPlay}
+              />
+            </div>
+
+            {/* Right: Detail Panel */}
+            <div className="lg:col-span-7 xl:col-span-8">
+              <PlayDetail play={selectedPlay} opponentName={opponent.name} />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Export Controls */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
