@@ -10,11 +10,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.player_profile import PlayerProfile
-
 from app.schemas.madden26.roster import (
     AdjustedRatings,
     HiddenGem,
@@ -120,25 +115,6 @@ def _get_rating_attr(ratings: PlayerRating, attr: str) -> int:
 
 class RosterIQ:
     """NFL personnel analysis engine for Madden 26."""
-
-    def __init__(self, db: AsyncSession | None = None) -> None:
-        self.db = db
-
-    # ------------------------------------------------------------------
-    # DB helpers
-    # ------------------------------------------------------------------
-
-    async def get_player_profile_from_db(self, user_id: str) -> PlayerProfile | None:
-        """Query the player profile for roster context."""
-        if self.db is None:
-            return None
-        import uuid as _uuid
-        result = await self.db.execute(
-            select(PlayerProfile).where(
-                PlayerProfile.user_id == _uuid.UUID(user_id)
-            )
-        )
-        return result.scalar_one_or_none()
 
     # ------------------------------------------------------------------
     # analyze_roster

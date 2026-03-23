@@ -1,118 +1,241 @@
-"""Thin async wrapper around the Anthropic Python SDK.
+"""Anthropic Claude API client wrapper with retry, rate-limiting, and token tracking.
 
-Provides a single ``generate`` method that the Madden 26 agents call.
-Falls back gracefully when no API key is configured.
+Usage::
+
+    from app.services.ai.claude_client import ClaudeClient
+    client = ClaudeClient()
+    result = await client.generate("Tell me about esports strategy")
 """
 
 from __future__ import annotations
 
 import json
-import logging
-from typing import Any, Optional
+import time
+from dataclasses import dataclass, field
+from typing import Any
+
+import anthropic
+import structlog
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
-# Lazy-import so the app boots even when ``anthropic`` is not installed.
-try:
-    import anthropic  # type: ignore[import-untyped]
+# ---------------------------------------------------------------------------
+# Token usage tracker
+# ---------------------------------------------------------------------------
 
-    _HAS_ANTHROPIC = True
-except ImportError:
-    _HAS_ANTHROPIC = False
+@dataclass
+class TokenUsage:
+    """Cumulative token usage across all calls."""
 
+    total_input: int = 0
+    total_output: int = 0
+    call_count: int = 0
+    _history: list[dict[str, Any]] = field(default_factory=list)
 
-class ClaudeClient:
-    """Async Claude API client with graceful fallback."""
-
-    def __init__(self, api_key: Optional[str] = None, model: Optional[str] = None) -> None:
-        self._api_key = api_key or settings.anthropic_api_key
-        self._model = model or settings.claude_model
-        self._client: Any = None
-
-        if self.is_available:
-            self._client = anthropic.AsyncAnthropic(api_key=self._api_key)
-
-    # ------------------------------------------------------------------
-    # Properties
-    # ------------------------------------------------------------------
-
-    @property
-    def is_available(self) -> bool:
-        """Return True when the SDK is installed and a real key is configured."""
-        return (
-            _HAS_ANTHROPIC
-            and bool(self._api_key)
-            and self._api_key != "YOUR_ANTHROPIC_API_KEY_HERE"
+    def record(self, input_tokens: int, output_tokens: int, model: str) -> None:
+        self.total_input += input_tokens
+        self.total_output += output_tokens
+        self.call_count += 1
+        self._history.append(
+            {
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "model": model,
+                "timestamp": time.time(),
+            }
         )
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+    @property
+    def total_tokens(self) -> int:
+        return self.total_input + self.total_output
 
+    def summary(self) -> dict[str, Any]:
+        return {
+            "total_input": self.total_input,
+            "total_output": self.total_output,
+            "total_tokens": self.total_tokens,
+            "call_count": self.call_count,
+        }
+
+
+# ---------------------------------------------------------------------------
+# Simple rate limiter (token bucket)
+# ---------------------------------------------------------------------------
+
+class _RateLimiter:
+    """Lightweight token-bucket rate limiter for API calls."""
+
+    def __init__(self, max_calls: int = 50, period: float = 60.0) -> None:
+        self._max_calls = max_calls
+        self._period = period
+        self._timestamps: list[float] = []
+
+    def acquire(self) -> None:
+        """Block-free check; raises if limit exceeded."""
+        now = time.time()
+        self._timestamps = [t for t in self._timestamps if now - t < self._period]
+        if len(self._timestamps) >= self._max_calls:
+            raise anthropic.RateLimitError(
+                message="Local rate limit exceeded",
+                response=None,  # type: ignore[arg-type]
+                body=None,
+            )
+        self._timestamps.append(now)
+
+
+# ---------------------------------------------------------------------------
+# Retry predicate — retry on transient errors only
+# ---------------------------------------------------------------------------
+_RETRYABLE = (
+    anthropic.RateLimitError,
+    anthropic.APIConnectionError,
+    anthropic.InternalServerError,
+)
+
+# ---------------------------------------------------------------------------
+# Claude Client
+# ---------------------------------------------------------------------------
+
+class ClaudeClient:
+    """Async wrapper around the Anthropic Messages API."""
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        max_calls_per_minute: int = 50,
+    ) -> None:
+        self._api_key = api_key or settings.anthropic_api_key
+        self._model = model or settings.claude_model
+        self._client = anthropic.AsyncAnthropic(api_key=self._api_key)
+        self._rate_limiter = _RateLimiter(max_calls=max_calls_per_minute)
+        self.usage = TokenUsage()
+
+    # -- core call -----------------------------------------------------------
+
+    @retry(
+        retry=retry_if_exception_type(_RETRYABLE),
+        wait=wait_exponential(multiplier=1, min=1, max=30),
+        stop=stop_after_attempt(3),
+        reraise=True,
+    )
     async def generate(
         self,
         prompt: str,
-        system: str = "",
-        model: Optional[str] = None,
+        *,
+        system: str | None = None,
+        model: str | None = None,
         max_tokens: int = 4096,
         temperature: float = 0.3,
     ) -> str:
-        """Send a prompt to Claude and return the text response.
+        """Send a single prompt to Claude and return the text response."""
+        model = model or self._model
+        self._rate_limiter.acquire()
 
-        Raises ``RuntimeError`` if called when the client is not available.
-        Callers should check ``is_available`` first or use the agent-level
-        fallback pattern.
-        """
-        if not self.is_available or self._client is None:
-            raise RuntimeError("Claude client is not available (missing SDK or API key).")
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        if system:
+            kwargs["system"] = system
 
-        effective_model = model or self._model
-        logger.info("ClaudeClient.generate  model=%s  prompt_len=%d", effective_model, len(prompt))
+        logger.debug("claude.request", model=model, prompt_len=len(prompt))
+        response = await self._client.messages.create(**kwargs)
 
-        message = await self._client.messages.create(
-            model=effective_model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            system=system,
-            messages=[{"role": "user", "content": prompt}],
+        # Track tokens
+        self.usage.record(
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
+            model=model,
         )
 
-        # Extract text from the response content blocks
-        text_parts: list[str] = []
-        for block in message.content:
-            if hasattr(block, "text"):
-                text_parts.append(block.text)
-        return "\n".join(text_parts)
+        text = response.content[0].text
+        logger.debug(
+            "claude.response",
+            model=model,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens,
+        )
+        return text
+
+    # -- structured JSON output ----------------------------------------------
 
     async def generate_json(
         self,
         prompt: str,
-        system: str = "",
-        model: Optional[str] = None,
+        *,
+        system: str | None = None,
+        model: str | None = None,
         max_tokens: int = 4096,
         temperature: float = 0.2,
     ) -> dict[str, Any]:
-        """Call ``generate`` and parse the response as JSON.
+        """Call Claude and parse the response as JSON.
 
-        The prompt should instruct Claude to reply with valid JSON only.
+        The system prompt should instruct the model to respond with valid JSON.
+        We strip markdown fences if present, then parse.
         """
         raw = await self.generate(
-            prompt=prompt,
-            system=system,
-            model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
+            prompt, system=system, model=model,
+            max_tokens=max_tokens, temperature=temperature,
         )
+        return self._parse_json(raw)
 
-        # Strip markdown fences if present
-        cleaned = raw.strip()
-        if cleaned.startswith("```"):
-            # Remove opening fence (```json or ```)
-            first_newline = cleaned.index("\n")
-            cleaned = cleaned[first_newline + 1 :]
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
+    # -- high-level convenience methods --------------------------------------
 
-        return json.loads(cleaned.strip())
+    async def analyze(
+        self,
+        context: dict[str, Any],
+        question: str,
+    ) -> dict[str, Any]:
+        """Analysis-focused call: provide context and a question, get JSON back."""
+        system = (
+            "You are an expert esports analyst. Analyze the provided context "
+            "and answer the question. Respond with valid JSON only — no markdown "
+            "fences, no extra text."
+        )
+        prompt = json.dumps({"context": context, "question": question})
+        return await self.generate_json(prompt, system=system)
+
+    async def decide(
+        self,
+        options: list[str],
+        context: dict[str, Any],
+        criteria: str,
+    ) -> dict[str, Any]:
+        """Decision-focused call: evaluate options against criteria, return JSON."""
+        system = (
+            "You are a decision-making AI for competitive esports. Evaluate the "
+            "options against the given criteria and context. Respond with valid JSON:\n"
+            '{"chosen": "<option>", "reasoning": "<why>", "confidence": <0-1>, '
+            '"ranking": [{"option": "<name>", "score": <0-1>}]}'
+        )
+        prompt = json.dumps({
+            "options": options,
+            "context": context,
+            "criteria": criteria,
+        })
+        return await self.generate_json(prompt, system=system)
+
+    # -- helpers -------------------------------------------------------------
+
+    @staticmethod
+    def _parse_json(raw: str) -> dict[str, Any]:
+        """Parse JSON from Claude response, stripping markdown fences if present."""
+        text = raw.strip()
+        # Strip ```json ... ``` wrappers
+        if text.startswith("```"):
+            lines = text.split("\n")
+            # Drop first and last fence lines
+            lines = [ln for ln in lines if not ln.strip().startswith("```")]
+            text = "\n".join(lines)
+        return json.loads(text)

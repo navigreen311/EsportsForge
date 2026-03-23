@@ -1,7 +1,7 @@
 'use client';
 
 import { Opponent } from '@/types/opponent';
-import { Swords, Eye, Trophy, Clock } from 'lucide-react';
+import { Swords, Eye, Trophy, Clock, Star } from 'lucide-react';
 
 interface OpponentCardProps {
   opponent: Opponent;
@@ -21,6 +21,13 @@ const archetypeColors: Record<string, string> = {
   'Defensive Mastermind': 'bg-indigo-500/20 text-indigo-400 border-indigo-800/50',
 };
 
+function getRivalDepth(encounterCount: number): string | null {
+  if (encounterCount >= 8) return 'Nemesis';
+  if (encounterCount >= 5) return 'Arch-Rival';
+  if (encounterCount >= 2) return 'Rival';
+  return null;
+}
+
 export default function OpponentCard({ opponent, onClick }: OpponentCardProps) {
   const winRateColor =
     opponent.winRate >= 60
@@ -28,6 +35,8 @@ export default function OpponentCard({ opponent, onClick }: OpponentCardProps) {
       : opponent.winRate >= 40
         ? 'text-yellow-400'
         : 'text-red-400';
+
+  const rivalDepth = opponent.isRival ? getRivalDepth(opponent.encounterCount) : null;
 
   return (
     <button
@@ -43,7 +52,14 @@ export default function OpponentCard({ opponent, onClick }: OpponentCardProps) {
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-dark-100">{opponent.gamertag}</h3>
               {opponent.isRival && (
-                <Swords className="w-4 h-4 text-red-400" title="Rival" />
+                <div className="flex items-center gap-1" title={rivalDepth ?? 'Rival'}>
+                  <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                  {rivalDepth && (
+                    <span className="text-[10px] font-medium text-yellow-400/80">
+                      {rivalDepth}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
             <span

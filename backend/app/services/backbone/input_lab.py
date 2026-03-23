@@ -6,14 +6,6 @@ each with its own drill generators, latency assumptions, and elite benchmarks.
 
 from __future__ import annotations
 
-import uuid as _uuid
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.drill import Drill
-from app.models.player_profile import PlayerProfile
-
 from app.schemas.input_lab import (
     DrillSpec,
     EliteBenchmark,
@@ -29,37 +21,15 @@ from app.services.backbone.input_adapters import BaseInputAdapter, get_adapter
 class InputLab:
     """Central InputLab engine — delegates to per-input-type adapters."""
 
-    def __init__(self, db: AsyncSession) -> None:
-        self.db = db
-
     # ------------------------------------------------------------------
-    # Data access helpers (backed by DB)
+    # Data access helpers (backed by DB in production)
     # ------------------------------------------------------------------
 
     async def _get_session_history(
         self, user_id: str, input_type: InputType
     ) -> list[dict]:
-        """Fetch historical session summaries for a user+input type from DB."""
-        try:
-            uid = _uuid.UUID(user_id)
-            result = await self.db.execute(
-                select(Drill)
-                .where(Drill.user_id == uid)
-                .order_by(Drill.created_at.desc())
-                .limit(50)
-            )
-            drills = result.scalars().all()
-            return [
-                {
-                    "drill_id": str(d.id),
-                    "skill_target": d.skill_target,
-                    "events": d.drill_config.get("events", []) if d.drill_config else [],
-                    "success_rate": d.success_rate,
-                }
-                for d in drills
-            ]
-        except (ValueError, Exception):
-            return []
+        """Fetch historical session summaries for a user+input type."""
+        return []
 
     async def _get_elite_pool(
         self, input_type: InputType, skill: str
@@ -70,17 +40,7 @@ class InputLab:
     async def _get_user_metric(
         self, user_id: str, input_type: InputType, skill: str
     ) -> float:
-        """Fetch the user's current metric value for a skill from DB."""
-        try:
-            uid = _uuid.UUID(user_id)
-            result = await self.db.execute(
-                select(PlayerProfile).where(PlayerProfile.user_id == uid)
-            )
-            profile = result.scalar_one_or_none()
-            if profile and profile.execution_ceiling:
-                return float(profile.execution_ceiling.get(skill, 0.0))
-        except (ValueError, Exception):
-            pass
+        """Fetch the user's current metric value for a skill."""
         return 0.0
 
     # ------------------------------------------------------------------

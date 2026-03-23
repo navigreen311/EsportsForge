@@ -10,6 +10,10 @@ export type Archetype =
   | 'Air Raid'
   | 'Defensive Mastermind';
 
+export type OpponentFilter = 'all' | 'rivals' | 'recent' | 'scouted';
+
+export type OpponentSort = 'lastSeen' | 'encounters' | 'winRate';
+
 export interface TendencyBreakdown {
   label: string;
   percentage: number;
@@ -36,18 +40,50 @@ export interface WeaknessEntry {
   exploitPlay?: string;
 }
 
+export interface KillSheetPlay {
+  id: string;
+  playName: string;
+  formation: string;
+  confidenceScore: number;
+  successRate: number;
+  description: string;
+}
+
+export interface Encounter {
+  id: string;
+  date: string;
+  result: 'win' | 'loss';
+  score: string;
+  notes: string;
+  mode: 'ranked' | 'tournament' | 'training';
+}
+
+export interface ArchetypeDetail {
+  description: string;
+  strengths: string[];
+  weaknesses: string[];
+}
+
+export type DossierTab = 'overview' | 'tendencies' | 'plays' | 'killsheet' | 'history';
+
 export interface Opponent {
   id: string;
   gamertag: string;
   archetype: Archetype;
   encounterCount: number;
   lastSeen: string;
-  winRate: number; // against this opponent
+  winRate: number;
   isRival: boolean;
   tendencies: TendencyBreakdown[];
   playFrequencies: PlayFrequency[];
   weaknesses: WeaknessEntry[];
   behavioralSignals: BehavioralSignal[];
-  killSheet: string[]; // play IDs
+  killSheet: KillSheetPlay[];
+  encounters: Encounter[];
+  archetypeDetail: ArchetypeDetail;
+  record: { wins: number; losses: number };
+  blitzFrequency: number;
+  formationFrequencies: { formation: string; percentage: number }[];
+  scoutedAt?: string;
   avatarUrl?: string;
 }

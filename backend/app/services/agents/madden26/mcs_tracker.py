@@ -9,11 +9,6 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.game_session import GameSession, GameMode
-
 from app.schemas.madden26.tournament import (
     Bracket,
     BracketMatch,
@@ -103,25 +98,6 @@ class MCSTracker:
     Provides bracket state, opponent scouting queues, tournament-specific
     gameplans, and opponent form tracking for the Madden Championship Series.
     """
-
-    def __init__(self, db: AsyncSession) -> None:
-        self.db = db
-
-    async def get_tournament_sessions(self, user_id: str) -> list[GameSession]:
-        """Query tournament game sessions for a user from the database."""
-        try:
-            uid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
-            result = await self.db.execute(
-                select(GameSession)
-                .where(
-                    GameSession.user_id == uid,
-                    GameSession.mode == GameMode.TOURNAMENT,
-                )
-                .order_by(GameSession.played_at.desc())
-            )
-            return list(result.scalars().all())
-        except (ValueError, Exception):
-            return []
 
     # -----------------------------------------------------------------------
     # Public API

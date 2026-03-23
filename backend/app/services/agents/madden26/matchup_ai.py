@@ -7,14 +7,8 @@ recommend formations/motions, and evaluate groupings against specific looks.
 from __future__ import annotations
 
 import logging
-import uuid as _uuid
 from typing import Any
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.game_session import GameSession
-from app.models.opponent import Opponent
 from app.schemas.madden26.roster import (
     MismatchSeverity,
     PersonnelPackage,
@@ -54,9 +48,8 @@ _ADVANTAGE_THRESHOLD = 5  # rating-point gap to count as an advantage
 class MatchupAI:
     """Personnel advantage finder and matchup isolation engine for Madden 26."""
 
-    def __init__(self, db: AsyncSession) -> None:
-        self.db = db
-        self._roster_iq = RosterIQ(db)
+    def __init__(self) -> None:
+        self._roster_iq = RosterIQ()
 
     # ------------------------------------------------------------------
     # find_matchup_advantages
@@ -252,74 +245,30 @@ class MatchupAI:
     # get_matchup_history
     # ------------------------------------------------------------------
 
-    async def get_matchup_history(
+    def get_matchup_history(
         self,
         user_id: str,
         opponent_id: str,
         history: list[dict[str, Any]] | None = None,
     ) -> list[MatchupResult]:
-        """Return historical matchup results from the database.
+        """Return historical matchup results.
 
-        Falls back to ``history`` param for direct injection / testing.
+        In production this queries a database. ``history`` param allows
+        direct injection for testing.
         """
-        # Query DB for game sessions against this opponent
-        try:
-            uid = _uuid.UUID(user_id)
-            oid = _uuid.UUID(opponent_id)
-            stmt = (
-                select(GameSession)
-                .where(
-                    GameSession.user_id == uid,
-                    GameSession.opponent_id == oid,
-                )
-                .order_by(GameSession.played_at.desc())
-            )
-            db_result = await self.db.execute(stmt)
-            sessions = list(db_result.scalars().all())
-
-            if sessions:
-                results: list[MatchupResult] = []
-                for sess in sessions:
-                    stats = sess.stats or {}
-                    user_score = stats.get("user_score", 0)
-                    opp_score = stats.get("opponent_score", 0)
-                    if user_score > opp_score:
-                        result_str = "win"
-                    elif user_score < opp_score:
-                        result_str = "loss"
-                    else:
-                        result_str = "draw"
-
-                    results.append(MatchupResult(
-                        game_id=str(sess.id),
-                        opponent_id=opponent_id,
-                        opponent_name=stats.get("opponent_name", "Unknown"),
-                        user_score=user_score,
-                        opponent_score=opp_score,
-                        result=result_str,
-                        offensive_yards=stats.get("offensive_yards"),
-                        defensive_yards_allowed=stats.get("defensive_yards_allowed"),
-                        key_matchup_exploited=stats.get("key_matchup_exploited"),
-                        timestamp=sess.played_at.isoformat() if sess.played_at else "",
-                    ))
-                return results
-        except (ValueError, Exception):
-            pass
-
-        # Fallback to injected history
         if not history:
             return []
 
-        results = []
+        results: list[MatchupResult] = []
         for h in history:
             user_score = h.get("user_score", 0)
             opp_score = h.get("opponent_score", 0)
             if user_score > opp_score:
-                result_str = "win"
+                result = "win"
             elif user_score < opp_score:
-                result_str = "loss"
+                result = "loss"
             else:
-                result_str = "draw"
+                result = "draw"
 
             results.append(MatchupResult(
                 game_id=h.get("game_id", "unknown"),
@@ -327,7 +276,7 @@ class MatchupAI:
                 opponent_name=h.get("opponent_name", "Unknown"),
                 user_score=user_score,
                 opponent_score=opp_score,
-                result=result_str,
+                result=result,
                 offensive_yards=h.get("offensive_yards"),
                 defensive_yards_allowed=h.get("defensive_yards_allowed"),
                 key_matchup_exploited=h.get("key_matchup_exploited"),

@@ -6,14 +6,6 @@ performance across lab, ranked, and tournament modes.
 
 from __future__ import annotations
 
-import uuid as _uuid
-
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.game_session import GameSession
-from app.models.game_session import GameMode as DBGameMode
-
 from app.schemas.transfer_ai import (
     CompetitionPackage,
     FalseConfidence,
@@ -23,14 +15,6 @@ from app.schemas.transfer_ai import (
     ProvenPlay,
     TransferRate,
 )
-
-# Map schema GameMode to DB GameMode
-_MODE_MAP: dict[GameMode, DBGameMode] = {
-    GameMode.RANKED: DBGameMode.RANKED,
-    GameMode.TOURNAMENT: DBGameMode.TOURNAMENT,
-    GameMode.LAB: DBGameMode.TRAINING,
-    GameMode.PRACTICE: DBGameMode.TRAINING,
-}
 
 # Minimum sample sizes for statistical reliability
 _MIN_SAMPLES = 20
@@ -52,11 +36,8 @@ _GRADE_THRESHOLDS = [
 class TransferAI:
     """Core engine for measuring skill transfer across game modes."""
 
-    def __init__(self, db: AsyncSession) -> None:
-        self.db = db
-
     # ------------------------------------------------------------------
-    # Data access helpers (backed by DB)
+    # Data access helpers (will be backed by DB in production)
     # ------------------------------------------------------------------
 
     async def _get_skill_stats(
@@ -65,88 +46,23 @@ class TransferAI:
         skill: str,
         mode: GameMode,
     ) -> dict:
-        """Fetch aggregated stats for a skill in a specific mode from DB."""
-        try:
-            uid = _uuid.UUID(user_id)
-            db_mode = _MODE_MAP.get(mode)
-            if db_mode is None:
-                return {"attempts": 0, "successes": 0, "avg_exec_time_ms": None}
+        """Fetch aggregated stats for a skill in a specific mode.
 
-            result = await self.db.execute(
-                select(GameSession)
-                .where(
-                    GameSession.user_id == uid,
-                    GameSession.mode == db_mode,
-                )
-            )
-            sessions = result.scalars().all()
-
-            attempts = 0
-            successes = 0
-            exec_times: list[float] = []
-            for sess in sessions:
-                stats = sess.stats or {}
-                skill_data = stats.get("skills", {}).get(skill, {})
-                attempts += skill_data.get("attempts", 0)
-                successes += skill_data.get("successes", 0)
-                if skill_data.get("avg_exec_time_ms"):
-                    exec_times.append(skill_data["avg_exec_time_ms"])
-
-            avg_exec = sum(exec_times) / len(exec_times) if exec_times else None
-            return {
-                "attempts": attempts,
-                "successes": successes,
-                "avg_exec_time_ms": avg_exec,
-            }
-        except (ValueError, Exception):
-            return {"attempts": 0, "successes": 0, "avg_exec_time_ms": None}
+        Returns dict with keys: attempts, successes, avg_exec_time_ms.
+        In production this queries the ForgeDataFabric.
+        """
+        # Stub — returns empty stats until data layer is wired
+        return {"attempts": 0, "successes": 0, "avg_exec_time_ms": None}
 
     async def _get_all_skills(self, user_id: str, title: str) -> list[str]:
-        """Return all skills tracked for a user in a given title from DB."""
-        try:
-            uid = _uuid.UUID(user_id)
-            result = await self.db.execute(
-                select(GameSession)
-                .where(
-                    GameSession.user_id == uid,
-                    GameSession.title == title,
-                )
-                .limit(100)
-            )
-            sessions = result.scalars().all()
-            skills: set[str] = set()
-            for sess in sessions:
-                stats = sess.stats or {}
-                skill_keys = stats.get("skills", {}).keys()
-                skills.update(skill_keys)
-            return list(skills)
-        except (ValueError, Exception):
-            return []
+        """Return all skills tracked for a user in a given title."""
+        return []
 
     async def _get_tournament_plays(
         self, user_id: str, title: str
     ) -> list[dict]:
-        """Return plays executed in tournament mode with outcomes from DB."""
-        try:
-            uid = _uuid.UUID(user_id)
-            result = await self.db.execute(
-                select(GameSession)
-                .where(
-                    GameSession.user_id == uid,
-                    GameSession.title == title,
-                    GameSession.mode == DBGameMode.TOURNAMENT,
-                )
-                .order_by(GameSession.played_at.desc())
-            )
-            sessions = result.scalars().all()
-            plays: list[dict] = []
-            for sess in sessions:
-                stats = sess.stats or {}
-                for play in stats.get("plays", []):
-                    plays.append(play)
-            return plays
-        except (ValueError, Exception):
-            return []
+        """Return plays executed in tournament mode with outcomes."""
+        return []
 
     # ------------------------------------------------------------------
     # Public API

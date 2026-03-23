@@ -9,10 +9,6 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.gameplan import Gameplan as GameplanModel
 from app.schemas.madden26.killsheet import (
     FormationType,
     GameResult,
@@ -155,14 +151,11 @@ class KillSheetGenerator:
 
     TARGET_KILLS: int = 5
 
-    def __init__(self, db: AsyncSession) -> None:
-        self.db = db
-
     # -----------------------------------------------------------------------
     # Public API
     # -----------------------------------------------------------------------
 
-    async def generate_kill_sheet(
+    def generate_kill_sheet(
         self,
         user_id: str,
         opponent_data: OpponentData,
@@ -179,7 +172,7 @@ class KillSheetGenerator:
         ranked.sort(key=lambda p: p.effectiveness_score, reverse=True)
         top_kills = ranked[: self.TARGET_KILLS]
 
-        kill_sheet = KillSheet(
+        return KillSheet(
             id=str(uuid.uuid4()),
             user_id=user_id,
             opponent_id=opponent_data.opponent_id,
@@ -188,27 +181,6 @@ class KillSheetGenerator:
             generated_at=datetime.now(timezone.utc).isoformat(),
             version=1,
         )
-
-        # Persist kill sheet data in the Gameplan table's kill_sheet column
-        kill_data = {
-            "kills": [k.model_dump(mode="json") for k in top_kills],
-            "opponent_name": opponent_data.opponent_name,
-            "version": 1,
-        }
-        db_gameplan = GameplanModel(
-            user_id=uuid.UUID(user_id) if isinstance(user_id, str) else user_id,
-            title=f"Kill Sheet vs {opponent_data.opponent_name}",
-            opponent_id=(
-                uuid.UUID(opponent_data.opponent_id)
-                if opponent_data.opponent_id and opponent_data.opponent_id != "unknown"
-                else None
-            ),
-            kill_sheet=kill_data,
-        )
-        self.db.add(db_gameplan)
-        await self.db.flush()
-
-        return kill_sheet
 
     def rank_plays_by_opponent(
         self,

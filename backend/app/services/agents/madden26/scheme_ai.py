@@ -5,12 +5,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import HTTPException
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-
-from app.models.madden26 import MaddenPlay, MaddenScheme
 from app.schemas.madden26.scheme import (
     Concept,
     CoverageAnswer,
@@ -276,46 +270,14 @@ class SchemeAI:
     suggest hot route adjustments.
     """
 
-    def __init__(self, db: AsyncSession) -> None:
-        self.db = db
-
-    # ------------------------------------------------------------------
-    # DB helpers
-    # ------------------------------------------------------------------
-
-    async def _get_scheme_from_db(self, scheme_name: str) -> MaddenScheme | None:
-        """Query the database for a MaddenScheme by name."""
-        result = await self.db.execute(
-            select(MaddenScheme)
-            .options(selectinload(MaddenScheme.plays))
-            .where(MaddenScheme.name == scheme_name)
-        )
-        return result.scalar_one_or_none()
-
-    async def _get_plays_for_scheme(self, scheme_name: str) -> list[MaddenPlay]:
-        """Query plays belonging to a scheme by scheme name."""
-        result = await self.db.execute(
-            select(MaddenPlay)
-            .join(MaddenScheme)
-            .where(MaddenScheme.name == scheme_name)
-        )
-        return list(result.scalars().all())
-
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
     async def analyze_scheme(self, scheme_name: str) -> SchemeAnalysis:
         """Return a full breakdown of the given scheme."""
-        # Try DB first, fall back to static data
-        db_scheme = await self._get_scheme_from_db(scheme_name)
-
         key = self._resolve_scheme_key(scheme_name)
         data = _SCHEME_DATA.get(key, _DEFAULT_SCHEME)
-
-        # Enrich static data with DB scheme if available
-        if db_scheme and db_scheme.concepts:
-            data = {**data, **db_scheme.concepts}
 
         concepts = self._get_concepts_for_scheme(key)
         matrix = await self.build_coverage_answer_matrix(scheme_name)
