@@ -36,3 +36,4 @@ coverage/
 # Runtime
 *.pid
 *.seed
+.claude/worktrees/
