@@ -1,0 +1,57 @@
+{
+  "_comment": "EsportsForge RDS PostgreSQL configuration template. Use with AWS CLI or Terraform.",
+  "DBInstanceIdentifier": "esportsforge-db",
+  "Engine": "postgres",
+  "EngineVersion": "16.3",
+  "DBInstanceClass": "db.t4g.medium",
+  "AllocatedStorage": 50,
+  "MaxAllocatedStorage": 200,
+  "StorageType": "gp3",
+  "StorageEncrypted": true,
+  "MasterUsername": "esportsforge_admin",
+  "DBName": "esportsforge",
+  "Port": 5432,
+  "MultiAZ": true,
+  "PubliclyAccessible": false,
+  "AutoMinorVersionUpgrade": true,
+  "BackupRetentionPeriod": 14,
+  "PreferredBackupWindow": "03:00-04:00",
+  "PreferredMaintenanceWindow": "sun:05:00-sun:06:00",
+  "DeletionProtection": true,
+  "CopyTagsToSnapshot": true,
+  "MonitoringInterval": 60,
+  "EnablePerformanceInsights": true,
+  "PerformanceInsightsRetentionPeriod": 7,
+  "VPCSecurityGroups": [
+    "sg-PLACEHOLDER_RDS_SG"
+  ],
+  "DBSubnetGroupName": "esportsforge-db-subnet-group",
+  "DBParameterGroup": {
+    "_comment": "Key PostgreSQL parameters for the application",
+    "family": "postgres16",
+    "parameters": {
+      "shared_buffers": "{DBInstanceClassMemory/4}",
+      "effective_cache_size": "{DBInstanceClassMemory*3/4}",
+      "max_connections": "200",
+      "work_mem": "16MB",
+      "maintenance_work_mem": "256MB",
+      "log_min_duration_statement": "1000",
+      "log_connections": "1",
+      "log_disconnections": "1"
+    }
+  },
+  "Tags": [
+    {
+      "Key": "Project",
+      "Value": "EsportsForge"
+    },
+    {
+      "Key": "Environment",
+      "Value": "production"
+    },
+    {
+      "Key": "ManagedBy",
+      "Value": "manual"
+    }
+  ]
+}
