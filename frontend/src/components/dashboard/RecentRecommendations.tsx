@@ -1,10 +1,12 @@
 /**
- * Last 5 agent recommendations with source badge, confidence, and outcome.
+ * Last 5 agent recommendations with source badge, confidence, outcome,
+ * and expandable proof layer ("Why?").
  */
 
 'use client';
 
-import { Check, X, HelpCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Check, X, HelpCircle, ChevronDown, AlertTriangle, Database, FileText } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Card } from '@/components/shared/Card';
 import { Badge } from '@/components/shared/Badge';
@@ -46,6 +48,8 @@ interface RecentRecommendationsProps {
 export default function RecentRecommendations({
   recommendations,
 }: RecentRecommendationsProps) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   return (
     <Card padding="lg">
       <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-dark-300">
@@ -56,6 +60,7 @@ export default function RecentRecommendations({
         {recommendations.map((rec) => {
           const outcome = outcomeConfig[rec.outcome];
           const OutcomeIcon = outcome.icon;
+          const isExpanded = expandedId === rec.id;
 
           return (
             <div key={rec.id} className="py-3 first:pt-0 last:pb-0">
@@ -86,6 +91,50 @@ export default function RecentRecommendations({
                     showValue
                     label="Confidence"
                   />
+
+                  {/* Proof layer toggle */}
+                  {rec.proof && (
+                    <div>
+                      <button
+                        onClick={() => setExpandedId(isExpanded ? null : rec.id)}
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-dark-400 transition-colors hover:text-dark-200"
+                      >
+                        Why?
+                        <ChevronDown
+                          className={clsx(
+                            'h-3 w-3 transition-transform',
+                            isExpanded && 'rotate-180'
+                          )}
+                        />
+                      </button>
+
+                      {isExpanded && (
+                        <div className="mt-2 space-y-1.5 rounded-lg border border-dark-700/50 bg-dark-800/50 px-3 py-2">
+                          <div className="flex items-start gap-1.5">
+                            <FileText className="mt-0.5 h-3 w-3 flex-shrink-0 text-dark-500" />
+                            <p className="text-[11px] text-dark-300">
+                              <span className="font-medium text-dark-200">Reason:</span>{' '}
+                              {rec.proof.reason}
+                            </p>
+                          </div>
+                          <div className="flex items-start gap-1.5">
+                            <Database className="mt-0.5 h-3 w-3 flex-shrink-0 text-dark-500" />
+                            <p className="text-[11px] text-dark-300">
+                              <span className="font-medium text-dark-200">Data:</span>{' '}
+                              {rec.proof.dataSource}
+                            </p>
+                          </div>
+                          <div className="flex items-start gap-1.5">
+                            <AlertTriangle className="mt-0.5 h-3 w-3 flex-shrink-0 text-amber-500" />
+                            <p className="text-[11px] text-dark-300">
+                              <span className="font-medium text-amber-400">Risk:</span>{' '}
+                              {rec.proof.riskIfIgnored}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Outcome indicator */}

@@ -16,6 +16,13 @@ export interface RecommendationItem {
   confidence: number; // 0-100
   outcome: 'followed' | 'ignored' | 'pending';
   timestamp: string;
+  proof?: RecommendationProof;
+}
+
+export interface RecommendationProof {
+  reason: string;
+  dataSource: string;
+  riskIfIgnored: string;
 }
 
 export interface WeeklyNarrativeData {
@@ -56,13 +63,52 @@ export interface DashboardStats {
   readiness: number;
 }
 
+export type TiltGuardMood = 'locked-in' | 'good' | 'tired' | 'frustrated' | 'tilted';
+
+export interface FatigueIndicator {
+  peakWindowMinutes: number;
+  currentSessionMinutes: number | null;
+  status: 'fresh' | 'peak' | 'fading' | 'fatigued';
+}
+
+export interface ExecutionGap {
+  skill: string;
+  drillRate: number;  // percentage
+  rankedRate: number; // percentage
+  drillId?: string;
+}
+
+export interface LoopAIDebrief {
+  gameTimestamp: string;
+  recommendation: string;
+  wasFollowed: boolean | null;
+  outcome: 'won' | 'lost';
+  loopUpdate: string;
+}
+
+export interface BenchmarkMetric {
+  label: string;
+  percentile: number; // 0-100
+}
+
+export interface ProgressionPackage {
+  name: string;
+  percentComplete: number;
+}
+
 export interface DashboardData {
   username: string;
   stats: DashboardStats;
   priority: PriorityItem;
+  priorities: PriorityItem[];
   recentRecommendations: RecommendationItem[];
   weeklyNarrative: WeeklyNarrativeData;
   quickActions: QuickAction[];
   activeSession: SessionStatus | null;
   upcomingTournament: TournamentInfo | null;
+  fatigue: FatigueIndicator;
+  executionGap: ExecutionGap;
+  lastDebrief: LoopAIDebrief | null;
+  benchmarks: BenchmarkMetric[];
+  progression: { current: ProgressionPackage; next: ProgressionPackage };
 }

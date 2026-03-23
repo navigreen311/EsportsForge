@@ -1,10 +1,13 @@
 /**
  * Dashboard — Main landing page after login.
- * Shows priority weakness, stats, recommendations, narrative, quick actions.
+ * Shows TiltGuard check-in, priority weakness stack, stats, fatigue,
+ * benchmarks, progression, recommendations with proof, session actions,
+ * narrative, quick actions.
  */
 
 'use client';
 
+import { useState } from 'react';
 import {
   LayoutDashboard,
   Flame,
@@ -20,16 +23,28 @@ import { StatCard } from '@/components/shared/StatCard';
 import { Card } from '@/components/shared/Card';
 import { Badge } from '@/components/shared/Badge';
 import PriorityCard from '@/components/dashboard/PriorityCard';
+import PriorityStack from '@/components/dashboard/PriorityStack';
 import RecentRecommendations from '@/components/dashboard/RecentRecommendations';
 import WeeklyNarrative from '@/components/dashboard/WeeklyNarrative';
 import QuickActions from '@/components/dashboard/QuickActions';
 import SessionIndicator from '@/components/dashboard/SessionIndicator';
+import TiltGuardCheckin, { MoodBadge } from '@/components/dashboard/TiltGuardCheckin';
+import FatigueIndicatorCard from '@/components/dashboard/FatigueIndicator';
+import ExecutionGapCard from '@/components/dashboard/ExecutionGapCard';
+import LoopAIDebriefCard from '@/components/dashboard/LoopAIDebriefCard';
+import BenchmarkPanel from '@/components/dashboard/BenchmarkPanel';
+import ProgressionStrip from '@/components/dashboard/ProgressionStrip';
+import type { TiltGuardMood } from '@/types/dashboard';
 
 export default function DashboardPage() {
   const { data } = useDashboard();
+  const [mood, setMood] = useState<TiltGuardMood | null>(null);
 
   return (
     <div className="space-y-6">
+      {/* 1. TiltGuard Pre-Session Check-In Modal */}
+      <TiltGuardCheckin onMoodSelect={setMood} />
+
       {/* Welcome Banner */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -42,7 +57,10 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* TiltGuard mood badge */}
+          <MoodBadge mood={mood} />
+
           {/* Streak badge */}
           <Badge variant="success" dot>
             <Flame className="h-3.5 w-3.5" />
@@ -54,8 +72,17 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Priority Card */}
+      {/* Priority Card — #1 */}
       <PriorityCard priority={data.priority} />
+
+      {/* 9. ProgressionOS Install Roadmap Strip */}
+      <ProgressionStrip
+        current={data.progression.current}
+        next={data.progression.next}
+      />
+
+      {/* 5. ImpactRank Priority Stack — #2 and #3 */}
+      <PriorityStack priorities={data.priorities} />
 
       {/* Stat Cards Row */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -89,11 +116,27 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* 2. Predictive Fatigue Indicator */}
+      <FatigueIndicatorCard data={data.fatigue} />
+
+      {/* 3. TransferAI Execution Gap */}
+      <ExecutionGapCard gap={data.executionGap} />
+
+      {/* 6. BenchmarkAI Percentile Panel */}
+      <BenchmarkPanel benchmarks={data.benchmarks} />
+
       {/* Two-column: Recommendations + Narrative */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <RecentRecommendations
-          recommendations={data.recentRecommendations}
-        />
+        <div className="space-y-6">
+          {/* 4. LoopAI Last Game Debrief */}
+          <LoopAIDebriefCard debrief={data.lastDebrief} />
+
+          {/* 7. Recommendations with Proof Layer */}
+          <RecentRecommendations
+            recommendations={data.recentRecommendations}
+          />
+        </div>
+
         <div className="space-y-6">
           <WeeklyNarrative narrative={data.weeklyNarrative} />
 

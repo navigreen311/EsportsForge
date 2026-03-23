@@ -10,6 +10,11 @@ import type {
   SessionStatus,
   TournamentInfo,
   DashboardStats,
+  FatigueIndicator,
+  ExecutionGap,
+  LoopAIDebrief,
+  BenchmarkMetric,
+  ProgressionPackage,
 } from '@/types/dashboard';
 
 const mockPriority: PriorityItem = {
@@ -22,6 +27,30 @@ const mockPriority: PriorityItem = {
   confidence: 87,
   impactRank: 9.4,
 };
+
+const mockPriorities: PriorityItem[] = [
+  mockPriority,
+  {
+    id: 'pri-2',
+    weakness: 'Red Zone Efficiency',
+    category: 'situational',
+    winRateDamage: 5.1,
+    expectedLift: 3.9,
+    timeToMaster: '1-2 weeks',
+    confidence: 82,
+    impactRank: 7.8,
+  },
+  {
+    id: 'pri-3',
+    weakness: 'Blitz Recognition',
+    category: 'defense',
+    winRateDamage: 4.2,
+    expectedLift: 3.1,
+    timeToMaster: '3-4 weeks',
+    confidence: 76,
+    impactRank: 6.5,
+  },
+];
 
 const mockStats: DashboardStats = {
   winRate: 67,
@@ -38,6 +67,11 @@ const mockRecommendations: RecommendationItem[] = [
     confidence: 91,
     outcome: 'followed',
     timestamp: '2h ago',
+    proof: {
+      reason: 'Cover 2 exploited 4/6 games vs spread — opponents averaging 8.2 YPA',
+      dataSource: 'Last 6 games vs spread formation opponents',
+      riskIfIgnored: 'Exposed on wheel route if opponent motions the back out of backfield',
+    },
   },
   {
     id: 'rec-2',
@@ -46,6 +80,11 @@ const mockRecommendations: RecommendationItem[] = [
     confidence: 85,
     outcome: 'followed',
     timestamp: '5h ago',
+    proof: {
+      reason: 'Read speed avg 1.8s vs 1.4s target — costing 2.1 win-rate points',
+      dataSource: 'PlayerTwin read-speed telemetry, 30-day trend',
+      riskIfIgnored: 'Read speed regression likely if not drilled within 48h',
+    },
   },
   {
     id: 'rec-3',
@@ -54,6 +93,11 @@ const mockRecommendations: RecommendationItem[] = [
     confidence: 78,
     outcome: 'pending',
     timestamp: '1d ago',
+    proof: {
+      reason: 'HB Dive called 72% of 3rd-and-short by this opponent (18/25 plays)',
+      dataSource: 'OpponentScout encounter history, 8 games tracked',
+      riskIfIgnored: 'Opponent converts 3rd down at 68% if box isn\'t stacked',
+    },
   },
   {
     id: 'rec-4',
@@ -62,6 +106,11 @@ const mockRecommendations: RecommendationItem[] = [
     confidence: 82,
     outcome: 'ignored',
     timestamp: '1d ago',
+    proof: {
+      reason: '4th quarter RZ efficiency 41% vs 59% in quarters 1-3',
+      dataSource: 'Session analytics, last 20 games with RZ attempts',
+      riskIfIgnored: 'Estimated 1.4 points per game left on the table in close matches',
+    },
   },
   {
     id: 'rec-5',
@@ -70,6 +119,11 @@ const mockRecommendations: RecommendationItem[] = [
     confidence: 88,
     outcome: 'followed',
     timestamp: '2d ago',
+    proof: {
+      reason: 'PA Crossers success rate 74% vs man (23/31 plays) — 12.4 avg yards',
+      dataSource: 'Play-level analytics, current season',
+      riskIfIgnored: '2nd & medium conversion rate stays at 48% instead of projected 61%',
+    },
   },
 ];
 
@@ -126,16 +180,60 @@ const mockTournament: TournamentInfo | null = {
   status: 'upcoming',
 };
 
+const mockFatigue: FatigueIndicator = {
+  peakWindowMinutes: 75,
+  currentSessionMinutes: null,
+  status: 'fresh',
+};
+
+const mockExecutionGap: ExecutionGap = {
+  skill: 'Coverage Reads',
+  drillRate: 91,
+  rankedRate: 54,
+  drillId: 'drill-coverage-reads',
+};
+
+const mockDebrief: LoopAIDebrief | null = {
+  gameTimestamp: '2h ago',
+  recommendation: 'Switch to Cover 3 Sky against spread formations',
+  wasFollowed: true,
+  outcome: 'won',
+  loopUpdate: 'Boosted Cover 3 Sky confidence to 91% for spread matchups',
+};
+
+const mockBenchmarks: BenchmarkMetric[] = [
+  { label: 'Read Speed', percentile: 72 },
+  { label: 'Clutch Conversion', percentile: 34 },
+  { label: 'User Defense', percentile: 58 },
+  { label: 'Execution Under Pressure', percentile: 81 },
+];
+
+const mockProgressionCurrent: ProgressionPackage = {
+  name: 'Base Pass Concepts',
+  percentComplete: 67,
+};
+
+const mockProgressionNext: ProgressionPackage = {
+  name: 'Pressure Package',
+  percentComplete: 0,
+};
+
 export function useDashboard() {
   const [data] = useState<DashboardData>({
     username: 'Commander',
     stats: mockStats,
     priority: mockPriority,
+    priorities: mockPriorities,
     recentRecommendations: mockRecommendations,
     weeklyNarrative: mockNarrative,
     quickActions: mockQuickActions,
     activeSession: mockSession,
     upcomingTournament: mockTournament,
+    fatigue: mockFatigue,
+    executionGap: mockExecutionGap,
+    lastDebrief: mockDebrief,
+    benchmarks: mockBenchmarks,
+    progression: { current: mockProgressionCurrent, next: mockProgressionNext },
   });
 
   const isLoading = false;
