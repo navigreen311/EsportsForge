@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 
-export type GameTitle = 'madden26' | 'cfb26';
+export type GameTitle = 'madden26' | 'cfb26' | 'nba2k26' | 'fc26' | 'mlbtheshow26' | 'warzone' | 'fortnite' | 'ufc5' | 'pga2k25' | 'undisputed' | 'videopoker';
 export type GameMode = 'ranked' | 'tournament' | 'training';
 export type UserTier = 'free' | 'competitive' | 'elite' | 'team';
 export type IntegrityStatus = 'safe' | 'caution' | 'restricted';
@@ -19,6 +19,15 @@ export interface TitleOption {
 export const TITLE_OPTIONS: TitleOption[] = [
   { id: 'madden26', label: 'Madden 26', icon: '🏈' },
   { id: 'cfb26', label: 'CFB 26', icon: '🎓' },
+  { id: 'nba2k26', label: 'NBA 2K26', icon: '🏀' },
+  { id: 'fc26', label: 'EA FC 26', icon: '⚽' },
+  { id: 'mlbtheshow26', label: 'MLB 26', icon: '⚾' },
+  { id: 'warzone', label: 'Warzone', icon: '🎯' },
+  { id: 'fortnite', label: 'Fortnite', icon: '⚡' },
+  { id: 'ufc5', label: 'UFC 5', icon: '🥊' },
+  { id: 'pga2k25', label: 'PGA 2K25', icon: '⛳' },
+  { id: 'undisputed', label: 'Undisputed', icon: '🥊' },
+  { id: 'videopoker', label: 'Video Poker', icon: '🃏' },
 ];
 
 export const MODE_CONFIG: Record<GameMode, { label: string; color: string }> = {
@@ -64,8 +73,11 @@ interface UIState {
 }
 
 export const useUIStore = create<UIState>((set) => ({
-  selectedTitle: 'madden26',
-  setTitle: (title) => set({ selectedTitle: title }),
+  selectedTitle: (typeof window !== 'undefined' ? localStorage.getItem('esportsforge_active_title') as GameTitle : null) || 'madden26',
+  setTitle: (title) => {
+    if (typeof window !== 'undefined') localStorage.setItem('esportsforge_active_title', title);
+    set({ selectedTitle: title });
+  },
 
   currentMode: 'ranked',
   setMode: (mode) => set({ currentMode: mode }),

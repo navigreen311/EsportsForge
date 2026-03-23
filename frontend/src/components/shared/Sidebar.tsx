@@ -25,6 +25,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useUIStore, TITLE_OPTIONS, TIER_CONFIG } from '@/lib/store';
 import { Badge } from './Badge';
+import { TitleSwitcher } from './TitleSwitcher';
 
 interface NavItem {
   label: string;
@@ -195,9 +196,9 @@ export function Sidebar() {
           </button>
         </div>
 
-        {/* Title selector */}
+        {/* Title selector — 11-title grouped dropdown */}
         <div className={clsx('border-b border-dark-700/50', sidebarCollapsed ? 'px-2 py-3' : 'px-4 py-3')}>
-          <TitleSelector collapsed={sidebarCollapsed} />
+          <TitleSwitcher collapsed={sidebarCollapsed} />
         </div>
 
         {/* Navigation */}
