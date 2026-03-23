@@ -12,14 +12,21 @@ import {
 import WinRateChart from '@/components/analytics/WinRateChart';
 import WeaknessHeatmap from '@/components/analytics/WeaknessHeatmap';
 import AgentAccuracy from '@/components/analytics/AgentAccuracy';
+import BenchmarkRankSection from '@/components/analytics/BenchmarkRankSection';
+import TransferGapChart from '@/components/analytics/TransferGapChart';
+import ImpactRankROI from '@/components/analytics/ImpactRankROI';
+import SituationalWinRates from '@/components/analytics/SituationalWinRates';
+import PlayerTwinEvolution from '@/components/analytics/PlayerTwinEvolution';
+import FatigueAnalytics from '@/components/analytics/FatigueAnalytics';
+import SessionLoopAIDetails from '@/components/analytics/SessionLoopAIDetails';
+import AnalyticsFilters from '@/components/analytics/AnalyticsFilters';
+import ExportDropdown from '@/components/analytics/ExportDropdown';
 import {
   BarChart3,
-  TrendingUp,
   Trophy,
   Swords,
   GraduationCap,
   ChevronDown,
-  ChevronRight,
   Brain,
 } from 'lucide-react';
 import {
@@ -109,14 +116,21 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-dark-50 flex items-center gap-3">
-          <BarChart3 className="w-8 h-8 text-forge-400" />
-          Analytics
-        </h1>
-        <p className="text-dark-400 mt-1">Performance intelligence dashboard</p>
+      {/* Header + Export */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-dark-50 flex items-center gap-3">
+            <BarChart3 className="w-8 h-8 text-forge-400" />
+            Analytics
+          </h1>
+          <p className="text-dark-400 mt-1">Performance intelligence dashboard</p>
+        </div>
+        {/* 9. Export Dropdown */}
+        <ExportDropdown />
       </div>
+
+      {/* 8. Analytics Filters Bar */}
+      <AnalyticsFilters />
 
       {/* Top Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -146,6 +160,9 @@ export default function AnalyticsPage() {
           </div>
         ))}
       </div>
+
+      {/* 1. BenchmarkAI Competitive Rank */}
+      <BenchmarkRankSection />
 
       {/* Win Rate Chart */}
       <WinRateChart data={mockWinRateData} />
@@ -182,6 +199,12 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
+      {/* 4. Situational Win Rates */}
+      <SituationalWinRates />
+
+      {/* 2. TransferAI Lab-to-Live Gap Chart */}
+      <TransferGapChart />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Weakness Heatmap */}
         <WeaknessHeatmap data={mockWeaknessData} />
@@ -189,6 +212,9 @@ export default function AnalyticsPage() {
         {/* Agent Accuracy */}
         <AgentAccuracy agents={mockAgentData} />
       </div>
+
+      {/* 3. ImpactRank ROI */}
+      <ImpactRankROI />
 
       {/* LoopAI Learning Trend */}
       <div className="rounded-xl border border-dark-700 bg-dark-900/50 p-6">
@@ -219,7 +245,13 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Session History */}
+      {/* 5. PlayerTwin Evolution */}
+      <PlayerTwinEvolution />
+
+      {/* 6. Fatigue Analytics */}
+      <FatigueAnalytics />
+
+      {/* Session History with 7. LoopAI columns */}
       <div className="rounded-xl border border-dark-700 bg-dark-900/50 p-6">
         <h2 className="text-lg font-bold text-dark-100 mb-4">Session History</h2>
         <div className="overflow-x-auto">
@@ -273,21 +305,26 @@ export default function AnalyticsPage() {
                   {expandedSession === session.id && (
                     <tr key={`${session.id}-detail`} className="border-b border-dark-800">
                       <td colSpan={7} className="py-4 px-6 bg-dark-800/20">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-xs text-dark-500 uppercase tracking-wider mb-1">Record</p>
-                            <p className="text-sm text-dark-200">{session.wins}W - {session.losses}L</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-dark-500 uppercase tracking-wider mb-1">Key Plays</p>
-                            <div className="flex flex-wrap gap-1">
-                              {session.keyPlays.map((play) => (
-                                <span key={play} className="px-2 py-0.5 text-xs bg-forge-500/10 text-forge-400 rounded border border-forge-800/30">
-                                  {play}
-                                </span>
-                              ))}
+                        <div className="space-y-4">
+                          {/* Existing details */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-dark-500 uppercase tracking-wider mb-1">Record</p>
+                              <p className="text-sm text-dark-200">{session.wins}W - {session.losses}L</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-dark-500 uppercase tracking-wider mb-1">Key Plays</p>
+                              <div className="flex flex-wrap gap-1">
+                                {session.keyPlays.map((play) => (
+                                  <span key={play} className="px-2 py-0.5 text-xs bg-forge-500/10 text-forge-400 rounded border border-forge-800/30">
+                                    {play}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
                           </div>
+                          {/* 7. LoopAI Session Details */}
+                          <SessionLoopAIDetails sessionId={session.id} />
                         </div>
                       </td>
                     </tr>
