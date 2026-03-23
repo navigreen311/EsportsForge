@@ -19,6 +19,9 @@ import {
   CalendarDays,
 } from 'lucide-react';
 import { useDashboard } from '@/hooks/useDashboard';
+import { useUIStore } from '@/lib/store';
+import { getTitleById } from '@/lib/titles';
+import TitleEmptyState from '@/components/shared/TitleEmptyState';
 import { StatCard } from '@/components/shared/StatCard';
 import { Card } from '@/components/shared/Card';
 import { Badge } from '@/components/shared/Badge';
@@ -37,8 +40,10 @@ import ProgressionStrip from '@/components/dashboard/ProgressionStrip';
 import type { TiltGuardMood } from '@/types/dashboard';
 
 export default function DashboardPage() {
-  const { data } = useDashboard();
+  const { data, hasData, statLabels } = useDashboard();
   const [mood, setMood] = useState<TiltGuardMood | null>(null);
+  const selectedTitle = useUIStore((s) => s.selectedTitle);
+  const titleInfo = getTitleById(selectedTitle);
 
   return (
     <div className="space-y-6">
@@ -72,17 +77,22 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Empty state for titles with no data */}
+      {!hasData && titleInfo && (
+        <TitleEmptyState titleName={titleInfo.name} titleIcon={titleInfo.icon} />
+      )}
+
       {/* Priority Card — #1 */}
-      <PriorityCard priority={data.priority} />
+      {hasData && <PriorityCard priority={data.priority} />}
 
       {/* 9. ProgressionOS Install Roadmap Strip */}
-      <ProgressionStrip
+      {hasData && <ProgressionStrip
         current={data.progression.current}
         next={data.progression.next}
-      />
+      />}
 
       {/* 5. ImpactRank Priority Stack — #2 and #3 */}
-      <PriorityStack priorities={data.priorities} />
+      {hasData && <PriorityStack priorities={data.priorities} />}
 
       {/* Stat Cards Row */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -94,14 +104,14 @@ export default function DashboardPage() {
           icon={<Percent className="h-4 w-4" />}
         />
         <StatCard
-          label="Games Played"
+          label={statLabels.games}
           value={data.stats.totalGames}
           trend={{ direction: 'up', value: '+12 this week' }}
           sparklineData={[98, 105, 112, 118, 126, 131, 138, 142]}
           icon={<Gamepad2 className="h-4 w-4" />}
         />
         <StatCard
-          label="Win Streak"
+          label={statLabels.streak}
           value={`W${data.stats.currentStreak}`}
           trend={{ direction: 'up', value: 'Season best' }}
           sparklineData={[1, 0, 3, 2, 0, 4, 6, 8]}

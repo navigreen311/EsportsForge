@@ -96,6 +96,19 @@ export interface ProgressionPackage {
   percentComplete: number;
 }
 
+export interface TitleDashboardData {
+  priorities: PriorityItem[];
+  stats: DashboardStats;
+  statLabels: { games: string; streak: string };
+  progression: { current: ProgressionPackage; next: ProgressionPackage };
+  executionGap: ExecutionGap;
+  recommendations: RecommendationItem[];
+  narrative: WeeklyNarrativeData;
+  benchmarks: BenchmarkMetric[];
+  debrief: LoopAIDebrief | null;
+  hasData: boolean;
+}
+
 export interface DashboardData {
   username: string;
   stats: DashboardStats;
