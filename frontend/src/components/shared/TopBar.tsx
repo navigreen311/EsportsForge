@@ -8,6 +8,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import VoiceCommandButton from '@/components/voice/VoiceCommandButton';
 import { clsx } from 'clsx';
 import {
   Bell,
@@ -192,6 +193,9 @@ export function TopBar() {
             </span>
           )}
         </button>
+
+        {/* Voice Command */}
+        <VoiceCommandButton />
 
         {/* User avatar / dropdown */}
         <UserMenu />
