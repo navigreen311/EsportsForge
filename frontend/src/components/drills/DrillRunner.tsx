@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { DrillRecord } from '@/types/analytics';
 import {
   Play,
@@ -10,13 +11,21 @@ import {
   Gauge,
   Sparkles,
 } from 'lucide-react';
+import PressureModeToggle, { PressureContext } from '@/components/drills/PressureModeToggle';
+import WhyThisDrill from '@/components/drills/WhyThisDrill';
+import SimLabLaunchButton from '@/components/drills/SimLabLaunchButton';
+import { DrillMasteryDot, DRILL_MASTERY } from '@/components/drills/DrillMasteryDot';
 
 interface DrillRunnerProps {
   drill: DrillRecord;
   onCompleteRep: () => void;
   onSkip: () => void;
   onStart: () => void;
+  onEnd: () => void;
+  onNext: () => void;
   isActive: boolean;
+  successCount: number;
+  failCount: number;
 }
 
 const difficultyConfig: Record<
@@ -29,28 +38,43 @@ const difficultyConfig: Record<
   elite: { color: 'text-red-400', label: 'Elite', dots: 4 },
 };
 
+const masteryLabels: Record<string, string> = {
+  mastered: 'Mastered',
+  practicing: 'Practicing',
+  learning: 'Learning',
+  'not-started': 'Not Started',
+};
+
 export default function DrillRunner({
   drill,
   onCompleteRep,
   onSkip,
   onStart,
+  onEnd,
+  onNext,
   isActive,
+  successCount,
+  failCount,
 }: DrillRunnerProps) {
+  const [pressureMode, setPressureMode] = useState(false);
   const progress = drill.reps > 0 ? (drill.completedReps / drill.reps) * 100 : 0;
   const diffConfig = difficultyConfig[drill.difficulty];
+  const mastery = DRILL_MASTERY[drill.id] ?? 'not-started';
 
   return (
     <div
       className={`rounded-xl border p-6 transition-all duration-300 ${
         isActive
-          ? 'border-forge-500/50 bg-gradient-to-b from-forge-950/30 to-dark-900/80 shadow-lg shadow-forge-500/5'
+          ? pressureMode
+            ? 'border-amber-500/50 bg-gradient-to-b from-amber-950/20 to-dark-900/80 shadow-lg shadow-amber-500/5'
+            : 'border-forge-500/50 bg-gradient-to-b from-forge-950/30 to-dark-900/80 shadow-lg shadow-forge-500/5'
           : 'border-dark-700 bg-dark-900/50'
       }`}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-xl font-bold text-dark-50">{drill.name}</h2>
             {drill.isDynamicCalibration && (
               <span className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase bg-purple-500/20 text-purple-400 border border-purple-800/30 rounded">
@@ -58,6 +82,10 @@ export default function DrillRunner({
                 Dynamic Calibration
               </span>
             )}
+            {/* 4. Pressure Mode Toggle */}
+            <PressureModeToggle enabled={pressureMode} onToggle={() => setPressureMode(!pressureMode)} />
+            {/* 6. Mastery status */}
+            <span className="text-[10px] text-dark-500">{masteryLabels[mastery]}</span>
           </div>
           <div className="flex items-center gap-3 mt-1">
             <div className="flex items-center gap-1">
@@ -83,9 +111,17 @@ export default function DrillRunner({
         </div>
       </div>
 
+      {/* Pressure Mode Context */}
+      <PressureContext enabled={pressureMode} />
+
       {/* Instructions */}
       <div className="p-4 rounded-lg bg-dark-800/60 border border-dark-700 mb-4">
         <p className="text-sm text-dark-200 leading-relaxed">{drill.instructions}</p>
+      </div>
+
+      {/* 5. Why This Drill */}
+      <div className="mb-4">
+        <WhyThisDrill drillId={drill.id} />
       </div>
 
       {/* Progress */}
@@ -131,15 +167,19 @@ export default function DrillRunner({
       )}
 
       {/* Controls */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         {!isActive ? (
-          <button
-            onClick={onStart}
-            className="flex items-center gap-2 px-5 py-2.5 bg-forge-500 hover:bg-forge-600 text-dark-950 font-bold rounded-lg transition-colors"
-          >
-            <Play className="w-4 h-4" />
-            Start Drill
-          </button>
+          <>
+            <button
+              onClick={onStart}
+              className="flex items-center gap-2 px-5 py-2.5 bg-forge-500 hover:bg-forge-600 text-dark-950 font-bold rounded-lg transition-colors"
+            >
+              <Play className="w-4 h-4" />
+              Start Drill
+            </button>
+            {/* 8. SimLab Launch */}
+            <SimLabLaunchButton drillId={drill.id} drillName={drill.name} variant="full" />
+          </>
         ) : (
           <>
             <button

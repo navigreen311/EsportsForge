@@ -2,6 +2,8 @@
 
 import { DrillRecord } from '@/types/analytics';
 import { Flame, Gauge, ListOrdered, Sparkles } from 'lucide-react';
+import { DrillMasteryDot } from '@/components/drills/DrillMasteryDot';
+import SimLabLaunchButton from '@/components/drills/SimLabLaunchButton';
 
 interface DrillQueueProps {
   queue: DrillRecord[];
@@ -47,8 +49,9 @@ export default function DrillQueue({ queue, currentDrill }: DrillQueueProps) {
           {queue.map((drill, index) => (
             <div
               key={drill.id}
-              className="flex items-center gap-3 p-3 rounded-lg bg-dark-800/40 border border-dark-700/50 hover:border-dark-600 transition-colors"
+              className="relative flex items-center gap-3 p-3 rounded-lg bg-dark-800/40 border border-dark-700/50 hover:border-dark-600 transition-colors"
             >
+              <DrillMasteryDot drillId={drill.id} />
               {/* Position */}
               <span className="text-xs font-mono text-dark-600 w-5 text-center">
                 {index + 1}
@@ -77,8 +80,9 @@ export default function DrillQueue({ queue, currentDrill }: DrillQueueProps) {
                 </div>
               </div>
 
-              {/* Impact Rank */}
-              <div className="text-right shrink-0">
+              {/* Impact Rank + SimLab */}
+              <div className="flex items-center gap-2 shrink-0">
+                <SimLabLaunchButton drillId={drill.id} drillName={drill.name} variant="icon" />
                 <div className="flex items-center gap-1">
                   <Flame className="w-3 h-3 text-orange-400" />
                   <span className="text-sm font-mono font-bold text-dark-300">
