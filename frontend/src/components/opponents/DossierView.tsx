@@ -20,6 +20,13 @@ import {
 import TendencyChart from './TendencyChart';
 import PlayFrequencyChart from './PlayFrequencyChart';
 import EncounterHistory from './EncounterHistory';
+import PredictionEngine from './PredictionEngine';
+import BehavioralSignalFeed from './BehavioralSignalFeed';
+import WinRateTrend from './WinRateTrend';
+import DossierDepthIndicator from './DossierDepthIndicator';
+import { ThreatLevelBadge } from './ThreatLevelBadge';
+import RecencyDecayWarning from './RecencyDecayWarning';
+import PrepNowButton from './PrepNowButton';
 
 interface DossierViewProps {
   opponent: Opponent;
@@ -87,16 +94,21 @@ export default function DossierView({ opponent }: DossierViewProps) {
                 {rivalDepth}
               </span>
             )}
+            <ThreatLevelBadge opponent={opponent} />
           </div>
-          <p className="text-dark-400 mt-1">
-            {opponent.archetype} &middot; {opponent.encounterCount} encounters &middot;{' '}
-            {opponent.record.wins}W-{opponent.record.losses}L &middot; Last seen{' '}
-            {opponent.lastSeen}
-          </p>
+          <div className="flex items-center gap-3 mt-1">
+            <p className="text-dark-400">
+              {opponent.archetype} &middot; {opponent.encounterCount} encounters &middot;{' '}
+              {opponent.record.wins}W-{opponent.record.losses}L &middot; Last seen{' '}
+              {opponent.lastSeen}
+              <RecencyDecayWarning lastSeen={opponent.lastSeen} />
+            </p>
+          </div>
+          <DossierDepthIndicator opponent={opponent} />
         </div>
         <div className="text-right">
-          <p className="text-3xl font-bold font-mono text-forge-400">{opponent.winRate}%</p>
-          <p className="text-xs text-dark-500">Win Rate vs</p>
+          <WinRateTrend winRate={opponent.winRate} opponentId={opponent.id} />
+          <p className="text-xs text-dark-500 mt-1">Win Rate vs</p>
         </div>
       </div>
 
@@ -184,48 +196,11 @@ export default function DossierView({ opponent }: DossierViewProps) {
             </div>
           </div>
 
-          {/* Behavioral Signals */}
-          <div className="rounded-xl border border-dark-700 bg-dark-900/50 p-6">
-            <h2 className="text-lg font-bold text-dark-100 mb-4 flex items-center gap-2">
-              <Brain className="w-5 h-5 text-purple-400" />
-              Behavioral Signals
-            </h2>
-            <div className="space-y-3">
-              {opponent.behavioralSignals.map((signal, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-dark-800/50 border border-dark-700"
-                >
-                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-800/30 flex items-center justify-center text-purple-400">
-                    {signalIcons[signal.type]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-dark-100 capitalize">
-                        {signal.type.replace('-', ' ')}
-                      </span>
-                      <div className="flex gap-0.5">
-                        {Array.from({ length: 3 }).map((_, j) => (
-                          <span
-                            key={j}
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              j < frequencyDots[signal.frequency]
-                                ? 'bg-purple-400'
-                                : 'bg-dark-700'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-xs text-dark-400 mt-0.5">{signal.description}</p>
-                    <p className="text-[10px] text-dark-500 mt-1">
-                      Situation: {signal.situation}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Prediction Engine */}
+          <PredictionEngine opponentId={opponent.id} gamesAnalyzed={opponent.encounterCount} />
+
+          {/* Enhanced Behavioral Signals */}
+          <BehavioralSignalFeed signals={opponent.behavioralSignals} />
         </div>
       )}
 
@@ -439,11 +414,9 @@ export default function DossierView({ opponent }: DossierViewProps) {
         </div>
       )}
 
-      {/* CTA Button */}
-      <div className="flex justify-center pt-4">
-        <button className="px-8 py-3 rounded-xl bg-forge-500 hover:bg-forge-600 text-white font-bold text-sm transition-colors shadow-lg shadow-forge-500/20">
-          Generate Gameplan vs {opponent.gamertag}
-        </button>
+      {/* Prep Now */}
+      <div className="pt-4">
+        <PrepNowButton opponent={opponent} variant="full" />
       </div>
     </div>
   );

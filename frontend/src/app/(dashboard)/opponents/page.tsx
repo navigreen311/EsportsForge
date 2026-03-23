@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useOpponents } from '@/hooks/useOpponents';
 import OpponentCard from '@/components/opponents/OpponentCard';
 import { OpponentFilter, OpponentSort, Opponent } from '@/types/opponent';
+import { calculateThreatLevel } from '@/components/opponents/ThreatLevelBadge';
 import {
   Search,
   Users,
@@ -22,7 +23,8 @@ const filters: { key: OpponentFilter; label: string; icon: React.ReactNode }[] =
   { key: 'scouted', label: 'Scouted', icon: <Eye className="w-4 h-4" /> },
 ];
 
-const sorts: { key: OpponentSort; label: string }[] = [
+const sorts: { key: OpponentSort | 'threatLevel'; label: string }[] = [
+  { key: 'threatLevel', label: 'Threat Level' },
   { key: 'lastSeen', label: 'Last Seen' },
   { key: 'encounters', label: 'Encounters' },
   { key: 'winRate', label: 'Win Rate vs' },
@@ -39,6 +41,19 @@ export default function OpponentsPage() {
     sort,
     setSort,
   } = useOpponents();
+  const [localSort, setLocalSort] = useState<string>('threatLevel');
+
+  const handleSortChange = (key: string) => {
+    setLocalSort(key);
+    if (key !== 'threatLevel') {
+      setSort(key as OpponentSort);
+    }
+  };
+
+  // Apply threat level sort locally
+  const sortedOpponents = localSort === 'threatLevel'
+    ? [...opponents].sort((a, b) => calculateThreatLevel(b) - calculateThreatLevel(a))
+    : opponents;
 
   const handleOpponentClick = (opponent: Opponent) => {
     router.push(`/opponents/${opponent.id}`);
@@ -100,8 +115,8 @@ export default function OpponentsPage() {
           <div className="flex items-center gap-2">
             <ArrowUpDown className="w-4 h-4 text-dark-500" />
             <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as OpponentSort)}
+              value={localSort}
+              onChange={(e) => handleSortChange(e.target.value)}
               className="bg-dark-900/50 border border-dark-700 text-dark-200 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-dark-500 cursor-pointer"
             >
               {sorts.map((s) => (
@@ -114,15 +129,15 @@ export default function OpponentsPage() {
 
           {/* Result Count */}
           <span className="text-xs text-dark-500 sm:ml-auto">
-            {opponents.length} opponent{opponents.length !== 1 ? 's' : ''}
+            {sortedOpponents.length} opponent{sortedOpponents.length !== 1 ? 's' : ''}
           </span>
         </div>
       </div>
 
       {/* Opponent Card Grid */}
-      {opponents.length > 0 ? (
+      {sortedOpponents.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {opponents.map((opponent) => (
+          {sortedOpponents.map((opponent) => (
             <OpponentCard
               key={opponent.id}
               opponent={opponent}

@@ -1,7 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { Opponent } from '@/types/opponent';
-import { Swords, Eye, Trophy, Clock, Star } from 'lucide-react';
+import { Eye, Trophy, Clock, Star, Crosshair } from 'lucide-react';
+import WinRateTrend from '@/components/opponents/WinRateTrend';
+import DossierDepthIndicator from '@/components/opponents/DossierDepthIndicator';
+import { ThreatLevelBadge } from '@/components/opponents/ThreatLevelBadge';
+import RecencyDecayWarning from '@/components/opponents/RecencyDecayWarning';
+import PrepNowButton from '@/components/opponents/PrepNowButton';
+import ArchetypeCounterPanel from '@/components/opponents/ArchetypeCounterPanel';
+import KillSheetSlideOver from '@/components/opponents/KillSheetSlideOver';
 
 interface OpponentCardProps {
   opponent: Opponent;
@@ -29,69 +37,104 @@ function getRivalDepth(encounterCount: number): string | null {
 }
 
 export default function OpponentCard({ opponent, onClick }: OpponentCardProps) {
-  const winRateColor =
-    opponent.winRate >= 60
-      ? 'text-forge-400'
-      : opponent.winRate >= 40
-        ? 'text-yellow-400'
-        : 'text-red-400';
-
+  const [killSheetOpen, setKillSheetOpen] = useState(false);
+  const [counterOpen, setCounterOpen] = useState(false);
   const rivalDepth = opponent.isRival ? getRivalDepth(opponent.encounterCount) : null;
 
   return (
-    <button
-      onClick={() => onClick(opponent)}
-      className="w-full text-left rounded-xl border border-dark-700 bg-dark-900/50 p-5 hover:border-dark-500 hover:bg-dark-900/80 transition-all duration-200 group"
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-full bg-dark-800 border border-dark-600 flex items-center justify-center text-lg font-bold text-dark-300 group-hover:border-dark-500">
-            {opponent.gamertag.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-dark-100">{opponent.gamertag}</h3>
-              {opponent.isRival && (
-                <div className="flex items-center gap-1" title={rivalDepth ?? 'Rival'}>
-                  <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                  {rivalDepth && (
-                    <span className="text-[10px] font-medium text-yellow-400/80">
-                      {rivalDepth}
-                    </span>
-                  )}
-                </div>
-              )}
+    <>
+      <button
+        onClick={() => onClick(opponent)}
+        className="relative w-full text-left rounded-xl border border-dark-700 bg-dark-900/50 p-5 hover:border-dark-500 hover:bg-dark-900/80 transition-all duration-200 group overflow-hidden"
+      >
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full bg-dark-800 border border-dark-600 flex items-center justify-center text-lg font-bold text-dark-300 group-hover:border-dark-500">
+              {opponent.gamertag.charAt(0).toUpperCase()}
             </div>
-            <span
-              className={`inline-block mt-1 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded border ${
-                archetypeColors[opponent.archetype] || 'bg-dark-700 text-dark-300 border-dark-600'
-              }`}
-            >
-              {opponent.archetype}
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-dark-100">{opponent.gamertag}</h3>
+                {opponent.isRival && (
+                  <div className="flex items-center gap-1" title={rivalDepth ?? 'Rival'}>
+                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                    {rivalDepth && (
+                      <span className="text-[10px] font-medium text-yellow-400/80">
+                        {rivalDepth}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <ThreatLevelBadge opponent={opponent} />
+              </div>
+
+              {/* Clickable Archetype Badge */}
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); setCounterOpen(true); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setCounterOpen(true); } }}
+                className={`inline-block mt-1 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider rounded border cursor-pointer hover:opacity-80 transition-opacity ${
+                  archetypeColors[opponent.archetype] || 'bg-dark-700 text-dark-300 border-dark-600'
+                }`}
+              >
+                {opponent.archetype}
+              </span>
+
+              <DossierDepthIndicator opponent={opponent} />
+            </div>
+          </div>
+
+          <WinRateTrend winRate={opponent.winRate} opponentId={opponent.id} />
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-dark-800">
+          <div className="flex items-center gap-1.5 text-dark-400">
+            <Trophy className="w-3.5 h-3.5" />
+            <span className="text-xs">{opponent.encounterCount} games</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-dark-400">
+            <Eye className="w-3.5 h-3.5" />
+            <span className="text-xs">
+              {opponent.weaknesses.filter((w) => w.severity === 'critical' || w.severity === 'high').length} weak pts
             </span>
           </div>
+          <div className="flex items-center gap-1.5 text-dark-400">
+            <Clock className="w-3.5 h-3.5" />
+            <span className="text-xs">{opponent.lastSeen}</span>
+            <RecencyDecayWarning lastSeen={opponent.lastSeen} />
+          </div>
         </div>
-        <div className={`text-xl font-bold font-mono ${winRateColor}`}>
-          {opponent.winRate}%
-        </div>
-      </div>
 
-      <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-dark-800">
-        <div className="flex items-center gap-1.5 text-dark-400">
-          <Trophy className="w-3.5 h-3.5" />
-          <span className="text-xs">{opponent.encounterCount} games</span>
-        </div>
-        <div className="flex items-center gap-1.5 text-dark-400">
-          <Eye className="w-3.5 h-3.5" />
-          <span className="text-xs">
-            {opponent.weaknesses.filter((w) => w.severity === 'critical' || w.severity === 'high').length} weak pts
+        {/* Kill Sheet Quick-Access */}
+        <div className="mt-3 pt-3 border-t border-dark-800">
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => { e.stopPropagation(); setKillSheetOpen(true); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setKillSheetOpen(true); } }}
+            className="flex items-center justify-center gap-1.5 w-full rounded-lg border border-dark-600 bg-dark-800/50 px-3 py-2 text-xs font-medium text-dark-300 transition-colors hover:border-forge-500/50 hover:text-forge-400 cursor-pointer"
+          >
+            <Crosshair className="w-3.5 h-3.5" />
+            Kill Sheet
           </span>
         </div>
-        <div className="flex items-center gap-1.5 text-dark-400">
-          <Clock className="w-3.5 h-3.5" />
-          <span className="text-xs">{opponent.lastSeen}</span>
-        </div>
-      </div>
-    </button>
+
+        {/* Prep Now */}
+        <PrepNowButton opponent={opponent} variant="card" />
+      </button>
+
+      <KillSheetSlideOver
+        open={killSheetOpen}
+        onClose={() => setKillSheetOpen(false)}
+        opponent={opponent}
+      />
+      <ArchetypeCounterPanel
+        archetype={opponent.archetype}
+        opponentName={opponent.gamertag}
+        open={counterOpen}
+        onClose={() => setCounterOpen(false)}
+      />
+    </>
   );
 }
