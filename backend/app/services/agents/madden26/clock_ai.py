@@ -6,8 +6,13 @@ Provides real-time clock management intelligence for Madden 26 competitive play.
 from __future__ import annotations
 
 import math
-import uuid
+import uuid as _uuid
 from datetime import datetime, timezone
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.game_session import GameSession
 
 from app.schemas.madden26.clock import (
     ClockAction,
@@ -32,6 +37,16 @@ class ClockAI:
     two-minute drill sequencing, fourth-down choices, end-game strategy,
     timeout usage, and what-if scenario simulation.
     """
+
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+
+    async def get_game_session(self, session_id: str) -> GameSession | None:
+        """Load a GameSession from the database by ID."""
+        result = await self.db.execute(
+            select(GameSession).where(GameSession.id == _uuid.UUID(session_id))
+        )
+        return result.scalar_one_or_none()
 
     # Average seconds consumed per play type in Madden 26
     PLAY_TIME_MAP: dict[PlayType, int] = {

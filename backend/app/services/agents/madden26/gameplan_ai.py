@@ -6,6 +6,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from fastapi import HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.gameplan import Gameplan as GameplanModel
 from app.schemas.madden26.gameplan import (
     AudibleBranch,
     AudibleTree,
@@ -29,8 +34,9 @@ class GameplanAI:
     their opponent's tendencies, roster strengths, and the current meta.
     """
 
-    def __init__(self) -> None:
-        self._scheme_ai = SchemeAI()
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+        self._scheme_ai = SchemeAI(db)
         self._meta_bot = MetaBot()
 
     # ------------------------------------------------------------------
@@ -86,6 +92,18 @@ class GameplanAI:
             generated_at=datetime.now(timezone.utc).isoformat(),
             notes=f"Gameplan built on {effective_scheme} scheme.",
         )
+
+        # Persist gameplan to database
+        plays_data = [p.model_dump(mode="json") for p in core_plays[:10]]
+        db_gameplan = GameplanModel(
+            user_id=user_id,
+            title=f"Gameplan — {effective_scheme}",
+            opponent_id=opponent_id,
+            plays=plays_data,
+            meta_snapshot=meta_snapshot,
+        )
+        self.db.add(db_gameplan)
+        await self.db.flush()
 
         return gameplan
 
