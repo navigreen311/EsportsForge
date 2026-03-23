@@ -21,7 +21,7 @@ import {
 import { useDashboard } from '@/hooks/useDashboard';
 import { useUIStore } from '@/lib/store';
 import { getTitleById } from '@/lib/titles';
-import TitleEmptyState from '@/components/shared/TitleEmptyState';
+import { TitleEmptyState } from '@/components/shared/TitleEmptyState';
 import { StatCard } from '@/components/shared/StatCard';
 import { Card } from '@/components/shared/Card';
 import { Badge } from '@/components/shared/Badge';
