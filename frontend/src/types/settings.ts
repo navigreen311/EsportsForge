@@ -125,6 +125,8 @@ export interface AppNotification {
 // --- Settings Tab ---
 export type SettingsTab =
   | 'profile'
+  | 'identity'
+  | 'playertwin'
   | 'game'
   | 'integrity'
   | 'privacy'

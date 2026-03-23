@@ -12,18 +12,31 @@ import {
   Save,
   Loader2,
   CheckCircle,
+  Fingerprint,
+  Brain,
 } from 'lucide-react';
 import type { SettingsTab } from '@/types/settings';
 import { useSettings } from '@/hooks/useSettings';
 import ProfileForm from '@/components/settings/ProfileForm';
+import IdentityEngine from '@/components/settings/IdentityEngine';
+import PlayerTwinSettings from '@/components/settings/PlayerTwinSettings';
 import GameSettings from '@/components/settings/GameSettings';
+import PerTitleConfig from '@/components/settings/PerTitleConfig';
+import InputLabCalibration from '@/components/settings/InputLabCalibration';
+import TiltGuardConfig from '@/components/settings/TiltGuardConfig';
+import ProgressionPreferences from '@/components/settings/ProgressionPreferences';
 import IntegrityModeSelector from '@/components/settings/IntegrityModeSelector';
+import AntiCheatPerTitle from '@/components/settings/AntiCheatPerTitle';
 import PrivacyControls from '@/components/settings/PrivacyControls';
+import PrivacyTrustLayer from '@/components/settings/PrivacyTrustLayer';
 import NotificationPreferences from '@/components/settings/NotificationPreferences';
 import SubscriptionCard from '@/components/settings/SubscriptionCard';
+import SubscriptionManagement from '@/components/settings/SubscriptionManagement';
 
 const tabs: { id: SettingsTab; label: string; icon: typeof Settings }[] = [
   { id: 'profile', label: 'Profile', icon: User },
+  { id: 'identity', label: 'Identity', icon: Fingerprint },
+  { id: 'playertwin', label: 'PlayerTwin', icon: Brain },
   { id: 'game', label: 'Game Settings', icon: Gamepad2 },
   { id: 'integrity', label: 'Integrity Mode', icon: Shield },
   { id: 'privacy', label: 'Privacy', icon: Lock },
@@ -101,23 +114,57 @@ export default function SettingsPage() {
         {activeTab === 'profile' && (
           <ProfileForm profile={settings.profile} onUpdate={updateProfile} />
         )}
+
+        {/* 1. Identity Engine Tab */}
+        {activeTab === 'identity' && (
+          <IdentityEngine />
+        )}
+
+        {/* 2. PlayerTwin Tab */}
+        {activeTab === 'playertwin' && (
+          <PlayerTwinSettings />
+        )}
+
+        {/* Game Settings + 3. Per-Title + 4. InputLab + 8. TiltGuard + 9. ProgressionOS */}
         {activeTab === 'game' && (
-          <GameSettings settings={settings.game} onUpdate={updateGame} />
+          <div className="space-y-6">
+            <GameSettings settings={settings.game} onUpdate={updateGame} />
+            <PerTitleConfig activeTitle={settings.game.activeTitle} />
+            <InputLabCalibration inputType={settings.game.inputType} />
+            <TiltGuardConfig />
+            <ProgressionPreferences />
+          </div>
         )}
+
+        {/* Integrity Mode + 7. Anti-Cheat Per-Title */}
         {activeTab === 'integrity' && (
-          <IntegrityModeSelector settings={settings.integrity} onUpdate={updateIntegrity} />
+          <div className="space-y-6">
+            <IntegrityModeSelector settings={settings.integrity} onUpdate={updateIntegrity} />
+            <AntiCheatPerTitle />
+          </div>
         )}
+
+        {/* Privacy + 5. Trust Layer */}
         {activeTab === 'privacy' && (
-          <PrivacyControls settings={settings.privacy} onUpdate={updatePrivacy} />
+          <div className="space-y-6">
+            <PrivacyControls settings={settings.privacy} onUpdate={updatePrivacy} />
+            <PrivacyTrustLayer />
+          </div>
         )}
+
         {activeTab === 'notifications' && (
           <NotificationPreferences
             preferences={settings.notifications}
             onUpdate={updateNotifications}
           />
         )}
+
+        {/* Subscription + 6. Management */}
         {activeTab === 'subscription' && (
-          <SubscriptionCard currentTier={settings.subscription} />
+          <div className="space-y-6">
+            <SubscriptionCard currentTier={settings.subscription} />
+            <SubscriptionManagement currentTier={settings.subscription} />
+          </div>
         )}
       </div>
     </div>
