@@ -19,6 +19,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Sidebar } from '@/components/shared/Sidebar';
 import { TopBar } from '@/components/shared/TopBar';
 import { ForgeCoreChat } from '@/components/chat/ForgeCoreChat';
+import { FeedbackButton } from '@/components/shared/FeedbackButton';
 import { Footer } from '@/components/shared/Footer';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { OfflineBanner } from '@/components/shared/OfflineBanner';
@@ -102,6 +103,9 @@ export default function DashboardLayout({
 
       {/* ForgeCore Chat */}
       <ForgeCoreChat />
+
+      {/* Feedback */}
+      <FeedbackButton />
     </div>
   );
 }

@@ -23,6 +23,8 @@ from app.models.player_twin import PlayerTwin
 from app.models.identity_profile import IdentityProfile
 from app.models.vault_entry import VaultEntry
 from app.models.notification import Notification
+from app.models.support_ticket import SupportTicket
+from app.models.api_usage import ApiUsage
 
 __all__ = [
     # Mixins
@@ -62,4 +64,5 @@ __all__ = [
     "IdentityProfile",
     "VaultEntry",
     "Notification",
+    "ApiUsage",
 ]
