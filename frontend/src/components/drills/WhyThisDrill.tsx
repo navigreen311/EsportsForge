@@ -10,6 +10,7 @@ interface WhyThisDrillProps {
 interface DrillRationale {
   damage: number;
   lift: number;
+  timeToMaster: string;
   why: string;
   weakness: string;
 }
@@ -18,30 +19,35 @@ const mockData: Record<string, DrillRationale> = {
   'drill-1': {
     damage: -8.3,
     lift: 5.7,
+    timeToMaster: '2-3 weeks',
     why: 'Your coverage recognition miss rate in ranked games is 3x your drill rate — this gap is costing wins',
     weakness: 'Coverage Read Speed',
   },
   'drill-2': {
     damage: -6.1,
     lift: 4.2,
+    timeToMaster: '3-4 weeks',
     why: 'Clutch conversion rate drops 40% in final 2 minutes — you need reps under time pressure',
     weakness: 'Clutch Performance',
   },
   'drill-3': {
     damage: -4.8,
     lift: 3.5,
+    timeToMaster: '2 weeks',
     why: 'Meta coverage schemes are beating you 62% of the time — your route combos need updating',
     weakness: 'Anti-Meta Adaptability',
   },
   'drill-4': {
     damage: -3.9,
     lift: 2.8,
+    timeToMaster: '1-2 weeks',
     why: 'You hold the ball 0.4s too long under pressure — faster decisions save sacks',
     weakness: 'Pocket Awareness',
   },
   'drill-5': {
     damage: -5.1,
     lift: 3.9,
+    timeToMaster: '2-3 weeks',
     why: 'Red zone TD rate 41% vs 59% league avg — leaving points on the field',
     weakness: 'Red Zone Efficiency',
   },
@@ -69,8 +75,8 @@ export default function WhyThisDrill({ drillId }: WhyThisDrillProps) {
 
       {expanded && (
         <div className="mt-3 space-y-3">
-          {/* Damage / Lift grid */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Damage / Lift / Time to Master grid */}
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <p className="text-[10px] text-dark-500 uppercase tracking-wider mb-0.5">
                 Win-Rate Damage
@@ -85,6 +91,14 @@ export default function WhyThisDrill({ drillId }: WhyThisDrillProps) {
               </p>
               <p className="text-lg font-bold text-green-400">
                 +{data.lift}%
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-dark-500 uppercase tracking-wider mb-0.5">
+                Time to Master
+              </p>
+              <p className="text-lg font-bold text-dark-200">
+                {data.timeToMaster}
               </p>
             </div>
           </div>

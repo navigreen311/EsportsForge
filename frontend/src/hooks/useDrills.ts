@@ -125,6 +125,7 @@ export function useDrills() {
     useState<DrillSkillProgress[]>(initialSkillProgress);
   const [successCount, setSuccessCount] = useState(0);
   const [failCount, setFailCount] = useState(0);
+  const [lastCompletedDrill, setLastCompletedDrill] = useState<DrillRecord | null>(null);
 
   const currentDrill = drills[session.currentDrillIndex] ?? null;
   const queue = drills.slice(session.currentDrillIndex + 1);
@@ -161,6 +162,10 @@ export function useDrills() {
         })
       );
 
+      if (currentDrill && currentDrill.completedReps + 1 >= currentDrill.reps) {
+        setLastCompletedDrill(currentDrill);
+      }
+
       // Update skill progress slightly on success
       if (success) {
         setSkillProgress((prev) =>
@@ -173,6 +178,10 @@ export function useDrills() {
     },
     [currentDrill, successCount, failCount]
   );
+
+  const clearLastCompleted = useCallback(() => {
+    setLastCompletedDrill(null);
+  }, []);
 
   const skipDrill = useCallback(() => {
     if (session.currentDrillIndex < drills.length - 1) {
@@ -262,5 +271,7 @@ export function useDrills() {
     nextDrill,
     endSession,
     resetSession,
+    lastCompletedDrill,
+    clearLastCompleted,
   };
 }

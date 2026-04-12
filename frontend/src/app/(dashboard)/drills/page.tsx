@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Swords } from 'lucide-react';
 import { useDrills } from '@/hooks/useDrills';
 import DrillRunner from '@/components/drills/DrillRunner';
@@ -34,6 +34,8 @@ export default function DrillsPage() {
     nextDrill,
     endSession,
     resetSession,
+    lastCompletedDrill,
+    clearLastCompleted,
   } = useDrills();
 
   const [sessionStart] = useState<Date | null>(() => new Date());
@@ -41,6 +43,12 @@ export default function DrillsPage() {
   const [showPostDebrief, setShowPostDebrief] = useState(false);
 
   const completedDrillCount = session.completedDrills.length;
+
+  useEffect(() => {
+    if (lastCompletedDrill) {
+      setShowDebrief(true);
+    }
+  }, [lastCompletedDrill]);
 
   // Post-drill summary view
   if (session.sessionComplete) {
@@ -147,11 +155,11 @@ export default function DrillsPage() {
       {/* 2. LoopAI Debrief Modal */}
       <DrillDebriefModal
         open={showDebrief}
-        onClose={() => setShowDebrief(false)}
-        onContinue={() => { setShowDebrief(false); nextDrill(); }}
-        onEndSession={() => { setShowDebrief(false); endSession(); }}
-        drillName={currentDrill?.name ?? ''}
-        score={currentDrill?.successRate ?? 0}
+        onClose={() => { setShowDebrief(false); clearLastCompleted(); }}
+        onContinue={() => { setShowDebrief(false); clearLastCompleted(); nextDrill(); }}
+        onEndSession={() => { setShowDebrief(false); clearLastCompleted(); endSession(); }}
+        drillName={lastCompletedDrill?.name ?? currentDrill?.name ?? ''}
+        score={lastCompletedDrill?.successRate ?? currentDrill?.successRate ?? 0}
         previousScore={72}
         skillGain="Read Speed +3 pts"
         twinUpdate="PlayerTwin updated: coverage read baseline raised from 62 to 65"
@@ -161,11 +169,11 @@ export default function DrillsPage() {
       {/* Enhanced Post-Drill Debrief with improvements + focus areas */}
       <PostDrillDebrief
         open={showPostDebrief}
-        onClose={() => setShowPostDebrief(false)}
-        onContinue={() => { setShowPostDebrief(false); nextDrill(); }}
-        onEndSession={() => { setShowPostDebrief(false); endSession(); }}
-        drillName={currentDrill?.name ?? ''}
-        score={currentDrill?.successRate ?? 0}
+        onClose={() => { setShowPostDebrief(false); clearLastCompleted(); }}
+        onContinue={() => { setShowPostDebrief(false); clearLastCompleted(); nextDrill(); }}
+        onEndSession={() => { setShowPostDebrief(false); clearLastCompleted(); endSession(); }}
+        drillName={lastCompletedDrill?.name ?? currentDrill?.name ?? ''}
+        score={lastCompletedDrill?.successRate ?? currentDrill?.successRate ?? 0}
         previousScore={72}
         improvements={[
           'Coverage read speed improved +3 pts',

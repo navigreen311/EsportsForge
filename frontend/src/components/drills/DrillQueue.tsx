@@ -49,25 +49,25 @@ export default function DrillQueue({ queue, currentDrill }: DrillQueueProps) {
           {queue.map((drill, index) => (
             <div
               key={drill.id}
-              className="relative flex items-center gap-3 p-3 rounded-lg bg-dark-800/40 border border-dark-700/50 hover:border-dark-600 transition-colors"
+              className="relative flex items-center gap-3 p-3 rounded-lg bg-dark-800/40 border border-dark-700/50 hover:border-dark-600 transition-colors min-h-[56px]"
             >
-              <DrillMasteryDot drillId={drill.id} />
               {/* Position */}
               <span className="text-xs font-mono text-dark-600 w-5 text-center">
                 {index + 1}
               </span>
+              <DrillMasteryDot drillId={drill.id} inline />
 
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-sm font-medium text-dark-200 truncate">
+                  <p className="text-sm font-medium text-dark-200 line-clamp-2" title={drill.name}>
                     {drill.name}
                   </p>
                   {drill.isDynamicCalibration && (
                     <Sparkles className="w-3 h-3 text-purple-400 shrink-0" />
                   )}
                 </div>
-                <div className="flex items-center gap-2 mt-0.5">
+                <div className="flex flex-wrap items-center gap-2 mt-0.5">
                   <span
                     className={`text-[10px] font-medium ${difficultyColors[drill.difficulty]}`}
                   >

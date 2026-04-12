@@ -32,10 +32,19 @@ const MASTERY_TOOLTIPS: Record<DrillMasteryLevel, string> = {
 
 interface DrillMasteryDotProps {
   drillId: string;
+  inline?: boolean;
 }
 
-export function DrillMasteryDot({ drillId }: DrillMasteryDotProps) {
+export function DrillMasteryDot({ drillId, inline }: DrillMasteryDotProps) {
   const level: DrillMasteryLevel = DRILL_MASTERY[drillId] ?? "not-started";
+
+  if (inline) {
+    return (
+      <div title={MASTERY_TOOLTIPS[level]} className="shrink-0">
+        <div className={clsx("h-2 w-2 rounded-full", MASTERY_STYLES[level])} />
+      </div>
+    );
+  }
 
   return (
     <div className="absolute top-2 right-2" title={MASTERY_TOOLTIPS[level]}>

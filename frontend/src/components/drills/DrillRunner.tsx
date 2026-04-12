@@ -10,11 +10,13 @@ import {
   Target,
   Gauge,
   Sparkles,
+  Volume2,
 } from 'lucide-react';
 import PressureModeToggle, { PressureContext } from '@/components/drills/PressureModeToggle';
 import WhyThisDrill from '@/components/drills/WhyThisDrill';
 import SimLabLaunchButton from '@/components/drills/SimLabLaunchButton';
 import { DrillMasteryDot, DRILL_MASTERY } from '@/components/drills/DrillMasteryDot';
+import { useVoiceForge } from '@/hooks/useVoiceForge';
 
 interface DrillRunnerProps {
   drill: DrillRecord;
@@ -45,6 +47,13 @@ const masteryLabels: Record<string, string> = {
   'not-started': 'Not Started',
 };
 
+const masteryColors: Record<string, string> = {
+  mastered: 'text-forge-400',
+  practicing: 'text-amber-400',
+  learning: 'text-dark-300',
+  'not-started': 'text-dark-500',
+};
+
 export default function DrillRunner({
   drill,
   onCompleteRep,
@@ -57,9 +66,24 @@ export default function DrillRunner({
   failCount,
 }: DrillRunnerProps) {
   const [pressureMode, setPressureMode] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
   const progress = drill.reps > 0 ? (drill.completedReps / drill.reps) * 100 : 0;
   const diffConfig = difficultyConfig[drill.difficulty];
   const mastery = DRILL_MASTERY[drill.id] ?? 'not-started';
+  const { speak, stop, isSpeaking, isAvailable: voiceAvailable } = useVoiceForge();
+
+  const speakDrillStart = () => {
+    if (!voiceEnabled) return;
+    speak(`Starting ${drill.name}. ${drill.instructions} You have ${drill.reps} reps. Let's go.`, { interruptCurrent: true });
+  };
+  const speakHalfway = () => {
+    if (!voiceEnabled) return;
+    speak(`Halfway there. ${Math.floor(drill.reps / 2)} of ${drill.reps} complete. Stay focused.`);
+  };
+  const speakComplete = () => {
+    if (!voiceEnabled) return;
+    speak(`Drill complete. ${drill.successRate}% successful. LoopAI has updated your PlayerTwin.`);
+  };
 
   return (
     <div
@@ -82,10 +106,6 @@ export default function DrillRunner({
                 Dynamic Calibration
               </span>
             )}
-            {/* 4. Pressure Mode Toggle */}
-            <PressureModeToggle enabled={pressureMode} onToggle={() => setPressureMode(!pressureMode)} />
-            {/* 6. Mastery status */}
-            <span className="text-[10px] text-dark-500">{masteryLabels[mastery]}</span>
           </div>
           <div className="flex items-center gap-3 mt-1">
             <div className="flex items-center gap-1">
@@ -108,6 +128,36 @@ export default function DrillRunner({
         <div className="text-right">
           <p className="text-2xl font-bold font-mono text-forge-400">{drill.successRate}%</p>
           <p className="text-[10px] text-dark-500 uppercase tracking-wider">Success Rate</p>
+        </div>
+      </div>
+
+      {/* Mastery / Pressure Mode / Voice row */}
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-sm text-dark-400">
+          Mastery: <span className={`font-medium ${masteryColors[mastery]}`}>{masteryLabels[mastery]}</span>
+        </span>
+        <div className="flex items-center gap-2">
+          {voiceAvailable && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  if (voiceEnabled) {
+                    stop();
+                    setVoiceEnabled(false);
+                  } else {
+                    setVoiceEnabled(true);
+                  }
+                }}
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                  voiceEnabled ? 'bg-forge-500/15 text-forge-400' : 'bg-dark-800 text-dark-500 hover:text-dark-300'
+                }`}
+              >
+                <Volume2 className="h-3.5 w-3.5" />
+                Voice: {voiceEnabled ? 'ON' : 'OFF'}
+              </button>
+            </div>
+          )}
+          <PressureModeToggle enabled={pressureMode} onToggle={() => setPressureMode(!pressureMode)} />
         </div>
       </div>
 
@@ -171,7 +221,7 @@ export default function DrillRunner({
         {!isActive ? (
           <>
             <button
-              onClick={onStart}
+              onClick={() => { onStart(); speakDrillStart(); }}
               className="flex items-center gap-2 px-5 py-2.5 bg-forge-500 hover:bg-forge-600 text-dark-950 font-bold rounded-lg transition-colors"
             >
               <Play className="w-4 h-4" />
@@ -183,7 +233,11 @@ export default function DrillRunner({
         ) : (
           <>
             <button
-              onClick={onCompleteRep}
+              onClick={() => {
+                onCompleteRep();
+                if (drill.completedReps + 1 === Math.floor(drill.reps / 2)) speakHalfway();
+                if (drill.completedReps + 1 >= drill.reps) speakComplete();
+              }}
               className="flex items-center gap-2 px-5 py-2.5 bg-forge-500 hover:bg-forge-600 text-dark-950 font-bold rounded-lg transition-colors"
             >
               <CheckCircle2 className="w-4 h-4" />
