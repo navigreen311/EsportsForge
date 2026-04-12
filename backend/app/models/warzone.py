@@ -5,7 +5,7 @@ import uuid
 from typing import Any, Optional
 
 from sqlalchemy import Enum, Float, ForeignKey, Integer, String
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -36,7 +36,7 @@ class WarzoneLoadout(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "warzone_loadouts"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -48,7 +48,7 @@ class WarzoneLoadout(UUIDPrimaryKeyMixin, Base):
         String(100), nullable=False
     )
     primary_class: Mapped[WeaponClassEnum] = mapped_column(
-        Enum(WeaponClassEnum, name="wz_weapon_class", native_enum=True),
+        Enum(WeaponClassEnum, name="wz_weapon_class", native_enum=False),
         nullable=False,
     )
     primary_attachments: Mapped[Optional[dict[str, Any]]] = mapped_column(
@@ -58,7 +58,7 @@ class WarzoneLoadout(UUIDPrimaryKeyMixin, Base):
         String(100), nullable=False
     )
     secondary_class: Mapped[WeaponClassEnum] = mapped_column(
-        Enum(WeaponClassEnum, name="wz_weapon_class_secondary", native_enum=True),
+        Enum(WeaponClassEnum, name="wz_weapon_class_secondary", native_enum=False),
         nullable=False,
     )
     secondary_attachments: Mapped[Optional[dict[str, Any]]] = mapped_column(
@@ -99,13 +99,13 @@ class WarzoneMatch(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "warzone_matches"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     loadout_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("warzone_loadouts.id", ondelete="SET NULL"),
         nullable=True,
         index=True,

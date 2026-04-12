@@ -5,7 +5,7 @@ import uuid
 from typing import Any, Optional
 
 from sqlalchemy import Enum, Float, ForeignKey, String
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -32,7 +32,7 @@ class MaddenScheme(UUIDPrimaryKeyMixin, Base):
         String(200), nullable=False, index=True
     )
     type: Mapped[SchemeType] = mapped_column(
-        Enum(SchemeType, name="scheme_type", native_enum=True), nullable=False
+        Enum(SchemeType, name="scheme_type", native_enum=False), nullable=False
     )
     concepts: Mapped[Optional[dict[str, Any]]] = mapped_column(
         JSON, nullable=True, comment="Core scheme concepts and principles"
@@ -60,7 +60,7 @@ class MaddenPlay(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "madden_plays"
 
     scheme_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("madden_schemes.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

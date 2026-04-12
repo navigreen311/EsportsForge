@@ -5,7 +5,7 @@ import uuid
 from typing import Any, Optional
 
 from sqlalchemy import Enum, Float, ForeignKey, Integer, String
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -47,17 +47,17 @@ class NBA2KBuild(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "nba2k_builds"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     position: Mapped[NBA2KPosition] = mapped_column(
-        Enum(NBA2KPosition, name="nba2k_position", native_enum=True), nullable=False, index=True
+        Enum(NBA2KPosition, name="nba2k_position", native_enum=False), nullable=False, index=True
     )
     archetype: Mapped[NBA2KArchetype] = mapped_column(
-        Enum(NBA2KArchetype, name="nba2k_archetype", native_enum=True), nullable=False, index=True
+        Enum(NBA2KArchetype, name="nba2k_archetype", native_enum=False), nullable=False, index=True
     )
     height_inches: Mapped[int] = mapped_column(Integer, nullable=False)
     weight_lbs: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -103,16 +103,16 @@ class NBA2KPlay(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "nba2k_plays"
 
     build_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("nba2k_builds.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     game_session_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), nullable=True, index=True
+        String(36), nullable=True, index=True
     )
     play_type: Mapped[NBA2KPlayType] = mapped_column(
-        Enum(NBA2KPlayType, name="nba2k_play_type", native_enum=True),
+        Enum(NBA2KPlayType, name="nba2k_play_type", native_enum=False),
         nullable=False,
         index=True,
     )

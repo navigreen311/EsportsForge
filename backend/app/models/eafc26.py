@@ -5,7 +5,7 @@ import uuid
 from typing import Any, Optional
 
 from sqlalchemy import Enum, Float, ForeignKey, Integer, String
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -35,7 +35,7 @@ class EAFCSquad(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "eafc_squads"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False, index=True
+        String(36), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(
         String(200), nullable=False, index=True

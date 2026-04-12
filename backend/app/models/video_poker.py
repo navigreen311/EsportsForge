@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy import Boolean, DateTime, Enum, Float, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -55,10 +55,10 @@ class VideoPokerSession(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "video_poker_sessions"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False, index=True,
+        String(36), nullable=False, index=True,
     )
     variant: Mapped[VideoPokerVariant] = mapped_column(
-        Enum(VideoPokerVariant, name="video_poker_variant", native_enum=True),
+        Enum(VideoPokerVariant, name="video_poker_variant", native_enum=False),
         nullable=False,
     )
     bet_size: Mapped[float] = mapped_column(Float, nullable=False)
@@ -88,7 +88,7 @@ class ResponsibleGamblingConfig(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "responsible_gambling_configs"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False, unique=True, index=True,
+        String(36), nullable=False, unique=True, index=True,
     )
     session_time_limit_minutes: Mapped[int] = mapped_column(
         Integer, default=240, nullable=False,
@@ -108,7 +108,7 @@ class ResponsibleGamblingConfig(UUIDPrimaryKeyMixin, Base):
         Boolean, default=False, nullable=False,
     )
     self_exclusion_type: Mapped[Optional[SelfExclusionType]] = mapped_column(
-        Enum(SelfExclusionType, name="self_exclusion_type", native_enum=True),
+        Enum(SelfExclusionType, name="self_exclusion_type", native_enum=False),
         nullable=True,
     )
     self_exclusion_start: Mapped[Optional[datetime]] = mapped_column(
@@ -136,17 +136,17 @@ class ComplianceAuditLog(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "compliance_audit_logs"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False, index=True,
+        String(36), nullable=False, index=True,
     )
     action: Mapped[ComplianceAction] = mapped_column(
-        Enum(ComplianceAction, name="compliance_action", native_enum=True),
+        Enum(ComplianceAction, name="compliance_action", native_enum=False),
         nullable=False,
     )
     details: Mapped[Optional[dict[str, Any]]] = mapped_column(
         JSON, nullable=True,
     )
     session_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), nullable=True, index=True,
+        String(36), nullable=True, index=True,
     )
 
     def __repr__(self) -> str:

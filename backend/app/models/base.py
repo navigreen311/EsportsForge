@@ -3,8 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -26,11 +25,15 @@ class TimestampMixin:
     )
 
 
+def _uuid_str() -> str:
+    return str(uuid.uuid4())
+
+
 class UUIDPrimaryKeyMixin(TimestampMixin):
     """Mixin that adds a UUID primary key plus timestamps."""
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    id: Mapped[str] = mapped_column(
+        String(36),
         primary_key=True,
-        default=uuid.uuid4,
+        default=_uuid_str,
     )

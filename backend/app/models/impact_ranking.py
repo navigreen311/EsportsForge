@@ -5,7 +5,7 @@ import uuid
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Enum, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -33,7 +33,7 @@ class ImpactRanking(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "impact_rankings"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -60,7 +60,7 @@ class ImpactRanking(UUIDPrimaryKeyMixin, Base):
         String(50), nullable=True, comment="Estimated time to resolve e.g. '2 weeks'"
     )
     status: Mapped[ImpactStatus] = mapped_column(
-        Enum(ImpactStatus, name="impact_status", native_enum=True),
+        Enum(ImpactStatus, name="impact_status", native_enum=False),
         default=ImpactStatus.ACTIVE,
         nullable=False,
         index=True,

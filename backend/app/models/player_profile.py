@@ -5,7 +5,7 @@ import uuid
 from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy import Enum, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -34,7 +34,7 @@ class PlayerProfile(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "player_profiles"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         unique=True,
         nullable=False,
@@ -58,7 +58,7 @@ class PlayerProfile(UUIDPrimaryKeyMixin, Base):
         comment="Core identity: risk_tolerance, aggression, pace, style",
     )
     input_type: Mapped[InputType] = mapped_column(
-        Enum(InputType, name="input_type", native_enum=True),
+        Enum(InputType, name="input_type", native_enum=False),
         default=InputType.CONTROLLER,
         nullable=False,
     )

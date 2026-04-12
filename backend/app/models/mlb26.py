@@ -5,7 +5,7 @@ import uuid
 from typing import Any, Optional
 
 from sqlalchemy import Enum, Float, ForeignKey, Integer, String
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -60,7 +60,7 @@ class MLBLineup(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "mlb_lineups"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False, index=True
+        String(36), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     platoon: Mapped[str] = mapped_column(
@@ -86,13 +86,13 @@ class MLBLineupSlot(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "mlb_lineup_slots"
 
     lineup_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("mlb_lineups.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     player_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("mlb_players.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

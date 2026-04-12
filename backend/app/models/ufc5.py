@@ -5,7 +5,7 @@ import uuid
 from typing import Any, Optional
 
 from sqlalchemy import Enum, Float, ForeignKey, Integer, String
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -56,7 +56,7 @@ class UFCFighter(UUIDPrimaryKeyMixin, Base):
         String(200), nullable=False, index=True
     )
     weight_class: Mapped[WeightClass] = mapped_column(
-        Enum(WeightClass, name="ufc_weight_class", native_enum=True),
+        Enum(WeightClass, name="ufc_weight_class", native_enum=False),
         nullable=False,
     )
     archetype: Mapped[Optional[str]] = mapped_column(
@@ -94,7 +94,7 @@ class UFCRound(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "ufc_rounds"
 
     fighter_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("ufc_fighters.id", ondelete="CASCADE"),
         nullable=False,
     )

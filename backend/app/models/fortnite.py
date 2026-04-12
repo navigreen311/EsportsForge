@@ -5,7 +5,7 @@ import uuid
 from typing import Any, Optional
 
 from sqlalchemy import Enum, Float, ForeignKey, Integer, String
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -58,13 +58,13 @@ class FNBuildSession(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "fn_build_sessions"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     build_type: Mapped[FNBuildType] = mapped_column(
-        Enum(FNBuildType, name="fn_build_type", native_enum=True),
+        Enum(FNBuildType, name="fn_build_type", native_enum=False),
         nullable=False,
         index=True,
     )
@@ -73,13 +73,13 @@ class FNBuildSession(UUIDPrimaryKeyMixin, Base):
     efficiency_score: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     placement_accuracy: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     mastery_tier: Mapped[FNMasteryTier] = mapped_column(
-        Enum(FNMasteryTier, name="fn_mastery_tier", native_enum=True),
+        Enum(FNMasteryTier, name="fn_mastery_tier", native_enum=False),
         default=FNMasteryTier.BEGINNER,
         nullable=False,
         index=True,
     )
     anti_cheat_status: Mapped[FNAntiCheatStatus] = mapped_column(
-        Enum(FNAntiCheatStatus, name="fn_anti_cheat_status", native_enum=True),
+        Enum(FNAntiCheatStatus, name="fn_anti_cheat_status", native_enum=False),
         default=FNAntiCheatStatus.CLEAN,
         nullable=False,
     )
@@ -104,7 +104,7 @@ class FNEditDrill(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "fn_edit_drills"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -113,12 +113,12 @@ class FNEditDrill(UUIDPrimaryKeyMixin, Base):
     accuracy: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     pressure_accuracy: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     mastery_tier: Mapped[FNMasteryTier] = mapped_column(
-        Enum(FNMasteryTier, name="fn_mastery_tier", native_enum=True, create_type=False),
+        Enum(FNMasteryTier, name="fn_mastery_tier", native_enum=False, create_type=False),
         default=FNMasteryTier.BEGINNER,
         nullable=False,
     )
     anti_cheat_status: Mapped[FNAntiCheatStatus] = mapped_column(
-        Enum(FNAntiCheatStatus, name="fn_anti_cheat_status", native_enum=True, create_type=False),
+        Enum(FNAntiCheatStatus, name="fn_anti_cheat_status", native_enum=False, create_type=False),
         default=FNAntiCheatStatus.CLEAN,
         nullable=False,
     )
@@ -143,7 +143,7 @@ class FNZoneRotation(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "fn_zone_rotations"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -170,7 +170,7 @@ class FNPlayerTwin(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "fn_player_twins"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
@@ -190,7 +190,7 @@ class FNPlayerTwin(UUIDPrimaryKeyMixin, Base):
         JSON, nullable=True, comment="Material management profile"
     )
     anti_cheat_status: Mapped[FNAntiCheatStatus] = mapped_column(
-        Enum(FNAntiCheatStatus, name="fn_anti_cheat_status", native_enum=True, create_type=False),
+        Enum(FNAntiCheatStatus, name="fn_anti_cheat_status", native_enum=False, create_type=False),
         default=FNAntiCheatStatus.CLEAN,
         nullable=False,
     )

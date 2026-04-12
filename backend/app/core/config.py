@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     environment: str = "development"
 
     # Database
-    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/esportsforge"
-    redis_url: str = "redis://localhost:6379/0"
+    database_url: str = "sqlite+aiosqlite:///./esportsforge.db"
+    redis_url: str = ""
 
     # Auth
     secret_key: str = "YOUR_SECRET_KEY_HERE"

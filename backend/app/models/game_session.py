@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -40,7 +40,7 @@ class GameSession(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "game_sessions"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -49,16 +49,16 @@ class GameSession(UUIDPrimaryKeyMixin, Base):
         String(100), nullable=False, comment="Game title"
     )
     mode: Mapped[GameMode] = mapped_column(
-        Enum(GameMode, name="game_mode", native_enum=True), nullable=False
+        Enum(GameMode, name="game_mode", native_enum=False), nullable=False
     )
     opponent_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("opponents.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
     result: Mapped[GameResult] = mapped_column(
-        Enum(GameResult, name="game_result", native_enum=True), nullable=False
+        Enum(GameResult, name="game_result", native_enum=False), nullable=False
     )
     stats: Mapped[Optional[dict[str, Any]]] = mapped_column(
         JSON, nullable=True, comment="Raw game stats blob"

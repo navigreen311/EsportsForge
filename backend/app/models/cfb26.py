@@ -5,7 +5,7 @@ import uuid
 from typing import Any, Optional
 
 from sqlalchemy import Enum, Float, ForeignKey, Integer, String
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -32,7 +32,7 @@ class CFBScheme(UUIDPrimaryKeyMixin, Base):
         String(200), nullable=False, index=True
     )
     type: Mapped[CFBSchemeType] = mapped_column(
-        Enum(CFBSchemeType, name="cfb_scheme_type", native_enum=True), nullable=False
+        Enum(CFBSchemeType, name="cfb_scheme_type", native_enum=False), nullable=False
     )
     concepts: Mapped[Optional[dict[str, Any]]] = mapped_column(
         JSON, nullable=True, comment="Core scheme concepts"
@@ -59,7 +59,7 @@ class CFBPlay(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "cfb_plays"
 
     scheme_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("cfb_schemes.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -99,7 +99,7 @@ class CFBRecruitingTarget(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "cfb_recruiting_targets"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -114,7 +114,7 @@ class CFBRecruitingTarget(UUIDPrimaryKeyMixin, Base):
         Float, default=0.0, nullable=False, comment="0.0-1.0 interest in your program"
     )
     pipeline_stage: Mapped[RecruitingPipeline] = mapped_column(
-        Enum(RecruitingPipeline, name="recruiting_pipeline", native_enum=True),
+        Enum(RecruitingPipeline, name="recruiting_pipeline", native_enum=False),
         default=RecruitingPipeline.SCOUTED,
         nullable=False,
         index=True,

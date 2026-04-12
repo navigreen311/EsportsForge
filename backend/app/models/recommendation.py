@@ -4,7 +4,7 @@ import uuid
 from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy import Boolean, Float, ForeignKey, String
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -25,13 +25,13 @@ class Recommendation(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "recommendations"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     session_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("game_sessions.id", ondelete="SET NULL"),
         nullable=True,
         index=True,

@@ -1,7 +1,7 @@
 """EsportsForge database models — import all models for Alembic discovery."""
 
 from app.models.base import TimestampMixin, UUIDPrimaryKeyMixin
-from app.models.user import User, UserRole
+from app.models.user import User, UserRole, UserTier, TIER_TITLE_LIMITS
 from app.models.player_profile import PlayerProfile, InputType
 from app.models.game_session import GameSession, GameMode, GameResult
 from app.models.recommendation import Recommendation

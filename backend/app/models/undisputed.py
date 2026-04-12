@@ -5,7 +5,7 @@ import uuid
 from typing import Any, Optional
 
 from sqlalchemy import Enum, Float, ForeignKey, Integer, String
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -38,15 +38,15 @@ class UndisputedFighter(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "undisputed_fighters"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False, index=True
+        String(36), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False, index=True)
     weight_class: Mapped[str] = mapped_column(String(50), nullable=False)
     archetype: Mapped[FighterArchetype] = mapped_column(
-        Enum(FighterArchetype, name="fighter_archetype", native_enum=True), nullable=False
+        Enum(FighterArchetype, name="fighter_archetype", native_enum=False), nullable=False
     )
     stance: Mapped[FighterStance] = mapped_column(
-        Enum(FighterStance, name="fighter_stance", native_enum=True), nullable=False
+        Enum(FighterStance, name="fighter_stance", native_enum=False), nullable=False
     )
     overall: Mapped[int] = mapped_column(Integer, default=70, nullable=False)
     attributes: Mapped[Optional[dict[str, Any]]] = mapped_column(
@@ -79,7 +79,7 @@ class UndisputedFight(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "undisputed_fights"
 
     fighter_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("undisputed_fighters.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy import DateTime, Integer, String
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy import JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base

@@ -25,7 +25,7 @@ from app.schemas.auth import (
     UserResponse,
 )
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter()
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -102,7 +102,7 @@ async def refresh_token(payload: RefreshTokenRequest, db: AsyncSession = Depends
     except JWTError:
         raise credentials_exception
 
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user or not user.is_active:
         raise credentials_exception

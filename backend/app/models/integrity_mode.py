@@ -5,7 +5,7 @@ import uuid
 from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy import Enum, ForeignKey, String
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -43,14 +43,14 @@ class IntegrityMode(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "integrity_modes"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         unique=True,
         nullable=False,
         index=True,
     )
     environment: Mapped[GameEnvironment] = mapped_column(
-        Enum(GameEnvironment, name="game_environment", native_enum=True),
+        Enum(GameEnvironment, name="game_environment", native_enum=False),
         default=GameEnvironment.OFFLINE_LAB,
         nullable=False,
     )
@@ -58,7 +58,7 @@ class IntegrityMode(UUIDPrimaryKeyMixin, Base):
         JSON, nullable=True, comment="Features disabled in current environment"
     )
     anti_cheat_status: Mapped[AntiCheatStatus] = mapped_column(
-        Enum(AntiCheatStatus, name="anti_cheat_status", native_enum=True),
+        Enum(AntiCheatStatus, name="anti_cheat_status", native_enum=False),
         default=AntiCheatStatus.COMPLIANT,
         nullable=False,
     )

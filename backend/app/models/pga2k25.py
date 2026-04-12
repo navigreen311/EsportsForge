@@ -5,7 +5,7 @@ import uuid
 from typing import Any, Optional
 
 from sqlalchemy import Enum, Float, ForeignKey, Integer, String, Boolean
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -74,16 +74,16 @@ class PGA2K25Round(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "pga2k25_rounds"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False, index=True
+        String(36), nullable=False, index=True
     )
     course_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("pga2k25_courses.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     round_type: Mapped[RoundType] = mapped_column(
-        Enum(RoundType, name="pga2k25_round_type", native_enum=True), nullable=False
+        Enum(RoundType, name="pga2k25_round_type", native_enum=False), nullable=False
     )
     total_score: Mapped[int] = mapped_column(
         Integer, nullable=False
@@ -128,7 +128,7 @@ class PGA2K25Shot(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "pga2k25_shots"
 
     round_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("pga2k25_rounds.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
@@ -184,10 +184,10 @@ class PGA2K25SwingProfile(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "pga2k25_swing_profiles"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False, unique=True, index=True
+        String(36), nullable=False, unique=True, index=True
     )
     swing_system: Mapped[SwingSystemType] = mapped_column(
-        Enum(SwingSystemType, name="pga2k25_swing_system", native_enum=True),
+        Enum(SwingSystemType, name="pga2k25_swing_system", native_enum=False),
         nullable=False,
         default=SwingSystemType.EVOSWING,
     )

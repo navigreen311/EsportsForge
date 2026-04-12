@@ -4,7 +4,7 @@ import uuid
 from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy import Float, ForeignKey, Integer, String
-from sqlalchemy.dialects.postgresql import JSON, UUID
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -22,7 +22,7 @@ class Drill(UUIDPrimaryKeyMixin, Base):
     __tablename__ = "drills"
 
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
