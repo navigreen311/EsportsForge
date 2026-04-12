@@ -180,3 +180,8 @@ _mount("app.api.v1.endpoints.community",       prefix="/community",       tags=[
 _mount("app.api.v1.endpoints.coach",           prefix="/coach",           tags=["Coach Portal"])
 _mount("app.api.v1.endpoints.mobile",          prefix="/mobile",          tags=["Mobile"])
 _mount("app.api.v1.endpoints.support",         prefix="/support",         tags=["Support"])
+
+# ══════════════��════════════════════════════════════════════════════════════
+# Admin
+# ═══════════════════════════════════════════════════════════════════════════
+_mount("app.api.v1.endpoints.admin",           prefix="/admin",           tags=["Admin"])
