@@ -15,6 +15,7 @@ import {
   Users,
   Target,
   BarChart3,
+  Trophy,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -39,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Opponents', href: '/opponents', icon: Users },
   { label: 'Drills', href: '/drills', icon: Target },
   { label: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { label: 'Tournament', href: '/tournament', icon: Trophy },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 
