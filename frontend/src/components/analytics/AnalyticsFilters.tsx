@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 export interface AnalyticsFilterState {
   dateRange: string;
   mode: string;
+  archetype: string;
   opponent: string;
   title: string;
 }
@@ -13,6 +14,7 @@ export interface AnalyticsFilterState {
 const DEFAULTS: AnalyticsFilterState = {
   dateRange: "Last 30d",
   mode: "All Modes",
+  archetype: "All Archetypes",
   opponent: "All Opponents",
   title: "Madden 26",
 };
@@ -20,13 +22,27 @@ const DEFAULTS: AnalyticsFilterState = {
 const OPTIONS: Record<keyof AnalyticsFilterState, string[]> = {
   dateRange: ["Last 7d", "Last 30d", "Last 90d", "All Time"],
   mode: ["All Modes", "Ranked", "Tournament", "Training"],
-  opponent: ["All Opponents", "Rivals Only", "Aggressive Rusher", "Blitz Heavy"],
+  archetype: [
+    "All Archetypes",
+    "Aggressive Rusher",
+    "Pocket Passer",
+    "Scrambler",
+    "Zone Specialist",
+    "Blitz Heavy",
+    "Run First",
+    "Balanced",
+    "West Coast",
+    "Air Raid",
+    "Defensive Mastermind",
+  ],
+  opponent: ["All Opponents", "Rivals Only"],
   title: ["Madden 26", "CFB 26"],
 };
 
 const LABELS: Record<keyof AnalyticsFilterState, string> = {
   dateRange: "Date Range",
   mode: "Game Mode",
+  archetype: "Archetype",
   opponent: "Opponent",
   title: "Title",
 };

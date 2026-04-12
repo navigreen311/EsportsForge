@@ -11,6 +11,9 @@ import TransferReadinessPanel from '@/components/drills/TransferReadinessPanel';
 import InputLabPanel from '@/components/drills/InputLabPanel';
 import SessionFatigueBar from '@/components/drills/SessionFatigueBar';
 import DrillDebriefModal from '@/components/drills/DrillDebriefModal';
+import PostDrillDebrief from '@/components/drills/PostDrillDebrief';
+import TransferAIReadiness from '@/components/drills/TransferAIReadiness';
+import DrillStreakWidget from '@/components/drills/DrillStreakWidget';
 import { DrillStreak } from '@/components/drills/DrillStreakTracker';
 import { MonthlyConsistency } from '@/components/drills/DrillStreakTracker';
 
@@ -35,6 +38,7 @@ export default function DrillsPage() {
 
   const [sessionStart] = useState<Date | null>(() => new Date());
   const [showDebrief, setShowDebrief] = useState(false);
+  const [showPostDebrief, setShowPostDebrief] = useState(false);
 
   const completedDrillCount = session.completedDrills.length;
 
@@ -86,6 +90,9 @@ export default function DrillsPage() {
         </div>
       </div>
 
+      {/* Drill Streak Widget */}
+      <DrillStreakWidget />
+
       {/* 7. Session Fatigue Bar */}
       <SessionFatigueBar sessionStartTime={session.isActive ? sessionStart : null} />
 
@@ -130,6 +137,8 @@ export default function DrillsPage() {
           <SkillProgress skills={skillProgress} />
           {/* 1. TransferAI Competition Readiness */}
           <TransferReadinessPanel skills={skillProgress} />
+          {/* TransferAI Readiness — Lab vs Live Gap */}
+          <TransferAIReadiness />
           {/* 9. Monthly Consistency */}
           <MonthlyConsistency />
         </div>
@@ -145,6 +154,28 @@ export default function DrillsPage() {
         score={currentDrill?.successRate ?? 0}
         previousScore={72}
         skillGain="Read Speed +3 pts"
+        twinUpdate="PlayerTwin updated: coverage read baseline raised from 62 to 65"
+        nextDrillName={queue[0]?.name ?? null}
+      />
+
+      {/* Enhanced Post-Drill Debrief with improvements + focus areas */}
+      <PostDrillDebrief
+        open={showPostDebrief}
+        onClose={() => setShowPostDebrief(false)}
+        onContinue={() => { setShowPostDebrief(false); nextDrill(); }}
+        onEndSession={() => { setShowPostDebrief(false); endSession(); }}
+        drillName={currentDrill?.name ?? ''}
+        score={currentDrill?.successRate ?? 0}
+        previousScore={72}
+        improvements={[
+          'Coverage read speed improved +3 pts',
+          'Pre-snap recognition accuracy up from 62% to 68%',
+          'Route identification under pressure now at 71%',
+        ]}
+        focusAreas={[
+          'Blitz recognition still below competition threshold',
+          'Audible speed needs 0.3s improvement for live play',
+        ]}
         twinUpdate="PlayerTwin updated: coverage read baseline raised from 62 to 65"
         nextDrillName={queue[0]?.name ?? null}
       />

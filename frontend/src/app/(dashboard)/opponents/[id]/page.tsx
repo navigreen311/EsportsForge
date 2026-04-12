@@ -3,6 +3,11 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useOpponents } from '@/hooks/useOpponents';
 import DossierView from '@/components/opponents/DossierView';
+import KillSheetQuick from '@/components/opponents/KillSheetQuick';
+import ConfidenceBadge from '@/components/opponents/ConfidenceBadge';
+import DossierDepthMeter from '@/components/opponents/DossierDepthMeter';
+import BehavioralTimeline from '@/components/opponents/BehavioralTimeline';
+import WinRateSparkline from '@/components/opponents/WinRateSparkline';
 import { ArrowLeft, Users } from 'lucide-react';
 
 export default function OpponentDossierPage() {
@@ -41,7 +46,23 @@ export default function OpponentDossierPage() {
         Back to Opponents
       </button>
 
-      {/* Dossier View */}
+      {/* Quick Intel Bar: Confidence, Dossier Depth, Sparkline */}
+      <div className="flex flex-wrap items-center gap-4 rounded-xl border border-dark-700 bg-dark-900/50 px-5 py-3">
+        <ConfidenceBadge gamesObserved={opponent.encounterCount} />
+        <DossierDepthMeter opponent={opponent} />
+        <div className="flex items-center gap-2 ml-auto">
+          <span className="text-xs text-dark-500">Last 10:</span>
+          <WinRateSparkline opponentId={opponent.id} />
+        </div>
+      </div>
+
+      {/* Quick Kill Sheet (collapsible top 3) */}
+      <KillSheetQuick plays={opponent.killSheet} opponentName={opponent.gamertag} />
+
+      {/* Behavioral Timeline */}
+      <BehavioralTimeline opponentId={opponent.id} />
+
+      {/* Full Dossier View */}
       <DossierView opponent={opponent} />
     </div>
   );
