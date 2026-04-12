@@ -13,9 +13,12 @@ import WinRateChart from '@/components/analytics/WinRateChart';
 import WeaknessHeatmap from '@/components/analytics/WeaknessHeatmap';
 import AgentAccuracy from '@/components/analytics/AgentAccuracy';
 import BenchmarkRankSection from '@/components/analytics/BenchmarkRankSection';
+import BenchmarkSection from '@/components/analytics/BenchmarkSection';
 import TransferGapChart from '@/components/analytics/TransferGapChart';
+import TransferAIChart from '@/components/analytics/TransferAIChart';
 import ImpactRankROI from '@/components/analytics/ImpactRankROI';
 import SituationalWinRates from '@/components/analytics/SituationalWinRates';
+import WinConditions from '@/components/analytics/WinConditions';
 import PlayerTwinEvolution from '@/components/analytics/PlayerTwinEvolution';
 import FatigueAnalytics from '@/components/analytics/FatigueAnalytics';
 import SessionLoopAIDetails from '@/components/analytics/SessionLoopAIDetails';
@@ -187,8 +190,11 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
-      {/* 1. BenchmarkAI Competitive Rank */}
+      {/* 1. BenchmarkAI Competitive Rank (original 5 metrics) */}
       <BenchmarkRankSection />
+
+      {/* BenchmarkAI — 8 metrics with percentile bars */}
+      <BenchmarkSection />
 
       {/* Win Rate Chart */}
       <WinRateChart data={mockWinRateData} />
@@ -228,8 +234,14 @@ export default function AnalyticsPage() {
       {/* 4. Situational Win Rates */}
       <SituationalWinRates />
 
+      {/* Win Conditions — 6 game states */}
+      <WinConditions />
+
       {/* 2. TransferAI Lab-to-Live Gap Chart */}
       <TransferGapChart />
+
+      {/* TransferAI Lab vs Live — bar comparison */}
+      <TransferAIChart />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Weakness Heatmap */}
