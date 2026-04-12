@@ -175,6 +175,8 @@ _mount("app.api.v1.endpoints.ai_agents",       prefix="/ai",              tags=[
 # ═══════════════════════════════════════════════════════════════════════════
 # Ecosystem
 # ═══════════════════════════════════════════════════════════════════════════
+_mount("app.api.v1.endpoints.usage",           prefix="/usage",           tags=["Usage"])
+_mount("app.api.v1.endpoints.sharing",         prefix="/share",           tags=["Sharing"])
 _mount("app.api.v1.endpoints.chat",            prefix="/chat",            tags=["Chat"])
 _mount("app.api.v1.endpoints.community",       prefix="/community",       tags=["Community"])
 _mount("app.api.v1.endpoints.coach",           prefix="/coach",           tags=["Coach Portal"])

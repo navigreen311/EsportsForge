@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -54,6 +54,15 @@ class Gameplan(UUIDPrimaryKeyMixin, Base):
     )
     is_archived: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False, comment="Soft-delete flag"
+    )
+    share_token: Mapped[Optional[str]] = mapped_column(
+        String(24), unique=True, nullable=True, comment="Public share token"
+    )
+    share_expiry: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True, comment="When the share link expires"
+    )
+    share_views: Mapped[int] = mapped_column(
+        Integer, default=0, comment="Number of times the share link was viewed"
     )
 
     # Relationships
