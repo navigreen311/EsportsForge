@@ -20,6 +20,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -171,9 +172,30 @@ export default function RegisterPage() {
               />
             </div>
 
+            <div className="flex items-start gap-2">
+              <input
+                id="terms"
+                type="checkbox"
+                required
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-dark-600 bg-dark-800 text-forge-500 focus:ring-forge-500"
+              />
+              <label htmlFor="terms" className="text-sm text-dark-400">
+                I agree to the{" "}
+                <Link href="/legal/terms" className="text-forge-400 hover:text-forge-300" target="_blank">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/legal/privacy" className="text-forge-400 hover:text-forge-300" target="_blank">
+                  Privacy Policy
+                </Link>
+              </label>
+            </div>
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !agreedToTerms}
               className="w-full rounded-lg bg-forge-500 px-4 py-2.5 font-semibold text-dark-950 transition-colors hover:bg-forge-400 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? "Creating account..." : "Create Account"}
