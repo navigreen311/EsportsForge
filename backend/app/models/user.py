@@ -69,6 +69,12 @@ class User(UUIDPrimaryKeyMixin, Base):
     active_title: Mapped[Optional[str]] = mapped_column(
         String(100), nullable=True, comment="Currently active game title"
     )
+    two_factor_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    two_factor_secret: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True
+    )
 
     # Relationships
     player_profile: Mapped[Optional["PlayerProfile"]] = relationship(

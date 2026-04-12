@@ -40,6 +40,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.middleware.security import SecurityHeadersMiddleware
+from app.middleware.rate_limit import RateLimitMiddleware
+
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(
+    RateLimitMiddleware,
+    paths=["/api/v1/auth/login", "/api/v1/auth/register"],
+    max_requests=5,
+    window_seconds=900,
+)
+
 
 app.include_router(api_router, prefix="/api/v1")
 

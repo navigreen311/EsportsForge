@@ -177,3 +177,4 @@ _mount("app.api.v1.endpoints.chat",            prefix="/chat",            tags=[
 _mount("app.api.v1.endpoints.community",       prefix="/community",       tags=["Community"])
 _mount("app.api.v1.endpoints.coach",           prefix="/coach",           tags=["Coach Portal"])
 _mount("app.api.v1.endpoints.mobile",          prefix="/mobile",          tags=["Mobile"])
+_mount("app.api.v1.endpoints.support",         prefix="/support",         tags=["Support"])
