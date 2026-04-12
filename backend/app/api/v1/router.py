@@ -163,6 +163,11 @@ _mount("app.api.v1.endpoints.voiceforge",      prefix="/voiceforge",      tags=[
 _mount("app.api.v1.endpoints.visionaudio",     prefix="/visionaudio",     tags=["VisionAudioForge"])
 
 # ═══════════════════════════════════════════════════════════════════════════
+# AI Agents
+# ═══════════════════════════════════════════════════════════════════════════
+_mount("app.api.v1.endpoints.ai_agents",       prefix="/ai",              tags=["AI Agents"])
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Ecosystem
 # ═══════════════════════════════════════════════════════════════════════════
 _mount("app.api.v1.endpoints.chat",            prefix="/chat",            tags=["Chat"])

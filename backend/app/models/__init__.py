@@ -19,6 +19,10 @@ from app.models.cfb26 import (
     CFBRecruitingTarget,
     RecruitingPipeline,
 )
+from app.models.player_twin import PlayerTwin
+from app.models.identity_profile import IdentityProfile
+from app.models.vault_entry import VaultEntry
+from app.models.notification import Notification
 
 __all__ = [
     # Mixins
@@ -53,4 +57,9 @@ __all__ = [
     "SchemeType",
     "CFBSchemeType",
     "RecruitingPipeline",
+    # AI models
+    "PlayerTwin",
+    "IdentityProfile",
+    "VaultEntry",
+    "Notification",
 ]
