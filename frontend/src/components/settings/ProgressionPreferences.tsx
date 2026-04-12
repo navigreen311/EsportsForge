@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Package } from 'lucide-react';
+
+const PROGRESSION_STORAGE_KEY = 'esportsforge_progression';
 
 const paceOptions = [
   { value: 'aggressive', label: 'Aggressive', description: 'Add new content quickly' },
@@ -32,6 +34,27 @@ export default function ProgressionPreferences() {
   const [focus, setFocus] = useState<Focus>('auto');
   const [throttle, setThrottle] = useState(true);
   const [threshold, setThreshold] = useState<Threshold>('standard');
+
+  // Load from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(PROGRESSION_STORAGE_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        if (data.pace) setPace(data.pace);
+        if (data.focus) setFocus(data.focus);
+        if (data.throttle !== undefined) setThrottle(data.throttle);
+        if (data.threshold) setThreshold(data.threshold);
+      }
+    } catch {}
+  }, []);
+
+  // Save to localStorage on change
+  useEffect(() => {
+    localStorage.setItem(PROGRESSION_STORAGE_KEY, JSON.stringify({
+      pace, focus, throttle, threshold,
+    }));
+  }, [pace, focus, throttle, threshold]);
 
   const cardClass = (selected: boolean) =>
     `rounded-lg border p-3 cursor-pointer transition-colors text-sm ${

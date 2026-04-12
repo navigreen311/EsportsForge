@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Shield, Database, Eye, EyeOff, Download, Trash2, AlertTriangle } from 'lucide-react';
+
+const PRIVACY_STORAGE_KEY = 'esportsforge_privacy_trust';
 
 // ---------------------------------------------------------------------------
 // Toggle (matches existing PrivacyControls style)
@@ -114,6 +116,32 @@ export default function PrivacyTrustLayer() {
   // Section C – Opponent Visibility
   const [allowViewNotification, setAllowViewNotification] = useState(false);
   const [showInLeaderboards, setShowInLeaderboards] = useState(true);
+
+  // Load from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(PRIVACY_STORAGE_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        if (data.contributePerformance !== undefined) setContributePerformance(data.contributePerformance);
+        if (data.includeReplays !== undefined) setIncludeReplays(data.includeReplays);
+        if (data.shareScoutingTeam !== undefined) setShareScoutingTeam(data.shareScoutingTeam);
+        if (data.sessionRetention) setSessionRetention(data.sessionRetention);
+        if (data.opponentRetention) setOpponentRetention(data.opponentRetention);
+        if (data.allowViewNotification !== undefined) setAllowViewNotification(data.allowViewNotification);
+        if (data.showInLeaderboards !== undefined) setShowInLeaderboards(data.showInLeaderboards);
+      }
+    } catch {}
+  }, []);
+
+  // Save to localStorage on change
+  useEffect(() => {
+    localStorage.setItem(PRIVACY_STORAGE_KEY, JSON.stringify({
+      contributePerformance, includeReplays, shareScoutingTeam,
+      sessionRetention, opponentRetention,
+      allowViewNotification, showInLeaderboards,
+    }));
+  }, [contributePerformance, includeReplays, shareScoutingTeam, sessionRetention, opponentRetention, allowViewNotification, showInLeaderboards]);
 
   return (
     <div className="space-y-6">
@@ -233,6 +261,41 @@ export default function PrivacyTrustLayer() {
             checked={showInLeaderboards}
             onChange={setShowInLeaderboards}
           />
+        </div>
+      </div>
+
+      {/* ── Section D: GDPR & Compliance ── */}
+      <div className="rounded-xl border border-dark-700 bg-dark-900/50 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Shield className="w-4 h-4 text-forge-400" />
+          <h3 className="text-sm font-semibold text-dark-100">GDPR & Compliance</h3>
+        </div>
+
+        <div className="space-y-3">
+          <a
+            href="#"
+            className="flex items-center gap-2 text-sm text-forge-400 hover:text-forge-300 transition-colors"
+          >
+            Data Processing Agreement (DPA)
+          </a>
+          <a
+            href="#"
+            className="flex items-center gap-2 text-sm text-forge-400 hover:text-forge-300 transition-colors"
+          >
+            Privacy Policy
+          </a>
+          <a
+            href="#"
+            className="flex items-center gap-2 text-sm text-forge-400 hover:text-forge-300 transition-colors"
+          >
+            Right to Erasure (Art. 17 GDPR)
+          </a>
+          <a
+            href="#"
+            className="flex items-center gap-2 text-sm text-forge-400 hover:text-forge-300 transition-colors"
+          >
+            Data Portability Request (Art. 20 GDPR)
+          </a>
         </div>
       </div>
     </div>

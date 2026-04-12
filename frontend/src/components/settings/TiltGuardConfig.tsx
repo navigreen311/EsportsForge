@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Shield } from 'lucide-react';
+
+const TILTGUARD_STORAGE_KEY = 'esportsforge_tiltguard';
 
 type CheckInPrompt = 'every-session' | 'first-session' | 'off';
 type Sensitivity = 'aggressive' | 'standard' | 'minimal';
@@ -51,6 +53,28 @@ export default function TiltGuardConfig() {
   const [moodOptions, setMoodOptions] = useState<MoodOptions>('all-5');
   const [warningContext, setWarningContext] = useState<WarningContext>('both');
   const [sessionEndReflection, setSessionEndReflection] = useState(true);
+
+  // Load from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(TILTGUARD_STORAGE_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        if (data.checkIn) setCheckIn(data.checkIn);
+        if (data.sensitivity) setSensitivity(data.sensitivity);
+        if (data.moodOptions) setMoodOptions(data.moodOptions);
+        if (data.warningContext) setWarningContext(data.warningContext);
+        if (data.sessionEndReflection !== undefined) setSessionEndReflection(data.sessionEndReflection);
+      }
+    } catch {}
+  }, []);
+
+  // Save to localStorage on change
+  useEffect(() => {
+    localStorage.setItem(TILTGUARD_STORAGE_KEY, JSON.stringify({
+      checkIn, sensitivity, moodOptions, warningContext, sessionEndReflection,
+    }));
+  }, [checkIn, sensitivity, moodOptions, warningContext, sessionEndReflection]);
 
   const checkInOptions: RadioOption<CheckInPrompt>[] = [
     { value: 'every-session', label: 'Every session' },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 // --- Data Definitions ---
 
@@ -66,6 +66,9 @@ function getAggressionLabel(value: number): string {
   return 'Keep Attacking';
 }
 
+// --- localStorage Key ---
+const STORAGE_KEY = 'esportsforge_identity_engine';
+
 // --- Component ---
 
 export default function IdentityEngine() {
@@ -85,6 +88,45 @@ export default function IdentityEngine() {
   // Section D
   const [directness, setDirectness] = useState<string>('recommendation');
   const [frequency, setFrequency] = useState<string>('standard');
+
+  // Toast
+  const [showToast, setShowToast] = useState(false);
+
+  // Load from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        if (data.offensiveIdentity) setOffensiveIdentity(data.offensiveIdentity);
+        if (data.defensivePhilosophy) setDefensivePhilosophy(data.defensivePhilosophy);
+        if (data.riskTolerance) setRiskTolerance(data.riskTolerance);
+        if (data.fourthDown) setFourthDown(data.fourthDown);
+        if (data.aggressionAfterLead) setAggressionAfterLead(data.aggressionAfterLead);
+        if (data.pace) setPace(data.pace);
+        if (data.comfortZones) setComfortZones(new Set(data.comfortZones));
+        if (data.directness) setDirectness(data.directness);
+        if (data.frequency) setFrequency(data.frequency);
+      }
+    } catch {}
+  }, []);
+
+  const handleSave = () => {
+    const data = {
+      offensiveIdentity,
+      defensivePhilosophy,
+      riskTolerance,
+      fourthDown,
+      aggressionAfterLead,
+      pace,
+      comfortZones: Array.from(comfortZones),
+      directness,
+      frequency,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
 
   const toggleComfortZone = (tag: string) => {
     setComfortZones((prev) => {
@@ -323,6 +365,25 @@ export default function IdentityEngine() {
           </div>
         </div>
       </div>
+
+      {/* Save Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={handleSave}
+          className="rounded-lg bg-forge-600 px-6 py-3 text-sm font-medium text-white hover:bg-forge-500 transition-colors"
+        >
+          Save Identity
+        </button>
+      </div>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed bottom-6 right-6 z-50 rounded-lg border border-forge-500/30 bg-dark-800 px-5 py-3 shadow-lg animate-in fade-in slide-in-from-bottom-4">
+          <p className="text-sm font-medium text-forge-400">
+            Identity saved — PlayerTwin recalibrating
+          </p>
+        </div>
+      )}
     </div>
   );
 }
