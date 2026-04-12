@@ -33,9 +33,11 @@ def _mount(module_path: str, prefix: str, tags: list[str]) -> None:
 # ═══════════════════════════════════════════════════════════════════════════
 # Core
 # ═══════════════════════════════════════════════════════════════════════════
+_mount("app.api.v1.endpoints.system",          prefix="/system",          tags=["System"])
 _mount("app.api.v1.endpoints.health",          prefix="/health",          tags=["Health"])
 _mount("app.api.v1.endpoints.backbone",        prefix="/backbone",        tags=["Backbone"])
 _mount("app.api.v1.endpoints.auth",            prefix="/auth",            tags=["Auth"])
+_mount("app.api.v1.endpoints.two_factor",      prefix="/2fa",             tags=["2FA"])
 _mount("app.api.v1.endpoints.users",           prefix="/users",           tags=["Users"])
 _mount("app.api.v1.endpoints.onboarding",      prefix="/onboarding",      tags=["Onboarding"])
 _mount("app.api.v1.endpoints.sessions",        prefix="/sessions",        tags=["Sessions"])

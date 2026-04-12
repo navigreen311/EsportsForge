@@ -1,5 +1,6 @@
 """EsportsForge Backend — FastAPI Application Entry Point."""
 
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,18 +9,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.core.config import settings
+from app.core.logging import setup_logging
 from app.core.startup import validate_config
 from app.db.base import engine, Base
 from app.api.v1.router import api_router
 
+_start_time: float = 0.0
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _start_time
     # Import all models so Base.metadata knows about them
     import app.models  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     validate_config(settings)
+    setup_logging(log_level=settings.log_level, json_format=settings.environment == "production")
+    _start_time = time.time()
     yield
 
 
@@ -57,19 +64,31 @@ app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/api/health")
 async def health_check():
-    """Health check endpoint."""
+    """Health check endpoint with comprehensive service status."""
     db_status = "connected"
     try:
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
     except Exception:
         db_status = "disconnected"
+
+    api_key = settings.anthropic_api_key
+    ai_configured = bool(api_key and api_key != "YOUR_ANTHROPIC_API_KEY_HERE")
+
+    uptime_seconds = round(time.time() - _start_time, 2) if _start_time else 0.0
+
+    overall = "healthy" if db_status == "connected" else "degraded"
+
     return {
-        "status": "healthy",
+        "status": overall,
         "version": "0.1.0",
         "service": "esportsforge",
-        "database": db_status,
         "environment": settings.environment,
+        "uptime_seconds": uptime_seconds,
+        "services": {
+            "database": db_status,
+            "ai": "configured" if ai_configured else "not_configured",
+        },
     }
 
 
