@@ -10,6 +10,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import VoiceCommandButton from '@/components/voice/VoiceCommandButton';
 import VisionStatusIcon from '@/components/shared/VisionStatusIcon';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { clsx } from 'clsx';
 import {
   Bell,
@@ -138,6 +139,19 @@ export function TopBar() {
   const unreadCount = useUIStore((s) => s.unreadCount);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
 
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const modeConfig = MODE_CONFIG[currentMode];
   const integrity = INTEGRITY_CONFIG[integrityStatus];
   const IntegrityIcon = integrity.icon;
@@ -183,17 +197,23 @@ export function TopBar() {
         </Badge>
 
         {/* Notifications */}
-        <button
-          className="relative rounded-lg p-2 text-dark-400 transition-colors hover:bg-dark-800 hover:text-dark-200"
-          aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
-        >
-          <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-forge-500 px-1 text-[10px] font-bold text-dark-950">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
+        <div className="relative" ref={notifRef}>
+          <button
+            onClick={() => setNotificationsOpen(!notificationsOpen)}
+            className="relative rounded-lg p-2 text-dark-400 transition-colors hover:bg-dark-800 hover:text-dark-200"
+            aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+          >
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-forge-500 px-1 text-[10px] font-bold text-dark-950">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          {notificationsOpen && (
+            <NotificationCenter onClose={() => setNotificationsOpen(false)} />
           )}
-        </button>
+        </div>
 
         {/* Voice Command */}
         <VoiceCommandButton />
