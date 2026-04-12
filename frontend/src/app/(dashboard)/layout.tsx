@@ -19,6 +19,9 @@ import type { LucideIcon } from 'lucide-react';
 import { Sidebar } from '@/components/shared/Sidebar';
 import { TopBar } from '@/components/shared/TopBar';
 import { ForgeCoreChat } from '@/components/chat/ForgeCoreChat';
+import { Footer } from '@/components/shared/Footer';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { OfflineBanner } from '@/components/shared/OfflineBanner';
 import { useUIStore } from '@/lib/store';
 
 interface MobileNavItem {
@@ -74,6 +77,8 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-dark-950">
+      <OfflineBanner />
+
       {/* Sidebar */}
       <Sidebar />
 
@@ -84,8 +89,11 @@ export default function DashboardLayout({
         {/* Content */}
         <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
           <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </div>
+          <Footer />
         </main>
       </div>
 
