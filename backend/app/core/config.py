@@ -16,12 +16,12 @@ class Settings(BaseSettings):
     redis_url: str = ""
 
     # Auth
-    secret_key: str = "YOUR_SECRET_KEY_HERE"
+    secret_key: str = "esportsforge-dev-secret-change-in-production"
     access_token_expire_minutes: int = 30
     algorithm: str = "HS256"
 
     # AI
-    anthropic_api_key: str = "YOUR_ANTHROPIC_API_KEY_HERE"
+    anthropic_api_key: str = ""
     claude_model: str = "claude-sonnet-4-20250514"
 
     # Stripe
@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     stripe_price_competitive: str = ""
     stripe_price_elite: str = ""
     stripe_price_team: str = ""
+
+    # Network / Logging
+    allowed_hosts: list[str] = ["*"]
+    log_level: str = "INFO"
 
     # CORS
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8000"]

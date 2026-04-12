@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.core.config import settings
+from app.core.startup import validate_config
 from app.db.base import engine, Base
 from app.api.v1.router import api_router
 
@@ -18,6 +19,7 @@ async def lifespan(app: FastAPI):
     import app.models  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    validate_config(settings)
     yield
 
 
