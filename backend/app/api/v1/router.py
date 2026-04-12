@@ -49,6 +49,8 @@ _mount("app.api.v1.endpoints.player_twin",     prefix="/player-twin",     tags=[
 _mount("app.api.v1.endpoints.impact_rank",     prefix="/impact-rank",     tags=["ImpactRank"])
 _mount("app.api.v1.endpoints.truth_engine",    prefix="/truth-engine",    tags=["TruthEngine"])
 _mount("app.api.v1.endpoints.loop_ai",         prefix="/loop-ai",         tags=["LoopAI"])
+_mount("app.api.v1.endpoints.loop_api",        prefix="/learning-loop",   tags=["LearningLoop"])
+_mount("app.api.v1.endpoints.player_twin_api", prefix="/player-twin-data", tags=["PlayerTwinData"])
 _mount("app.api.v1.endpoints.adapt",           prefix="/adapt",           tags=["Adapt"])
 _mount("app.api.v1.endpoints.calibration",     prefix="/calibration",     tags=["Calibration"])
 _mount("app.api.v1.endpoints.confidence",      prefix="/confidence",      tags=["Confidence"])
