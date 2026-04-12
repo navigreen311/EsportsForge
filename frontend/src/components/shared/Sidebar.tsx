@@ -22,6 +22,8 @@ import {
   ChevronDown,
   Swords,
   X,
+  Archive,
+  Shield,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useUIStore, TITLE_OPTIONS, TIER_CONFIG } from '@/lib/store';
@@ -38,6 +40,8 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Gameplan', href: '/gameplan', icon: Gamepad2 },
   { label: 'Opponents', href: '/opponents', icon: Users },
+  { label: 'Vault', href: '/vault', icon: Archive },
+  { label: 'War Room', href: '/war-room', icon: Shield },
   { label: 'Drills', href: '/drills', icon: Target },
   { label: 'Analytics', href: '/analytics', icon: BarChart3 },
   { label: 'Tournament', href: '/tournament', icon: Trophy },
