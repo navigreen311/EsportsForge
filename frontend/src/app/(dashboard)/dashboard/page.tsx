@@ -37,6 +37,7 @@ import ExecutionGapCard from '@/components/dashboard/ExecutionGapCard';
 import LoopAIDebriefCard from '@/components/dashboard/LoopAIDebriefCard';
 import BenchmarkPanel from '@/components/dashboard/BenchmarkPanel';
 import ProgressionStrip from '@/components/dashboard/ProgressionStrip';
+import { DailyForgeCard } from '@/components/dailyforge/DailyForgeCard';
 import type { TiltGuardMood } from '@/types/dashboard';
 
 export default function DashboardPage() {
@@ -81,6 +82,9 @@ export default function DashboardPage() {
       {!hasData && titleInfo && (
         <TitleEmptyState titleName={titleInfo.name} titleIcon={titleInfo.icon} />
       )}
+
+      {/* Daily Forge Card */}
+      <DailyForgeCard />
 
       {/* Priority Card — #1 */}
       {hasData && <PriorityCard priority={data.priority} />}

@@ -165,6 +165,7 @@ _mount("app.api.v1.endpoints.visionaudio",     prefix="/visionaudio",     tags=[
 # ═══════════════════════════════════════════════════════════════════════════
 # Ecosystem
 # ═══════════════════════════════════════════════════════════════════════════
+_mount("app.api.v1.endpoints.chat",            prefix="/chat",            tags=["Chat"])
 _mount("app.api.v1.endpoints.community",       prefix="/community",       tags=["Community"])
 _mount("app.api.v1.endpoints.coach",           prefix="/coach",           tags=["Coach Portal"])
 _mount("app.api.v1.endpoints.mobile",          prefix="/mobile",          tags=["Mobile"])

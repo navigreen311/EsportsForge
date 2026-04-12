@@ -18,6 +18,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { Sidebar } from '@/components/shared/Sidebar';
 import { TopBar } from '@/components/shared/TopBar';
+import { ForgeCoreChat } from '@/components/chat/ForgeCoreChat';
 import { useUIStore } from '@/lib/store';
 
 interface MobileNavItem {
@@ -90,6 +91,9 @@ export default function DashboardLayout({
 
       {/* Mobile bottom nav */}
       <MobileBottomNav />
+
+      {/* ForgeCore Chat */}
+      <ForgeCoreChat />
     </div>
   );
 }
