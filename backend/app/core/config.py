@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     anthropic_api_key: str = "YOUR_ANTHROPIC_API_KEY_HERE"
     claude_model: str = "claude-sonnet-4-20250514"
 
+    # Stripe
+    stripe_secret_key: str = ""
+    stripe_publishable_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_competitive: str = ""
+    stripe_price_elite: str = ""
+    stripe_price_team: str = ""
+
     # CORS
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8000"]
 

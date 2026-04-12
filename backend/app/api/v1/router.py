@@ -39,6 +39,7 @@ _mount("app.api.v1.endpoints.auth",            prefix="/auth",            tags=[
 _mount("app.api.v1.endpoints.users",           prefix="/users",           tags=["Users"])
 _mount("app.api.v1.endpoints.onboarding",      prefix="/onboarding",      tags=["Onboarding"])
 _mount("app.api.v1.endpoints.sessions",        prefix="/sessions",        tags=["Sessions"])
+_mount("app.api.v1.endpoints.subscriptions",   prefix="/subscriptions",   tags=["Subscriptions"])
 _mount("app.api.v1.endpoints.titles",          prefix="/titles",          tags=["Titles"])
 
 # ═══════════════════════════════════════════════════════════════════════════
