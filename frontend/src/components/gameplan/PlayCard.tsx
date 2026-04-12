@@ -2,6 +2,8 @@
 
 import { Play } from '@/types/gameplan';
 import { Shield, Zap, Target, Clock } from 'lucide-react';
+import PlayerTwinBadge, { PLAY_EXECUTION_PCT } from '@/components/gameplan/PlayerTwinBadge';
+import MetaExpiryWarning from '@/components/gameplan/MetaExpiryWarning';
 
 const tagIcons: Record<string, React.ReactNode> = {
   'red-zone': <Target className="w-3 h-3" />,
@@ -70,6 +72,14 @@ export default function PlayCard({ play, index, isSelected, onSelect }: PlayCard
           </div>
           <p className="text-[10px] text-dark-500 uppercase tracking-wider">Conf</p>
         </div>
+      </div>
+
+      {/* PlayerTwin + Meta badges */}
+      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+        {PLAY_EXECUTION_PCT[play.id] !== undefined && (
+          <PlayerTwinBadge executionPct={PLAY_EXECUTION_PCT[play.id]} />
+        )}
+        <MetaExpiryWarning playId={play.id} />
       </div>
 
       {play.situationTags.length > 0 && (

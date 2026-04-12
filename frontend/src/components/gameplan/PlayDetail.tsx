@@ -8,6 +8,9 @@ import { ImpactScore } from '@/components/gameplan/ImpactScore';
 import SimLabButton from '@/components/gameplan/SimLabButton';
 import EvidencePanel from '@/components/gameplan/EvidencePanel';
 import ThreeLayerAudible from '@/components/gameplan/ThreeLayerAudible';
+import PlayerTwinBadge, { PLAY_EXECUTION_PCT } from '@/components/gameplan/PlayerTwinBadge';
+import ProofAIEvidence from '@/components/gameplan/ProofAIEvidence';
+import MetaExpiryWarning from '@/components/gameplan/MetaExpiryWarning';
 import type { Play } from '@/types/gameplan';
 
 interface PlayDetailProps {
@@ -55,12 +58,26 @@ export default function PlayDetail({ play, opponentName = 'Opponent' }: PlayDeta
             playName={play.name}
             opponentName={opponentName}
           />
+          <a
+            href={`/drills/simlab?play=${encodeURIComponent(play.name)}`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-forge-500/30 bg-forge-500/10 px-3 py-1.5 text-xs font-medium text-forge-400 transition-colors hover:bg-forge-500/20 hover:border-forge-500/50"
+          >
+            Test in SimLab
+          </a>
         </div>
-        {play.isKillSheetPlay && (
-          <Badge variant="success" size="sm" dot className="mt-2">
-            Kill Sheet Play
-          </Badge>
-        )}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {play.isKillSheetPlay && (
+            <Badge variant="success" size="sm" dot>
+              Kill Sheet Play
+            </Badge>
+          )}
+          {/* PlayerTwin Execution Badge */}
+          {PLAY_EXECUTION_PCT[play.id] !== undefined && (
+            <PlayerTwinBadge executionPct={PLAY_EXECUTION_PCT[play.id]} />
+          )}
+          {/* Meta Expiry Warning */}
+          <MetaExpiryWarning playId={play.id} />
+        </div>
       </div>
 
       {/* Concept Breakdown */}
@@ -120,6 +137,9 @@ export default function PlayDetail({ play, opponentName = 'Opponent' }: PlayDeta
 
       {/* 2. ProofAI Evidence Panel */}
       <EvidencePanel playId={play.id} />
+
+      {/* ProofAI Statistical Evidence */}
+      <ProofAIEvidence playId={play.id} />
 
       {/* 5. Three-Layer Call Structure (replaces flat audible list) */}
       {play.audibleOptions && play.audibleOptions.length > 0 && (

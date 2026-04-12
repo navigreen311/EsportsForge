@@ -11,6 +11,8 @@ import ExportControls from '@/components/gameplan/ExportControls';
 import OpponentTendencyPanel from '@/components/gameplan/OpponentTendencyPanel';
 import First15ScriptView from '@/components/gameplan/First15ScriptView';
 import { AntiBlitzHealthBadge, AntiBlitzHealthBanner } from '@/components/gameplan/AntiBlitzHealth';
+import OpponentTendencyHeader from '@/components/gameplan/OpponentTendencyHeader';
+import FirstFifteenScript from '@/components/gameplan/FirstFifteenScript';
 import type { PackageTab } from '@/types/gameplan';
 
 type ViewTab = PackageTab | 'script';
@@ -96,6 +98,9 @@ export default function GameplanPage() {
         </div>
       </div>
 
+      {/* Opponent Tendency Header — pills, archetype, win rate */}
+      <OpponentTendencyHeader opponentName={opponent.name} />
+
       {/* 7. Opponent Tendency Panel */}
       <OpponentTendencyPanel opponentName={opponent.name} />
 
@@ -139,7 +144,10 @@ export default function GameplanPage() {
 
       {/* Content: Script View or Two-Column Layout */}
       {viewTab === 'script' ? (
-        <First15ScriptView opponentName={opponent.name} />
+        <div className="space-y-5">
+          <First15ScriptView opponentName={opponent.name} />
+          <FirstFifteenScript />
+        </div>
       ) : (
         <>
           {/* Anti-Blitz Health Banner */}
