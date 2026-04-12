@@ -24,6 +24,7 @@ import { Footer } from '@/components/shared/Footer';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { OfflineBanner } from '@/components/shared/OfflineBanner';
 import { useUIStore } from '@/lib/store';
+import { SearchShortcutsProvider } from '@/components/search/SearchShortcutsProvider';
 
 interface MobileNavItem {
   label: string;
@@ -77,25 +78,33 @@ export default function DashboardLayout({
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-dark-950">
-      <OfflineBanner />
+    <SearchShortcutsProvider>
+      <div className="flex h-screen overflow-hidden bg-dark-950">
+        <OfflineBanner />
 
-      {/* Sidebar */}
-      <Sidebar />
+        {/* Sidebar */}
+        <Sidebar />
 
-      {/* Main area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <TopBar />
+        {/* Main area */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <TopBar />
 
-        {/* Content */}
-        <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
-          <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
-            <ErrorBoundary>
-              {children}
-            </ErrorBoundary>
-          </div>
-          <Footer />
-        </main>
+          {/* Content */}
+          <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
+            <div className="mx-auto max-w-7xl px-4 py-6 lg:px-6">
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
+            </div>
+            <Footer />
+          </main>
+        </div>
+
+        {/* Mobile bottom nav */}
+        <MobileBottomNav />
+
+        {/* ForgeCore Chat */}
+        <ForgeCoreChat />
       </div>
 
       {/* Mobile bottom nav */}
@@ -107,5 +116,6 @@ export default function DashboardLayout({
       {/* Feedback */}
       <FeedbackButton />
     </div>
+    </SearchShortcutsProvider>
   );
 }
