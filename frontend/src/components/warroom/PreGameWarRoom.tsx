@@ -7,6 +7,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
   Shield,
   Crosshair,
@@ -24,8 +25,14 @@ import {
   ChevronRight,
   Flame,
   Eye,
+  Volume2,
+  X,
+  Clock,
+  FileText,
+  ArrowLeft,
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useVoiceForge } from '@/hooks/useVoiceForge';
 
 // ---------- Types ----------
 
@@ -45,6 +52,14 @@ interface TiltGuardStatus {
   readiness: number;
   mood: 'focused' | 'confident' | 'anxious' | 'tilted';
   fatigue: 'fresh' | 'moderate' | 'high';
+}
+
+interface Encounter {
+  date: string;
+  mode: string;
+  result: 'W' | 'L';
+  score: string;
+  note: string;
 }
 
 interface OpponentData {
@@ -67,6 +82,7 @@ interface OpponentData {
     notes: string;
   };
   mentalReset: string;
+  encounters: Encounter[];
 }
 
 // ---------- Mock Data ----------
@@ -130,11 +146,53 @@ const MOCK_OPPONENT: OpponentData = {
     notes: 'Beats his aggressive press alignment. Motion snap forces bail from press — slant is wide open.',
   },
   mentalReset: 'Breathe in 4 counts. Hold 4 counts. Out 4 counts. You have the data. You have the plan. One play at a time. Trust the process.',
+  encounters: [
+    {
+      date: '2026-04-10',
+      mode: 'Ranked H2H',
+      result: 'W',
+      score: '28-21',
+      note: 'PA Boot was unstoppable in the red zone.',
+    },
+    {
+      date: '2026-04-06',
+      mode: 'Ranked H2H',
+      result: 'L',
+      score: '14-24',
+      note: 'Got blitzed into oblivion early. Adjusted too late.',
+    },
+    {
+      date: '2026-03-29',
+      mode: 'MUT Champions',
+      result: 'W',
+      score: '35-17',
+      note: 'Inside zone dominated all game. He never adjusted.',
+    },
+  ],
+};
+
+// ---------- Counter Package Data ----------
+
+const COUNTER_PACKAGE = {
+  plays: [
+    { name: 'Cover 3 Sky — Blitz Contain', desc: 'Sky safety force sets edge; 3-deep kills post routes.' },
+    { name: 'Tampa 2 Shift', desc: 'MLB drops deep middle; takes away seam and TE drag.' },
+    { name: 'Pinch Buck 0 — Fire Zone', desc: 'Interior pressure before quick passes develop.' },
+    { name: 'Cover 6 Invert', desc: 'Rolls coverage to field; boundary flat defender jumps out routes.' },
+  ],
+  scheme: 'Nickel 3-3-5 Wide — focus on interior rush with spy on QB scrambles.',
+  tip: 'Key adjustment: Shade outside on 1st down to take away his press-beater motion plays. Force him inside where your LBs can rally.',
 };
 
 // ---------- Sub-Components ----------
 
-function OpponentHeader({ data }: { data: OpponentData }) {
+function OpponentHeader({
+  data,
+  onArchetypeClick,
+}: {
+  data: OpponentData;
+  onArchetypeClick: () => void;
+}) {
   return (
     <div className="rounded-xl border border-dark-700/50 bg-dark-900/80 p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -145,9 +203,12 @@ function OpponentHeader({ data }: { data: OpponentData }) {
           <div>
             <h2 className="text-xl font-bold text-dark-50">{data.gamertag}</h2>
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-red-500/15 px-2.5 py-0.5 text-[11px] font-medium text-red-400">
+              <button
+                onClick={onArchetypeClick}
+                className="rounded-full bg-red-500/15 px-2.5 py-0.5 text-[11px] font-medium text-red-400 transition-colors hover:bg-red-500/25 cursor-pointer"
+              >
                 {data.archetype}
-              </span>
+              </button>
               <span className="text-xs text-dark-500">Last seen: {data.lastSeen}</span>
             </div>
           </div>
@@ -320,8 +381,85 @@ function MetaAlertPanel({ meta }: { meta: OpponentData['metaAlert'] }) {
   );
 }
 
-function MentalResetPanel({ script }: { script: string }) {
+// ---------- 2A: Mental Reset Panel (Full 5-step protocol) ----------
+
+function MentalResetPanel() {
   const [activated, setActivated] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [breathTimer, setBreathTimer] = useState(30);
+  const [breathPhase, setBreathPhase] = useState<'inhale' | 'hold1' | 'exhale' | 'hold2'>('inhale');
+  const [breathPhaseTime, setBreathPhaseTime] = useState(4);
+  const [resetComplete, setResetComplete] = useState(false);
+
+  // Breath timer countdown
+  useEffect(() => {
+    if (!activated || currentStep !== 1 || breathTimer <= 0) return;
+    const interval = setInterval(() => {
+      setBreathTimer((t) => {
+        if (t <= 1) {
+          setCurrentStep(2);
+          return 0;
+        }
+        return t - 1;
+      });
+      setBreathPhaseTime((pt) => {
+        if (pt <= 1) {
+          setBreathPhase((p) => {
+            if (p === 'inhale') return 'hold1';
+            if (p === 'hold1') return 'exhale';
+            if (p === 'exhale') return 'hold2';
+            return 'inhale';
+          });
+          return 4;
+        }
+        return pt - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [activated, currentStep, breathTimer]);
+
+  // Reset complete confirmation timer
+  useEffect(() => {
+    if (!resetComplete) return;
+    const timeout = setTimeout(() => {
+      setResetComplete(false);
+    }, 3000);
+    return () => clearTimeout(timeout);
+  }, [resetComplete]);
+
+  const handleComplete = () => {
+    setActivated(false);
+    setCurrentStep(1);
+    setBreathTimer(30);
+    setBreathPhase('inhale');
+    setBreathPhaseTime(4);
+    setResetComplete(true);
+  };
+
+  const handleClose = () => {
+    setActivated(false);
+    setCurrentStep(1);
+    setBreathTimer(30);
+    setBreathPhase('inhale');
+    setBreathPhaseTime(4);
+  };
+
+  const phaseLabel = {
+    inhale: 'Inhale',
+    hold1: 'Hold',
+    exhale: 'Exhale',
+    hold2: 'Hold',
+  };
+
+  if (resetComplete) {
+    return (
+      <div className="rounded-xl border border-forge-500/30 bg-forge-500/5 p-5">
+        <p className="text-center text-sm font-medium text-forge-400">
+          Mental reset complete ✓
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border border-dark-700/50 bg-dark-900/80 p-5">
@@ -330,13 +468,119 @@ function MentalResetPanel({ script }: { script: string }) {
         Mental Reset
       </h3>
       {activated ? (
-        <div className="rounded-lg bg-teal-500/5 p-4">
-          <p className="text-sm leading-relaxed text-teal-300">{script}</p>
+        <div className="relative space-y-4">
           <button
-            onClick={() => setActivated(false)}
-            className="mt-3 text-xs text-dark-500 hover:text-dark-300"
+            onClick={handleClose}
+            className="absolute right-0 top-0 text-dark-500 hover:text-dark-300"
           >
-            Dismiss
+            <X className="h-4 w-4" />
+          </button>
+
+          {/* Step indicator */}
+          <div className="flex items-center gap-2 text-xs text-dark-500">
+            {[1, 2, 3, 4].map((s) => (
+              <div
+                key={s}
+                className={clsx(
+                  'flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold',
+                  s === currentStep
+                    ? 'bg-teal-500/20 text-teal-400'
+                    : s < currentStep
+                    ? 'bg-forge-500/20 text-forge-400'
+                    : 'bg-dark-800 text-dark-600'
+                )}
+              >
+                {s}
+              </div>
+            ))}
+          </div>
+
+          {/* Step 1: BREATHE */}
+          {currentStep === 1 && (
+            <div className="rounded-lg bg-teal-500/5 p-4 space-y-3">
+              <p className="text-sm font-bold text-teal-400">Step 1: BREATHE</p>
+              <p className="text-lg font-bold text-teal-300">
+                {phaseLabel[breathPhase]} — {breathPhaseTime}
+              </p>
+              <p className="text-xs text-dark-400">
+                Box breathing: Inhale 4 → Hold 4 → Exhale 4 → Hold 4
+              </p>
+              {/* Progress bar */}
+              <div className="h-2 w-full rounded-full bg-dark-800">
+                <div
+                  className="h-2 rounded-full bg-teal-500 transition-all duration-1000"
+                  style={{ width: `${((30 - breathTimer) / 30) * 100}%` }}
+                />
+              </div>
+              <p className="text-xs text-dark-500 text-right">{breathTimer}s remaining</p>
+              <button
+                onClick={() => setCurrentStep(2)}
+                className="text-xs text-dark-500 hover:text-dark-300"
+              >
+                Skip →
+              </button>
+            </div>
+          )}
+
+          {/* Step 2: RELEASE THE LAST GAME */}
+          {currentStep === 2 && (
+            <div className="rounded-lg bg-teal-500/5 p-4 space-y-3">
+              <p className="text-sm font-bold text-teal-400">Step 2: RELEASE THE LAST GAME</p>
+              <p className="text-sm leading-relaxed text-teal-300 italic">
+                &quot;That game is done. The score is final. It cannot affect this game unless you carry it.&quot;
+              </p>
+              <button
+                onClick={() => setCurrentStep(3)}
+                className="rounded-lg bg-teal-500/10 px-3 py-2 text-xs font-medium text-teal-400 hover:bg-teal-500/20"
+              >
+                Next →
+              </button>
+            </div>
+          )}
+
+          {/* Step 3: THREE FOCUS POINTS */}
+          {currentStep === 3 && (
+            <div className="rounded-lg bg-teal-500/5 p-4 space-y-3">
+              <p className="text-sm font-bold text-teal-400">Step 3: THREE FOCUS POINTS</p>
+              <ul className="space-y-2">
+                <li className="flex items-center gap-2 text-sm text-teal-300">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-500/20 text-[10px] font-bold text-teal-400">1</span>
+                  Pre-snap coverage ID
+                </li>
+                <li className="flex items-center gap-2 text-sm text-teal-300">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-500/20 text-[10px] font-bold text-teal-400">2</span>
+                  One read at a time
+                </li>
+                <li className="flex items-center gap-2 text-sm text-teal-300">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-500/20 text-[10px] font-bold text-teal-400">3</span>
+                  Trust your scheme
+                </li>
+              </ul>
+              <button
+                onClick={() => setCurrentStep(4)}
+                className="rounded-lg bg-teal-500/10 px-3 py-2 text-xs font-medium text-teal-400 hover:bg-teal-500/20"
+              >
+                Next →
+              </button>
+            </div>
+          )}
+
+          {/* Step 4: DECLARE READY */}
+          {currentStep === 4 && (
+            <div className="rounded-lg bg-teal-500/5 p-4 space-y-3">
+              <p className="text-sm font-bold text-teal-400">Step 4: DECLARE READY</p>
+              <p className="text-sm leading-relaxed text-teal-300 italic">
+                &quot;Say aloud: I am locked in. Let&apos;s go.&quot;
+              </p>
+            </div>
+          )}
+
+          {/* Complete button */}
+          <button
+            onClick={handleComplete}
+            className="w-full rounded-lg bg-forge-500/15 px-4 py-3 text-sm font-bold text-forge-400 transition-colors hover:bg-forge-500/25"
+          >
+            Reset Complete — I&apos;m Ready
           </button>
         </div>
       ) : (
@@ -348,6 +592,106 @@ function MentalResetPanel({ script }: { script: string }) {
         </button>
       )}
     </div>
+  );
+}
+
+// ---------- 2F: Last Encounters Card ----------
+
+function LastEncountersCard({ encounters }: { encounters: Encounter[] }) {
+  return (
+    <div className="rounded-xl border border-dark-700/50 bg-dark-900/80 p-5">
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-dark-100">
+        <Clock className="h-4 w-4 text-blue-400" />
+        Last 3 Encounters
+      </h3>
+      <div className="space-y-3">
+        {encounters.map((enc, i) => (
+          <div key={i} className="rounded-lg bg-dark-800/50 p-3 space-y-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span
+                  className={clsx(
+                    'rounded px-1.5 py-0.5 text-xs font-bold',
+                    enc.result === 'W'
+                      ? 'bg-green-500/15 text-green-400'
+                      : 'bg-red-500/15 text-red-400'
+                  )}
+                >
+                  {enc.result}
+                </span>
+                <span className="text-sm font-medium text-dark-100">{enc.score}</span>
+              </div>
+              <span className="text-[11px] text-dark-500">{enc.date}</span>
+            </div>
+            <p className="text-[11px] text-dark-500">{enc.mode}</p>
+            <p className="text-xs italic text-dark-400">&quot;{enc.note}&quot;</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------- 2C: Archetype Counter Panel ----------
+
+function ArchetypeCounterPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/60"
+        onClick={onClose}
+      />
+      {/* Slide-over panel */}
+      <div className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-dark-900 border-l border-dark-700/50 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-dark-700/50 p-5">
+          <h3 className="text-sm font-bold text-dark-100 flex items-center gap-2">
+            <Shield className="h-4 w-4 text-red-400" />
+            Counter Package: Blitz Heavy Aggressor
+          </h3>
+          <button onClick={onClose} className="text-dark-500 hover:text-dark-300">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* Counter plays */}
+          <div>
+            <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-dark-500">Counter Plays</h4>
+            <div className="space-y-2">
+              {COUNTER_PACKAGE.plays.map((play, i) => (
+                <div key={i} className="rounded-lg bg-dark-800/50 p-3">
+                  <p className="text-sm font-medium text-dark-100">{play.name}</p>
+                  <p className="text-[11px] text-dark-400 mt-1">{play.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Defensive scheme */}
+          <div>
+            <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-dark-500">Defensive Scheme</h4>
+            <p className="text-sm text-dark-300 rounded-lg bg-dark-800/50 p-3">{COUNTER_PACKAGE.scheme}</p>
+          </div>
+
+          {/* Key adjustment */}
+          <div>
+            <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-dark-500">Key Adjustment</h4>
+            <p className="text-sm text-amber-300 rounded-lg bg-amber-500/5 border border-amber-500/20 p-3">{COUNTER_PACKAGE.tip}</p>
+          </div>
+
+          {/* Add all button */}
+          <button
+            onClick={() => {
+              console.log('[WarRoom] Adding counter package to gameplan');
+              onClose();
+            }}
+            className="w-full rounded-lg bg-forge-500/15 px-4 py-3 text-sm font-bold text-forge-400 transition-colors hover:bg-forge-500/25"
+          >
+            Add All to Gameplan
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -440,7 +784,39 @@ function CountdownTimer() {
 
 export default function PreGameWarRoom() {
   const [exited, setExited] = useState(false);
+  const [showArchetypePanel, setShowArchetypePanel] = useState(false);
+  const [quickNote, setQuickNote] = useState('');
+  const [noteSaved, setNoteSaved] = useState(false);
+
+  // 2B: VoiceForge
+  const { speak, stop, isSpeaking, isAvailable } = useVoiceForge();
+
   const data = MOCK_OPPONENT;
+
+  // 2B: Compile and speak briefing
+  const handleReadBriefing = useCallback(() => {
+    if (isSpeaking) {
+      stop();
+      return;
+    }
+    const briefingText = [
+      `Opponent: ${data.gamertag}, archetype ${data.archetype}.`,
+      `Kill sheet top plays: ${data.killSheet.map((p) => p.name).join(', ')}.`,
+      `Key tendencies: ${data.tendencies.map((t) => `${t.label} at ${t.frequency}`).join(', ')}.`,
+      `Opening recommendation: ${data.openingRecommendation.play} with ${data.openingRecommendation.confidence}% confidence. ${data.openingRecommendation.reason}`,
+      `TiltGuard status: readiness ${data.tiltGuard.readiness}%, mood ${data.tiltGuard.mood}, fatigue ${data.tiltGuard.fatigue}.`,
+    ].join(' ');
+    speak(briefingText);
+  }, [isSpeaking, stop, speak, data]);
+
+  // 2E: Save quick note
+  const handleSaveNote = useCallback(() => {
+    if (!quickNote.trim()) return;
+    console.log('[WarRoom] POST /api/vault/notes', { note: quickNote });
+    setQuickNote('');
+    setNoteSaved(true);
+    setTimeout(() => setNoteSaved(false), 2000);
+  }, [quickNote]);
 
   if (exited) {
     return (
@@ -462,16 +838,56 @@ export default function PreGameWarRoom() {
 
   return (
     <div className="space-y-5">
+      {/* 2B: VoiceForge Read Briefing */}
+      {isAvailable && (
+        <div className="flex justify-end">
+          <button
+            onClick={handleReadBriefing}
+            className={clsx(
+              'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+              isSpeaking
+                ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25'
+                : 'bg-forge-500/15 text-forge-400 hover:bg-forge-500/25'
+            )}
+          >
+            <Volume2 className="h-4 w-4" />
+            {isSpeaking ? 'Reading...' : 'Read Briefing'}
+          </button>
+        </div>
+      )}
+
       {/* Opponent Header */}
-      <OpponentHeader data={data} />
+      <OpponentHeader
+        data={data}
+        onArchetypeClick={() => setShowArchetypePanel(true)}
+      />
+
+      {/* 2C: Archetype Counter Panel slide-over */}
+      {showArchetypePanel && (
+        <ArchetypeCounterPanel onClose={() => setShowArchetypePanel(false)} />
+      )}
 
       {/* Two column layout */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Left column */}
         <div className="space-y-5">
           <KillSheet plays={data.killSheet} />
+          {/* 2D: View Full Gameplan link */}
+          <div className="flex justify-end -mt-3">
+            <Link href="/gameplan" className="text-xs text-dark-500 hover:text-dark-300 transition-colors">
+              View Full Gameplan →
+            </Link>
+          </div>
           <TendenciesPills tendencies={data.tendencies} />
-          <MentalResetPanel script={data.mentalReset} />
+          {/* 2D: View Full Dossier link */}
+          <div className="flex justify-end -mt-3">
+            <Link href="/opponents/xKillSwitch" className="text-xs text-dark-500 hover:text-dark-300 transition-colors">
+              View Full Dossier →
+            </Link>
+          </div>
+          {/* 2F: Last 3 Encounters */}
+          <LastEncountersCard encounters={data.encounters} />
+          <MentalResetPanel />
         </div>
 
         {/* Right column */}
@@ -481,6 +897,39 @@ export default function PreGameWarRoom() {
           <MetaAlertPanel meta={data.metaAlert} />
           <CountdownTimer />
         </div>
+      </div>
+
+      {/* 2E: Quick Notes */}
+      <div className="rounded-xl border border-dark-700/50 bg-dark-900/80 p-5">
+        <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-dark-100">
+          <FileText className="h-4 w-4 text-dark-400" />
+          Quick Note
+        </h3>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={quickNote}
+            onChange={(e) => setQuickNote(e.target.value.slice(0, 200))}
+            maxLength={200}
+            placeholder="Jot a quick note before the game..."
+            className="flex-1 rounded-lg bg-dark-800/50 border border-dark-700/50 px-3 py-2 text-sm text-dark-100 placeholder-dark-600 outline-none focus:border-forge-500/50"
+          />
+          <button
+            onClick={handleSaveNote}
+            disabled={!quickNote.trim()}
+            className={clsx(
+              'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+              quickNote.trim()
+                ? 'bg-forge-500/15 text-forge-400 hover:bg-forge-500/25'
+                : 'bg-dark-800 text-dark-600 cursor-not-allowed'
+            )}
+          >
+            Save
+          </button>
+        </div>
+        {noteSaved && (
+          <p className="mt-2 text-xs text-forge-400">Note saved to ForgeVault ✓</p>
+        )}
       </div>
 
       {/* Exit Button */}
