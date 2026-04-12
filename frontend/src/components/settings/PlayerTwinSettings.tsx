@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Brain } from 'lucide-react';
+
+const PLAYERTWIN_STORAGE_KEY = 'esportsforge_playertwin';
 
 /* ─── Mock Data ─────────────────────────────────────────────── */
 
@@ -32,6 +34,26 @@ export default function PlayerTwinSettings() {
   const [wrongFlags, setWrongFlags] = useState<Set<number>>(new Set());
   const [correctFlags, setCorrectFlags] = useState<Set<number>>(new Set());
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  // Load corrections from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(PLAYERTWIN_STORAGE_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        if (data.wrongFlags) setWrongFlags(new Set(data.wrongFlags));
+        if (data.correctFlags) setCorrectFlags(new Set(data.correctFlags));
+      }
+    } catch {}
+  }, []);
+
+  // Save corrections to localStorage
+  useEffect(() => {
+    localStorage.setItem(PLAYERTWIN_STORAGE_KEY, JSON.stringify({
+      wrongFlags: Array.from(wrongFlags),
+      correctFlags: Array.from(correctFlags),
+    }));
+  }, [wrongFlags, correctFlags]);
 
   const handleCorrect = (idx: number) => {
     setCorrectFlags((prev) => {
@@ -264,7 +286,40 @@ export default function PlayerTwinSettings() {
         </div>
       </div>
 
-      {/* ── Section D: Twin Controls ── */}
+      {/* ── Section D: Evolution Chart ── */}
+      <div className="rounded-xl border border-dark-700 bg-dark-900/50 p-6">
+        <h3 className="text-sm font-bold text-dark-100 uppercase tracking-wider mb-4">
+          Twin Accuracy — Last 30 Days
+        </h3>
+
+        <div className="flex items-end gap-1 h-32">
+          {[62, 65, 64, 68, 70, 69, 72, 71, 74, 73, 75, 74, 76, 75, 77, 76, 78, 77, 79, 78, 80, 79, 78, 80, 79, 81, 80, 79, 78, 78].map(
+            (val, idx) => (
+              <div
+                key={idx}
+                className="flex-1 rounded-t transition-all hover:opacity-80"
+                style={{
+                  height: `${((val - 55) / 30) * 100}%`,
+                  backgroundColor:
+                    val >= 78
+                      ? 'rgb(34, 197, 94)'
+                      : val >= 70
+                        ? 'rgb(74, 222, 128)'
+                        : 'rgb(100, 116, 139)',
+                }}
+                title={`Day ${idx + 1}: ${val}%`}
+              />
+            )
+          )}
+        </div>
+
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-xs text-dark-500">30 days ago</span>
+          <span className="text-xs text-dark-500">Today</span>
+        </div>
+      </div>
+
+      {/* ── Section E: Twin Controls ── */}
       <div className="rounded-xl border border-dark-700 bg-dark-900/50 p-6">
         <h3 className="text-sm font-bold text-dark-100 uppercase tracking-wider mb-4">
           Twin Controls
