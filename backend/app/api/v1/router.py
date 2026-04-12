@@ -187,3 +187,11 @@ _mount("app.api.v1.endpoints.support",         prefix="/support",         tags=[
 # Admin
 # ═══════════════════════════════════════════════════════════════════════════
 _mount("app.api.v1.endpoints.admin",           prefix="/admin",           tags=["Admin"])
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Growth
+# ═══════════════════════════════════════════════════════════════════════════
+_mount("app.api.v1.endpoints.referrals",       prefix="/referrals",       tags=["Referrals"])
+_mount("app.api.v1.endpoints.push",            prefix="/push",            tags=["Push"])
+_mount("app.api.v1.endpoints.certifications",  prefix="/certifications",  tags=["Certifications"])
+_mount("app.api.v1.endpoints.leaderboard",     prefix="/leaderboard",     tags=["Leaderboard"])
