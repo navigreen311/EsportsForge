@@ -1,12 +1,14 @@
 /**
  * ForgeVault — Searchable Knowledge Base.
  * Full-text search across all competitive intelligence entries with
- * category filters, pinning, and expandable detail panels.
+ * category filters, pinning, expandable detail panels, sorting,
+ * voice search, and add-entry modal.
  */
 
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Search,
   Archive,
@@ -18,8 +20,16 @@ import {
   Tag,
   X,
   Sparkles,
+  Mic,
+  ExternalLink,
+  Trash2,
+  Crosshair,
+  PlayCircle,
+  FileText,
+  Plus,
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useVoiceForge } from '@/hooks/useVoiceForge';
 
 // ---------- Types ----------
 
@@ -29,7 +39,10 @@ type VaultCategory =
   | 'Loss Pattern'
   | 'Meta Counter'
   | 'Drill Result'
-  | 'Gameplan';
+  | 'Gameplan'
+  | 'Note';
+
+type SortOption = 'recent' | 'confidence' | 'category' | 'opponent';
 
 interface VaultEntry {
   id: string;
@@ -42,6 +55,7 @@ interface VaultEntry {
   confidence: number;
   relatedIds: string[];
   pinned: boolean;
+  tags?: string[];
 }
 
 // ---------- Mock Data ----------
@@ -272,6 +286,7 @@ const CATEGORIES: VaultCategory[] = [
   'Meta Counter',
   'Drill Result',
   'Gameplan',
+  'Note',
 ];
 
 const QUICK_SEARCHES = [
@@ -291,11 +306,64 @@ const CATEGORY_COLORS: Record<VaultCategory, string> = {
   'Meta Counter': 'bg-purple-500/15 text-purple-400',
   'Drill Result': 'bg-teal-500/15 text-teal-400',
   'Gameplan': 'bg-forge-500/15 text-forge-400',
+  'Note': 'bg-gray-500/15 text-gray-400',
 };
+
+const SORT_LABELS: Record<SortOption, string> = {
+  recent: 'Most Recent',
+  confidence: 'Highest Confidence',
+  category: 'By Category (A-Z)',
+  opponent: 'By Opponent',
+};
+
+// ---------- Helpers ----------
+
+function getSourceLabel(category: VaultCategory): string {
+  switch (category) {
+    case 'Drill Result':
+      return 'DrillBot';
+    case 'Kill Sheet':
+      return 'ScoutAI';
+    case 'Coverage Counter':
+    case 'Meta Counter':
+      return 'FilmAI';
+    default:
+      return 'Manual';
+  }
+}
+
+function getActionButton(category: VaultCategory): { label: string; icon: React.ReactNode } | null {
+  switch (category) {
+    case 'Coverage Counter':
+      return { label: 'Add to Gameplan', icon: <FileText className="h-3.5 w-3.5" /> };
+    case 'Kill Sheet':
+      return { label: 'Open Kill Sheet', icon: <Crosshair className="h-3.5 w-3.5" /> };
+    case 'Drill Result':
+      return { label: 'Re-run Drill', icon: <PlayCircle className="h-3.5 w-3.5" /> };
+    case 'Loss Pattern':
+      return { label: 'Create Counter Drill', icon: <PlayCircle className="h-3.5 w-3.5" /> };
+    case 'Gameplan':
+      return { label: 'Open Gameplan', icon: <FileText className="h-3.5 w-3.5" /> };
+    case 'Meta Counter':
+      return { label: 'Add to Gameplan', icon: <FileText className="h-3.5 w-3.5" /> };
+    default:
+      return null;
+  }
+}
+
+function getConfidenceColors(confidence: number): string {
+  if (confidence >= 90) return 'bg-[#DCFCE7] text-[#15803D]';
+  if (confidence >= 75) return 'bg-[#DBEAFE] text-[#1E40AF]';
+  if (confidence >= 60) return 'bg-[#FEF3C7] text-[#92400E]';
+  return 'bg-[#FEE2E2] text-[#B91C1C]';
+}
 
 // ---------- Component ----------
 
 export default function VaultPage() {
+  const router = useRouter();
+  const voice = useVoiceForge();
+
   const [entries, setEntries] = useState<VaultEntry[]>(MOCK_ENTRIES);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<VaultCategory | null>(null);
@@ -304,6 +372,15 @@ export default function VaultPage() {
   const [dateTo, setDateTo] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [sortOption, setSortOption] = useState<SortOption>('recent');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addTitle, setAddTitle] = useState('');
+  const [addCategory, setAddCategory] = useState<VaultCategory>('Note');
+  const [addOpponent, setAddOpponent] = useState('');
+  const [addContent, setAddContent] = useState('');
+  const [addTags, setAddTags] = useState('');
+
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -312,7 +389,9 @@ export default function VaultPage() {
 
   const opponents = useMemo(() => {
     const ops = new Set<string>();
-    entries.forEach((e) => { if (e.opponent) ops.add(e.opponent); });
+    entries.forEach((e) => {
+      if (e.opponent) ops.add(e.opponent);
+    });
     return Array.from(ops).sort();
   }, [entries]);
 
@@ -346,15 +425,34 @@ export default function VaultPage() {
       results = results.filter((e) => e.date <= dateTo);
     }
 
-    // Pinned first, then by date desc
-    results.sort((a, b) => {
-      if (a.pinned && !b.pinned) return -1;
-      if (!a.pinned && b.pinned) return 1;
-      return b.date.localeCompare(a.date);
-    });
+    // Sort based on selected option
+    switch (sortOption) {
+      case 'recent':
+        results.sort((a, b) => b.date.localeCompare(a.date));
+        break;
+      case 'confidence':
+        results.sort((a, b) => b.confidence - a.confidence);
+        break;
+      case 'category':
+        results.sort((a, b) => a.category.localeCompare(b.category));
+        break;
+      case 'opponent':
+        results.sort((a, b) => {
+          const oa = a.opponent ?? '';
+          const ob = b.opponent ?? '';
+          if (!oa && ob) return 1;
+          if (oa && !ob) return -1;
+          return oa.localeCompare(ob);
+        });
+        break;
+    }
 
     return results;
-  }, [entries, searchQuery, selectedCategory, selectedOpponent, dateFrom, dateTo]);
+  }, [entries, searchQuery, selectedCategory, selectedOpponent, dateFrom, dateTo, sortOption]);
+
+  // Split into pinned and regular
+  const pinnedEntries = useMemo(() => filteredEntries.filter((e) => e.pinned), [filteredEntries]);
+  const regularEntries = useMemo(() => filteredEntries.filter((e) => !e.pinned), [filteredEntries]);
 
   const togglePin = (id: string) => {
     setEntries((prev) =>
@@ -378,7 +476,223 @@ export default function VaultPage() {
     setDateTo('');
   };
 
+  const handleShare = (entry: VaultEntry) => {
+    const url = `${window.location.origin}/vault/${entry.id}`;
+    navigator.clipboard.writeText(url);
+    setCopiedId(entry.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this entry?')) {
+      setEntries((prev) => prev.filter((e) => e.id !== id));
+      if (expandedId === id) setExpandedId(null);
+    }
+  };
+
+  const handleVoiceSearch = async () => {
+    const transcript = await voice.listen({ timeout: 8000 });
+    if (transcript) {
+      setSearchQuery(transcript);
+    }
+  };
+
+  const openAddModalWithTitle = (title: string) => {
+    setAddTitle(title);
+    setAddCategory('Note');
+    setAddOpponent('');
+    setAddContent('');
+    setAddTags('');
+    setShowAddModal(true);
+  };
+
+  const handleAddEntry = () => {
+    if (!addTitle.trim()) return;
+    const today = new Date().toISOString().split('T')[0];
+    const newEntry: VaultEntry = {
+      id: String(Date.now()),
+      title: addTitle.trim(),
+      category: addCategory,
+      opponent: addOpponent.trim() || undefined,
+      date: today,
+      snippet: addContent.trim().substring(0, 120) + (addContent.trim().length > 120 ? '...' : ''),
+      content: addContent.trim(),
+      confidence: 100,
+      relatedIds: [],
+      pinned: false,
+      tags: addTags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
+    };
+    setEntries((prev) => [newEntry, ...prev]);
+    setShowAddModal(false);
+    setAddTitle('');
+    setAddCategory('Note');
+    setAddOpponent('');
+    setAddContent('');
+    setAddTags('');
+  };
+
   const hasActiveFilters = searchQuery || selectedCategory || selectedOpponent || dateFrom || dateTo;
+
+  // Render a single entry card
+  const renderCard = (entry: VaultEntry) => {
+    const isExpanded = expandedId === entry.id;
+    const relatedEntries = entries.filter((e) => entry.relatedIds.includes(e.id));
+    const actionButton = getActionButton(entry.category);
+
+    return (
+      <div
+        key={entry.id}
+        className={clsx(
+          'rounded-xl border transition-all duration-200',
+          entry.pinned
+            ? 'border-forge-500/30 bg-dark-900/80'
+            : 'border-dark-700/50 bg-dark-900/50',
+          isExpanded && 'lg:col-span-2'
+        )}
+      >
+        {/* Card Header */}
+        <div className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span
+                  className={clsx(
+                    'rounded-full px-2.5 py-0.5 text-[11px] font-medium',
+                    CATEGORY_COLORS[entry.category]
+                  )}
+                >
+                  {entry.category}
+                </span>
+                {entry.opponent && (
+                  <span className="rounded-full bg-dark-800 px-2.5 py-0.5 text-[11px] font-medium text-dark-300">
+                    vs {entry.opponent}
+                  </span>
+                )}
+                {entry.pinned && <Pin className="h-3 w-3 text-forge-400" />}
+              </div>
+              <h3 className="text-sm font-semibold text-dark-100">{entry.title}</h3>
+              <p className="mt-1 text-xs text-dark-400 line-clamp-2">{entry.snippet}</p>
+            </div>
+
+            {/* Confidence Score — 4 tier */}
+            <div className="flex flex-col items-center gap-1">
+              <div
+                className={clsx(
+                  'flex h-10 w-10 items-center justify-center rounded-lg text-xs font-bold',
+                  getConfidenceColors(entry.confidence)
+                )}
+              >
+                {entry.confidence}%
+              </div>
+            </div>
+          </div>
+
+          {/* Footer row */}
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[11px] text-dark-500">
+              <Calendar className="h-3 w-3" />
+              <span>{entry.date}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => togglePin(entry.id)}
+                className={clsx(
+                  'rounded-lg p-1.5 transition-colors',
+                  entry.pinned
+                    ? 'text-forge-400 hover:text-forge-300'
+                    : 'text-dark-600 hover:text-dark-300'
+                )}
+                title={entry.pinned ? 'Unpin' : 'Pin'}
+              >
+                {entry.pinned ? (
+                  <PinOff className="h-3.5 w-3.5" />
+                ) : (
+                  <Pin className="h-3.5 w-3.5" />
+                )}
+              </button>
+              <button
+                onClick={() => setExpandedId(isExpanded ? null : entry.id)}
+                className="rounded-lg p-1.5 text-dark-600 transition-colors hover:text-dark-300"
+              >
+                {isExpanded ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Expanded Detail */}
+        {isExpanded && (
+          <div className="border-t border-dark-700/50 p-4">
+            {/* Source label */}
+            <div className="mb-2 text-[11px] text-dark-500">
+              Source: <span className="font-medium text-dark-300">{getSourceLabel(entry.category)}</span>
+            </div>
+
+            <p className="text-sm leading-relaxed text-dark-200">{entry.content}</p>
+
+            {/* Action buttons */}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {actionButton && (
+                <button
+                  onClick={() => {
+                    // Navigation stubs based on category
+                    if (entry.category === 'Kill Sheet') router.push('/kill-sheet');
+                    else if (entry.category === 'Drill Result') router.push('/drills');
+                    else if (entry.category === 'Gameplan') router.push('/gameplan');
+                    else if (entry.category === 'Loss Pattern') router.push('/drills');
+                    else if (entry.category === 'Coverage Counter' || entry.category === 'Meta Counter')
+                      router.push('/gameplan');
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg bg-forge-500/15 px-3 py-1.5 text-xs font-medium text-forge-400 transition-colors hover:bg-forge-500/25"
+                >
+                  {actionButton.icon}
+                  {actionButton.label}
+                </button>
+              )}
+              <button
+                onClick={() => handleShare(entry)}
+                className="flex items-center gap-1.5 rounded-lg bg-dark-800 px-3 py-1.5 text-xs font-medium text-dark-300 transition-colors hover:bg-dark-700 hover:text-dark-100"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                {copiedId === entry.id ? 'Link copied!' : 'Share'}
+              </button>
+              <button
+                onClick={() => handleDelete(entry.id)}
+                className="flex items-center gap-1.5 rounded-lg bg-dark-800 px-3 py-1.5 text-xs font-medium text-red-400 transition-colors hover:bg-red-500/15"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </button>
+            </div>
+
+            {relatedEntries.length > 0 && (
+              <div className="mt-4">
+                <h4 className="mb-2 text-xs font-medium text-dark-400">Related Entries</h4>
+                <div className="flex flex-wrap gap-2">
+                  {relatedEntries.map((related) => (
+                    <button
+                      key={related.id}
+                      onClick={() => setExpandedId(related.id)}
+                      className="rounded-lg bg-dark-800 px-3 py-1.5 text-xs text-dark-300 transition-colors hover:bg-dark-700 hover:text-dark-100"
+                    >
+                      {related.title.substring(0, 40)}...
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -393,8 +707,17 @@ export default function VaultPage() {
             Your competitive knowledge base — search, filter, and pin intel.
           </p>
         </div>
-        <div className="text-sm text-dark-500">
-          {entries.length} entries | {entries.filter((e) => e.pinned).length} pinned
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => openAddModalWithTitle('')}
+            className="flex items-center gap-1.5 rounded-lg bg-forge-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-forge-600"
+          >
+            <Plus className="h-4 w-4" />
+            Add Entry
+          </button>
+          <div className="text-sm text-dark-500">
+            {entries.length} entries | {entries.filter((e) => e.pinned).length} pinned
+          </div>
         </div>
       </div>
 
@@ -407,16 +730,32 @@ export default function VaultPage() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search entries by title, content, opponent, category..."
-          className="w-full rounded-xl border border-dark-700/50 bg-dark-900 py-3.5 pl-12 pr-12 text-dark-100 placeholder-dark-500 transition-colors focus:border-forge-500/50 focus:outline-none focus:ring-1 focus:ring-forge-500/30"
+          className="w-full rounded-xl border border-dark-700/50 bg-dark-900 py-3.5 pl-12 pr-20 text-dark-100 placeholder-dark-500 transition-colors focus:border-forge-500/50 focus:outline-none focus:ring-1 focus:ring-forge-500/30"
         />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-dark-500 hover:text-dark-300"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
+        <div className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-2">
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-dark-500 hover:text-dark-300"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          {voice.isAvailable && (
+            <button
+              onClick={handleVoiceSearch}
+              className={clsx(
+                'rounded-lg p-1 transition-colors',
+                voice.isListening
+                  ? 'animate-pulse text-green-400'
+                  : 'text-dark-500 hover:text-dark-300'
+              )}
+              title="Voice search"
+            >
+              <Mic className="h-4 w-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Quick Searches */}
@@ -440,15 +779,19 @@ export default function VaultPage() {
         ))}
       </div>
 
-      {/* Filters Toggle */}
-      <div>
+      {/* Filters Toggle + Sort */}
+      <div className="flex items-center justify-between">
         <button
           onClick={() => setShowFilters(!showFilters)}
           className="flex items-center gap-2 text-sm font-medium text-dark-400 hover:text-dark-200"
         >
           <Tag className="h-4 w-4" />
           Filters
-          {showFilters ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          {showFilters ? (
+            <ChevronUp className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5" />
+          )}
           {hasActiveFilters && (
             <span className="ml-1 rounded-full bg-forge-500/20 px-2 py-0.5 text-[10px] text-forge-400">
               Active
@@ -456,204 +799,263 @@ export default function VaultPage() {
           )}
         </button>
 
-        {showFilters && (
-          <div className="mt-3 grid grid-cols-1 gap-3 rounded-xl border border-dark-700/50 bg-dark-900/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Category */}
-            <div>
-              <label className="mb-1 block text-xs font-medium text-dark-400">Category</label>
-              <select
-                value={selectedCategory ?? ''}
-                onChange={(e) => setSelectedCategory(e.target.value as VaultCategory || null)}
-                className="w-full rounded-lg border border-dark-700/50 bg-dark-800 px-3 py-2 text-sm text-dark-200 focus:border-forge-500/50 focus:outline-none"
-              >
-                <option value="">All Categories</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Opponent */}
-            <div>
-              <label className="mb-1 block text-xs font-medium text-dark-400">Opponent</label>
-              <select
-                value={selectedOpponent ?? ''}
-                onChange={(e) => setSelectedOpponent(e.target.value || null)}
-                className="w-full rounded-lg border border-dark-700/50 bg-dark-800 px-3 py-2 text-sm text-dark-200 focus:border-forge-500/50 focus:outline-none"
-              >
-                <option value="">All Opponents</option>
-                {opponents.map((o) => (
-                  <option key={o} value={o}>{o}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Date From */}
-            <div>
-              <label className="mb-1 block text-xs font-medium text-dark-400">From</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full rounded-lg border border-dark-700/50 bg-dark-800 px-3 py-2 text-sm text-dark-200 focus:border-forge-500/50 focus:outline-none"
-              />
-            </div>
-
-            {/* Date To */}
-            <div>
-              <label className="mb-1 block text-xs font-medium text-dark-400">To</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-full rounded-lg border border-dark-700/50 bg-dark-800 px-3 py-2 text-sm text-dark-200 focus:border-forge-500/50 focus:outline-none"
-              />
-            </div>
-
-            {/* Clear */}
-            {hasActiveFilters && (
-              <div className="flex items-end sm:col-span-2 lg:col-span-4">
-                <button
-                  onClick={clearFilters}
-                  className="text-xs font-medium text-dark-500 hover:text-red-400"
-                >
-                  Clear all filters
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Sort Dropdown */}
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-dark-500">Sort:</label>
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value as SortOption)}
+            className="rounded-lg border border-dark-700/50 bg-dark-800 px-2 py-1 text-xs text-dark-200 focus:border-forge-500/50 focus:outline-none"
+          >
+            {(Object.keys(SORT_LABELS) as SortOption[]).map((key) => (
+              <option key={key} value={key}>
+                {SORT_LABELS[key]}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {showFilters && (
+        <div className="grid grid-cols-1 gap-3 rounded-xl border border-dark-700/50 bg-dark-900/50 p-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Category */}
+          <div>
+            <label className="mb-1 block text-xs font-medium text-dark-400">Category</label>
+            <select
+              value={selectedCategory ?? ''}
+              onChange={(e) =>
+                setSelectedCategory((e.target.value as VaultCategory) || null)
+              }
+              className="w-full rounded-lg border border-dark-700/50 bg-dark-800 px-3 py-2 text-sm text-dark-200 focus:border-forge-500/50 focus:outline-none"
+            >
+              <option value="">All Categories</option>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Opponent */}
+          <div>
+            <label className="mb-1 block text-xs font-medium text-dark-400">Opponent</label>
+            <select
+              value={selectedOpponent ?? ''}
+              onChange={(e) => setSelectedOpponent(e.target.value || null)}
+              className="w-full rounded-lg border border-dark-700/50 bg-dark-800 px-3 py-2 text-sm text-dark-200 focus:border-forge-500/50 focus:outline-none"
+            >
+              <option value="">All Opponents</option>
+              {opponents.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Date From */}
+          <div>
+            <label className="mb-1 block text-xs font-medium text-dark-400">From</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full rounded-lg border border-dark-700/50 bg-dark-800 px-3 py-2 text-sm text-dark-200 focus:border-forge-500/50 focus:outline-none"
+            />
+          </div>
+
+          {/* Date To */}
+          <div>
+            <label className="mb-1 block text-xs font-medium text-dark-400">To</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full rounded-lg border border-dark-700/50 bg-dark-800 px-3 py-2 text-sm text-dark-200 focus:border-forge-500/50 focus:outline-none"
+            />
+          </div>
+
+          {/* Clear */}
+          {hasActiveFilters && (
+            <div className="flex items-end sm:col-span-2 lg:col-span-4">
+              <button
+                onClick={clearFilters}
+                className="text-xs font-medium text-dark-500 hover:text-red-400"
+              >
+                Clear all filters
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Results Count */}
       <div className="text-sm text-dark-500">
         {filteredEntries.length} result{filteredEntries.length !== 1 ? 's' : ''}
-        {!hasActiveFilters && ' (recent entries)'}
+        {hasActiveFilters ? ` — sorted by ${SORT_LABELS[sortOption].toLowerCase()}` : ` (${SORT_LABELS[sortOption].toLowerCase()})`}
       </div>
 
-      {/* Results Grid */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {filteredEntries.map((entry) => {
-          const isExpanded = expandedId === entry.id;
-          const relatedEntries = entries.filter((e) => entry.relatedIds.includes(e.id));
-
-          return (
-            <div
-              key={entry.id}
-              className={clsx(
-                'rounded-xl border transition-all duration-200',
-                entry.pinned
-                  ? 'border-forge-500/30 bg-dark-900/80'
-                  : 'border-dark-700/50 bg-dark-900/50',
-                isExpanded && 'lg:col-span-2'
-              )}
-            >
-              {/* Card Header */}
-              <div className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <span className={clsx('rounded-full px-2.5 py-0.5 text-[11px] font-medium', CATEGORY_COLORS[entry.category])}>
-                        {entry.category}
-                      </span>
-                      {entry.opponent && (
-                        <span className="rounded-full bg-dark-800 px-2.5 py-0.5 text-[11px] font-medium text-dark-300">
-                          vs {entry.opponent}
-                        </span>
-                      )}
-                      {entry.pinned && (
-                        <Pin className="h-3 w-3 text-forge-400" />
-                      )}
-                    </div>
-                    <h3 className="text-sm font-semibold text-dark-100">{entry.title}</h3>
-                    <p className="mt-1 text-xs text-dark-400 line-clamp-2">{entry.snippet}</p>
-                  </div>
-
-                  {/* Confidence Score */}
-                  <div className="flex flex-col items-center gap-1">
-                    <div
-                      className={clsx(
-                        'flex h-10 w-10 items-center justify-center rounded-lg text-xs font-bold',
-                        entry.confidence >= 90
-                          ? 'bg-forge-500/15 text-forge-400'
-                          : entry.confidence >= 80
-                          ? 'bg-blue-500/15 text-blue-400'
-                          : 'bg-dark-800 text-dark-300'
-                      )}
-                    >
-                      {entry.confidence}%
-                    </div>
-                  </div>
-                </div>
-
-                {/* Footer row */}
-                <div className="mt-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-[11px] text-dark-500">
-                    <Calendar className="h-3 w-3" />
-                    <span>{entry.date}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => togglePin(entry.id)}
-                      className={clsx(
-                        'rounded-lg p-1.5 transition-colors',
-                        entry.pinned
-                          ? 'text-forge-400 hover:text-forge-300'
-                          : 'text-dark-600 hover:text-dark-300'
-                      )}
-                      title={entry.pinned ? 'Unpin' : 'Pin'}
-                    >
-                      {entry.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-                    </button>
-                    <button
-                      onClick={() => setExpandedId(isExpanded ? null : entry.id)}
-                      className="rounded-lg p-1.5 text-dark-600 transition-colors hover:text-dark-300"
-                    >
-                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Expanded Detail */}
-              {isExpanded && (
-                <div className="border-t border-dark-700/50 p-4">
-                  <p className="text-sm leading-relaxed text-dark-200">{entry.content}</p>
-
-                  {relatedEntries.length > 0 && (
-                    <div className="mt-4">
-                      <h4 className="mb-2 text-xs font-medium text-dark-400">Related Entries</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {relatedEntries.map((related) => (
-                          <button
-                            key={related.id}
-                            onClick={() => setExpandedId(related.id)}
-                            className="rounded-lg bg-dark-800 px-3 py-1.5 text-xs text-dark-300 transition-colors hover:bg-dark-700 hover:text-dark-100"
-                          >
-                            {related.title.substring(0, 40)}...
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+      {/* Pinned Section */}
+      {pinnedEntries.length > 0 && (
+        <>
+          <div>
+            <h2 className="mb-3 text-sm font-semibold text-forge-400">
+              Pinned ({pinnedEntries.length})
+            </h2>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {pinnedEntries.map(renderCard)}
             </div>
-          );
-        })}
-      </div>
+          </div>
 
-      {/* Empty state */}
+          {/* Divider */}
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-dark-700/50" />
+            <span className="text-xs font-medium text-dark-500">All entries</span>
+            <div className="h-px flex-1 bg-dark-700/50" />
+          </div>
+        </>
+      )}
+
+      {/* Regular Results Grid */}
+      {regularEntries.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {regularEntries.map(renderCard)}
+        </div>
+      )}
+
+      {/* Empty / Zero Results State */}
       {filteredEntries.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dark-700/50 bg-dark-900/50 py-16">
           <Archive className="mb-3 h-10 w-10 text-dark-600" />
-          <p className="text-sm font-medium text-dark-400">No entries match your search.</p>
-          <button
-            onClick={clearFilters}
-            className="mt-2 text-xs text-forge-400 hover:text-forge-300"
-          >
-            Clear filters
-          </button>
+          <p className="text-sm font-medium text-dark-400">
+            No entries match{searchQuery ? ` "${searchQuery}"` : ' your search'}.
+          </p>
+          <p className="mt-2 max-w-md text-center text-xs text-dark-500">
+            Try searching for &quot;Cover 3 counters&quot;, &quot;Kill sheet&quot;, or &quot;Loss patterns&quot; to find entries.
+          </p>
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              onClick={clearFilters}
+              className="rounded-lg bg-dark-800 px-3 py-1.5 text-xs font-medium text-dark-300 transition-colors hover:bg-dark-700 hover:text-dark-100"
+            >
+              Clear search
+            </button>
+            <button
+              onClick={() => openAddModalWithTitle(searchQuery)}
+              className="flex items-center gap-1.5 rounded-lg bg-forge-500/15 px-3 py-1.5 text-xs font-medium text-forge-400 transition-colors hover:bg-forge-500/25"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add this as new entry
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Entry Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-lg rounded-xl border border-dark-700/50 bg-dark-900 p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-dark-100">Add New Entry</h2>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="text-dark-500 hover:text-dark-300"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Title */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-dark-400">Title</label>
+                <input
+                  type="text"
+                  value={addTitle}
+                  onChange={(e) => setAddTitle(e.target.value)}
+                  placeholder="Entry title..."
+                  className="w-full rounded-lg border border-dark-700/50 bg-dark-800 px-3 py-2 text-sm text-dark-200 placeholder-dark-500 focus:border-forge-500/50 focus:outline-none"
+                />
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-dark-400">Category</label>
+                <select
+                  value={addCategory}
+                  onChange={(e) => setAddCategory(e.target.value as VaultCategory)}
+                  className="w-full rounded-lg border border-dark-700/50 bg-dark-800 px-3 py-2 text-sm text-dark-200 focus:border-forge-500/50 focus:outline-none"
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Opponent */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-dark-400">
+                  Opponent (optional)
+                </label>
+                <input
+                  type="text"
+                  value={addOpponent}
+                  onChange={(e) => setAddOpponent(e.target.value)}
+                  placeholder="Opponent name..."
+                  className="w-full rounded-lg border border-dark-700/50 bg-dark-800 px-3 py-2 text-sm text-dark-200 placeholder-dark-500 focus:border-forge-500/50 focus:outline-none"
+                />
+              </div>
+
+              {/* Content */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-dark-400">
+                  Content ({addContent.length}/2000)
+                </label>
+                <textarea
+                  value={addContent}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 2000) setAddContent(e.target.value);
+                  }}
+                  placeholder="Entry content..."
+                  rows={5}
+                  className="w-full rounded-lg border border-dark-700/50 bg-dark-800 px-3 py-2 text-sm text-dark-200 placeholder-dark-500 focus:border-forge-500/50 focus:outline-none"
+                />
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-dark-400">
+                  Tags (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={addTags}
+                  onChange={(e) => setAddTags(e.target.value)}
+                  placeholder="tag1, tag2, tag3..."
+                  className="w-full rounded-lg border border-dark-700/50 bg-dark-800 px-3 py-2 text-sm text-dark-200 placeholder-dark-500 focus:border-forge-500/50 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-dark-400 transition-colors hover:text-dark-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddEntry}
+                disabled={!addTitle.trim()}
+                className="rounded-lg bg-forge-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-forge-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Save Entry
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
