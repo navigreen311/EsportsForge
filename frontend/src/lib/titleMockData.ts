@@ -165,10 +165,11 @@ const madden26: TitleDashboardData = {
     ],
   },
   benchmarks: [
-    { label: 'Read Speed', percentile: 72 },
-    { label: 'Clutch Conversion', percentile: 34 },
-    { label: 'User Defense', percentile: 58 },
-    { label: 'Execution Under Pressure', percentile: 81 },
+    { label: 'Win Rate', percentile: 72 },
+    { label: 'Read Speed', percentile: 58 },
+    { label: 'Red Zone', percentile: 81 },
+    { label: 'Clutch', percentile: 65 },
+    { label: 'Adaptation', percentile: 43 },
   ],
   debrief: {
     gameTimestamp: '2h ago',

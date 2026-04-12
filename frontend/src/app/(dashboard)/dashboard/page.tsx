@@ -38,6 +38,9 @@ import LoopAIDebriefCard from '@/components/dashboard/LoopAIDebriefCard';
 import BenchmarkPanel from '@/components/dashboard/BenchmarkPanel';
 import ProgressionStrip from '@/components/dashboard/ProgressionStrip';
 import { DailyForgeCard } from '@/components/dailyforge/DailyForgeCard';
+import TransferAIWidget from '@/components/dashboard/TransferAIWidget';
+import LoopAIDebrief from '@/components/dashboard/LoopAIDebrief';
+import ProofAIPanel from '@/components/dashboard/ProofAIPanel';
 import type { TiltGuardMood } from '@/types/dashboard';
 
 export default function DashboardPage() {
@@ -136,6 +139,9 @@ export default function DashboardPage() {
       {/* 3. TransferAI Execution Gap */}
       <ExecutionGapCard gap={data.executionGap} />
 
+      {/* TransferAI Lab vs Live Widget */}
+      <TransferAIWidget />
+
       {/* 6. BenchmarkAI Percentile Panel */}
       <BenchmarkPanel benchmarks={data.benchmarks} />
 
@@ -145,6 +151,9 @@ export default function DashboardPage() {
           {/* 4. LoopAI Last Game Debrief */}
           <LoopAIDebriefCard debrief={data.lastDebrief} />
 
+          {/* LoopAI Session Debrief Bullets */}
+          <LoopAIDebrief />
+
           {/* 7. Recommendations with Proof Layer */}
           <RecentRecommendations
             recommendations={data.recentRecommendations}
@@ -152,6 +161,9 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-6">
+          {/* ProofAI Evidence Panel */}
+          <ProofAIPanel />
+
           <WeeklyNarrative narrative={data.weeklyNarrative} />
 
           {/* Upcoming Tournament */}
