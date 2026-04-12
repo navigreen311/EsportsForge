@@ -2,40 +2,203 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+import uuid
+from datetime import datetime, timezone
+from typing import Any
 
-router = APIRouter(prefix="/drills", tags=["Drills"])
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import get_current_user
+from app.db.base import get_db
+from app.models.drill import Drill
+from app.models.user import User
+from app.services.ai.forgecore import forgecore
+
+router = APIRouter(tags=["Drills"])
+
+
+# ---------------------------------------------------------------------------
+# Schemas
+# ---------------------------------------------------------------------------
+
+class DrillOut(BaseModel):
+    """Response schema for a single drill."""
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    title: str
+    skill_target: str
+    difficulty_level: str
+    drill_config: dict[str, Any] | None = None
+    completion_count: int = 0
+    success_rate: float = 0.0
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class DrillListOut(BaseModel):
+    """List of drills for a user."""
+
+    user_id: str
+    title: str
+    drills: list[DrillOut]
+    total: int
+
+
+class DrillCompleteRequest(BaseModel):
+    """Request payload for recording drill completion."""
+
+    success: bool = Field(description="Whether the drill was completed successfully")
+
+
+class DrillHistoryOut(BaseModel):
+    """Drill history and progression for a user."""
+
+    user_id: str
+    title: str
+    history: list[DrillOut]
+    total_completions: int
+    average_success_rate: float
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
 
 @router.get("/{user_id}")
 async def list_drills(
     user_id: str,
     title: str = Query(..., description="Game title"),
-):
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DrillListOut:
     """List all drills assigned to a player."""
-    return {"user_id": user_id, "title": title, "drills": [], "status": "stub — implementation pending"}
+    query = (
+        select(Drill)
+        .where(Drill.user_id == user_id, Drill.title == title)
+        .order_by(Drill.created_at.desc())
+    )
+    result = await db.execute(query)
+    drills = list(result.scalars().all())
+
+    return DrillListOut(
+        user_id=user_id,
+        title=title,
+        drills=drills,
+        total=len(drills),
+    )
 
 
-@router.post("/{user_id}/generate")
+@router.post("/{user_id}/generate", status_code=status.HTTP_201_CREATED)
 async def generate_drill(
     user_id: str,
     title: str = Query(..., description="Game title"),
     focus_area: str = Query(..., description="Skill area to drill"),
-):
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DrillOut:
     """Generate a targeted drill based on player weaknesses."""
-    return {"user_id": user_id, "title": title, "focus_area": focus_area, "status": "stub — implementation pending"}
+    # Ask ForgeCore for AI-generated drill configuration
+    ai_result = await forgecore.agent_query(
+        agent="drill",
+        message=f"Generate a training drill for {title} focusing on {focus_area}.",
+        context={
+            "user_id": user_id,
+            "title": title,
+            "focus_area": focus_area,
+        },
+    )
+
+    ai_data = ai_result.get("data", {})
+    ai_drills = ai_data.get("drills", [])
+    drill_config = ai_drills[0] if ai_drills else {"focus": focus_area}
+
+    drill = Drill(
+        user_id=user_id,
+        title=title,
+        skill_target=focus_area,
+        difficulty_level=drill_config.get("difficulty", "intermediate"),
+        drill_config=drill_config,
+        completion_count=0,
+        success_rate=0.0,
+    )
+    db.add(drill)
+    await db.flush()
+    await db.refresh(drill)
+
+    return drill
 
 
 @router.post("/{user_id}/{drill_id}/complete")
-async def complete_drill(user_id: str, drill_id: str):
+async def complete_drill(
+    user_id: str,
+    drill_id: str,
+    payload: DrillCompleteRequest | None = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DrillOut:
     """Record drill completion results."""
-    return {"user_id": user_id, "drill_id": drill_id, "status": "stub — implementation pending"}
+    result = await db.execute(
+        select(Drill).where(
+            Drill.id == drill_id,
+            Drill.user_id == user_id,
+        )
+    )
+    drill = result.scalar_one_or_none()
+    if not drill:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Drill not found.",
+        )
+
+    success = payload.success if payload else True
+    drill.completion_count += 1
+    # Recalculate success rate as a running average
+    total = drill.completion_count
+    if total == 1:
+        drill.success_rate = 1.0 if success else 0.0
+    else:
+        prev_successes = drill.success_rate * (total - 1)
+        drill.success_rate = (prev_successes + (1.0 if success else 0.0)) / total
+
+    await db.flush()
+    await db.refresh(drill)
+
+    return drill
 
 
 @router.get("/{user_id}/history")
 async def drill_history(
     user_id: str,
     title: str = Query(..., description="Game title"),
-):
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> DrillHistoryOut:
     """Get drill history and progression."""
-    return {"user_id": user_id, "title": title, "history": [], "status": "stub — implementation pending"}
+    query = (
+        select(Drill)
+        .where(Drill.user_id == user_id, Drill.title == title)
+        .order_by(Drill.created_at.desc())
+    )
+    result = await db.execute(query)
+    drills = list(result.scalars().all())
+
+    total_completions = sum(d.completion_count for d in drills)
+    avg_success = (
+        sum(d.success_rate * d.completion_count for d in drills) / total_completions
+        if total_completions > 0
+        else 0.0
+    )
+
+    return DrillHistoryOut(
+        user_id=user_id,
+        title=title,
+        history=drills,
+        total_completions=total_completions,
+        average_success_rate=round(avg_success, 4),
+    )

@@ -6,8 +6,15 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.security import get_current_user
+from app.db.base import get_db
+from app.models.recommendation import Recommendation
+from app.models.user import User
 
 router = APIRouter(tags=["Recommendations"])
 
@@ -68,62 +75,6 @@ class FeedbackAck(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Mock store (seeded with sample data)
-# ---------------------------------------------------------------------------
-
-_SEED_USER = uuid.UUID("00000000-0000-0000-0000-000000000001")
-
-_recommendations: dict[uuid.UUID, dict] = {}
-
-def _seed() -> None:
-    """Populate the mock store with sample recommendations."""
-    if _recommendations:
-        return
-    now = datetime.now(timezone.utc)
-    samples = [
-        {
-            "agent_source": "MetaVersionAgent",
-            "recommendation_type": "play_call",
-            "title": "madden26",
-            "content": {
-                "summary": "Switch to Gun Bunch Wk against Cover-3 tendency.",
-                "proof": "Opponent ran Cover-3 on 68% of 3rd-and-long situations.",
-            },
-            "confidence_score": 0.87,
-        },
-        {
-            "agent_source": "OpponentModelAgent",
-            "recommendation_type": "counter_strategy",
-            "title": "cfb26",
-            "content": {
-                "summary": "Expect RPO on early downs; crash the DE.",
-                "proof": "Last 5 games: RPO rate 72% on 1st down.",
-            },
-            "confidence_score": 0.74,
-        },
-    ]
-    for s in samples:
-        rec_id = uuid.uuid4()
-        _recommendations[rec_id] = {
-            "id": rec_id,
-            "user_id": _SEED_USER,
-            "session_id": None,
-            "agent_source": s["agent_source"],
-            "recommendation_type": s["recommendation_type"],
-            "content": s["content"],
-            "confidence_score": s["confidence_score"],
-            "impact_score": None,
-            "was_followed": None,
-            "outcome_correct": None,
-            "created_at": now,
-            "updated_at": now,
-        }
-
-
-_seed()
-
-
-# ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
@@ -134,24 +85,31 @@ _seed()
 )
 async def list_recommendations(
     agent_source: str | None = Query(default=None, description="Filter by agent name."),
-    title: str | None = Query(default=None, description="Filter by game title."),
+    recommendation_type: str | None = Query(default=None, description="Filter by recommendation type."),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> RecommendationListOut:
     """Return a paginated list of the user's ForgeCore recommendations."""
-    items = list(_recommendations.values())
+    base = select(Recommendation).where(Recommendation.user_id == str(current_user.id))
 
     if agent_source:
-        items = [r for r in items if r["agent_source"] == agent_source]
-    if title:
-        items = [r for r in items if r["content"].get("title") == title or r.get("title") == title]
+        base = base.where(Recommendation.agent_source == agent_source)
+    if recommendation_type:
+        base = base.where(Recommendation.recommendation_type == recommendation_type)
 
-    total = len(items)
-    start = (page - 1) * page_size
-    page_items = items[start : start + page_size]
+    # Total count
+    count_q = select(func.count()).select_from(base.subquery())
+    total = (await db.execute(count_q)).scalar_one()
+
+    # Paginated items
+    items_q = base.order_by(Recommendation.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(items_q)
+    items = list(result.scalars().all())
 
     return RecommendationListOut(
-        items=[RecommendationOut(**r) for r in page_items],
+        items=items,
         total=total,
         page=page,
         page_size=page_size,
@@ -163,15 +121,25 @@ async def list_recommendations(
     response_model=RecommendationOut,
     summary="Get recommendation detail with proof",
 )
-async def get_recommendation(recommendation_id: uuid.UUID) -> RecommendationOut:
+async def get_recommendation(
+    recommendation_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> RecommendationOut:
     """Retrieve a single recommendation, including its proof/reasoning payload."""
-    rec = _recommendations.get(recommendation_id)
+    result = await db.execute(
+        select(Recommendation).where(
+            Recommendation.id == str(recommendation_id),
+            Recommendation.user_id == str(current_user.id),
+        )
+    )
+    rec = result.scalar_one_or_none()
     if not rec:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Recommendation not found.",
         )
-    return RecommendationOut(**rec)
+    return rec
 
 
 @router.post(
@@ -183,20 +151,29 @@ async def get_recommendation(recommendation_id: uuid.UUID) -> RecommendationOut:
 async def submit_feedback(
     recommendation_id: uuid.UUID,
     payload: RecommendationFeedback,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> FeedbackAck:
     """Mark a recommendation as followed/ignored and record outcome."""
-    rec = _recommendations.get(recommendation_id)
+    result = await db.execute(
+        select(Recommendation).where(
+            Recommendation.id == str(recommendation_id),
+            Recommendation.user_id == str(current_user.id),
+        )
+    )
+    rec = result.scalar_one_or_none()
     if not rec:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Recommendation not found.",
         )
 
-    rec["was_followed"] = payload.was_followed
+    rec.was_followed = payload.was_followed
     if payload.outcome_correct is not None:
-        rec["outcome_correct"] = payload.outcome_correct
+        rec.outcome_correct = payload.outcome_correct
     if payload.impact_score is not None:
-        rec["impact_score"] = payload.impact_score
-    rec["updated_at"] = datetime.now(timezone.utc)
+        rec.impact_score = payload.impact_score
+
+    await db.flush()
 
     return FeedbackAck(recommendation_id=recommendation_id)

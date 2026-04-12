@@ -6,8 +6,16 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.security import get_current_user
+from app.db.base import get_db
+from app.models.gameplan import Gameplan
+from app.models.user import User
+from app.services.ai.forgecore import forgecore
 
 router = APIRouter(tags=["Gameplans"])
 
@@ -19,7 +27,6 @@ router = APIRouter(tags=["Gameplans"])
 class GameplanGenerateRequest(BaseModel):
     """Request payload for AI-generated gameplan."""
 
-    user_id: uuid.UUID
     title: str = Field(max_length=100, description="Game title slug.")
     opponent_id: uuid.UUID | None = None
     mode: str = Field(default="ranked", description="Game mode context.")
@@ -64,60 +71,6 @@ class GameplanDeleteAck(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Mock store
-# ---------------------------------------------------------------------------
-
-_gameplans: dict[uuid.UUID, dict] = {}
-
-
-def _generate_mock_gameplan(req: GameplanGenerateRequest) -> dict:
-    """Simulate GameplanAI producing a gameplan."""
-    now = datetime.now(timezone.utc)
-    return {
-        "id": uuid.uuid4(),
-        "user_id": req.user_id,
-        "title": req.title,
-        "opponent_id": req.opponent_id,
-        "plays": [
-            {
-                "order": 1,
-                "name": "Gun Bunch Wk — Mesh Post",
-                "situation": "3rd & medium",
-                "notes": "High success vs Cover-3; attack the seam.",
-            },
-            {
-                "order": 2,
-                "name": "Singleback Ace — HB Dive",
-                "situation": "1st & 10",
-                "notes": "Establish the run early to open play-action.",
-            },
-            {
-                "order": 3,
-                "name": "Shotgun Trips — Corner Strike",
-                "situation": "Red zone",
-                "notes": "Exploit soft zone coverage inside the 20.",
-            },
-        ],
-        "kill_sheet": {
-            "opponent_tendencies": {
-                "cover_3_rate": 0.68,
-                "blitz_rate": 0.22,
-                "run_stuff_tendency": "weak side crash",
-            },
-            "exploits": [
-                "Seam routes vs Cover-3 split-safety look.",
-                "RPO left when DE crashes inside.",
-            ],
-        },
-        "meta_snapshot": f"Meta v2026.03 — {req.title} current competitive meta.",
-        "expires_at": (now + timedelta(days=7)).isoformat(),
-        "is_archived": False,
-        "created_at": now,
-        "updated_at": now,
-    }
-
-
-# ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
@@ -127,11 +80,46 @@ def _generate_mock_gameplan(req: GameplanGenerateRequest) -> dict:
     status_code=status.HTTP_201_CREATED,
     summary="Generate a gameplan via GameplanAI",
 )
-async def generate_gameplan(payload: GameplanGenerateRequest) -> GameplanOut:
+async def generate_gameplan(
+    payload: GameplanGenerateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GameplanOut:
     """Call GameplanAI to produce a strategic gameplan with plays and kill sheet."""
-    plan = _generate_mock_gameplan(payload)
-    _gameplans[plan["id"]] = plan
-    return GameplanOut(**plan)
+    now = datetime.now(timezone.utc)
+
+    # Ask ForgeCore for AI-generated plays
+    ai_result = await forgecore.agent_query(
+        agent="gameplan",
+        message=f"Generate a competitive gameplan for {payload.title} in {payload.mode} mode.",
+        context={
+            "title": payload.title,
+            "mode": payload.mode,
+            "opponent_id": str(payload.opponent_id) if payload.opponent_id else None,
+            "preferences": payload.preferences,
+        },
+    )
+
+    ai_data = ai_result.get("data", {})
+    plays = ai_data.get("plays")
+    kill_sheet = ai_data.get("kill_sheet")
+    meta_snapshot = ai_data.get("meta_snapshot", f"Meta snapshot -- {payload.title} ({payload.mode})")
+
+    gameplan = Gameplan(
+        user_id=str(current_user.id),
+        title=payload.title,
+        opponent_id=str(payload.opponent_id) if payload.opponent_id else None,
+        plays=plays,
+        kill_sheet=kill_sheet,
+        meta_snapshot=meta_snapshot,
+        expires_at=now + timedelta(days=7),
+        is_archived=False,
+    )
+    db.add(gameplan)
+    await db.flush()
+    await db.refresh(gameplan)
+
+    return gameplan
 
 
 @router.get(
@@ -144,21 +132,28 @@ async def list_gameplans(
     include_archived: bool = Query(default=False, description="Include archived gameplans."),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> GameplanListOut:
     """Return a paginated list of the user's gameplans."""
-    items = list(_gameplans.values())
+    base = select(Gameplan).where(Gameplan.user_id == str(current_user.id))
 
     if not include_archived:
-        items = [g for g in items if not g.get("is_archived")]
+        base = base.where(Gameplan.is_archived == False)  # noqa: E712
     if title:
-        items = [g for g in items if g["title"] == title]
+        base = base.where(Gameplan.title == title)
 
-    total = len(items)
-    start = (page - 1) * page_size
-    page_items = items[start : start + page_size]
+    # Total count
+    count_q = select(func.count()).select_from(base.subquery())
+    total = (await db.execute(count_q)).scalar_one()
+
+    # Paginated items
+    items_q = base.order_by(Gameplan.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(items_q)
+    items = list(result.scalars().all())
 
     return GameplanListOut(
-        items=[GameplanOut(**g) for g in page_items],
+        items=items,
         total=total,
         page=page,
         page_size=page_size,
@@ -170,15 +165,25 @@ async def list_gameplans(
     response_model=GameplanOut,
     summary="Get gameplan detail with plays and kill sheet",
 )
-async def get_gameplan(gameplan_id: uuid.UUID) -> GameplanOut:
+async def get_gameplan(
+    gameplan_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GameplanOut:
     """Retrieve a single gameplan with full plays and kill sheet."""
-    plan = _gameplans.get(gameplan_id)
+    result = await db.execute(
+        select(Gameplan).where(
+            Gameplan.id == str(gameplan_id),
+            Gameplan.user_id == str(current_user.id),
+        )
+    )
+    plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Gameplan not found.",
         )
-    return GameplanOut(**plan)
+    return plan
 
 
 @router.delete(
@@ -186,15 +191,26 @@ async def get_gameplan(gameplan_id: uuid.UUID) -> GameplanOut:
     response_model=GameplanDeleteAck,
     summary="Archive a gameplan",
 )
-async def archive_gameplan(gameplan_id: uuid.UUID) -> GameplanDeleteAck:
+async def archive_gameplan(
+    gameplan_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GameplanDeleteAck:
     """Soft-delete (archive) a gameplan. Does not permanently remove data."""
-    plan = _gameplans.get(gameplan_id)
+    result = await db.execute(
+        select(Gameplan).where(
+            Gameplan.id == str(gameplan_id),
+            Gameplan.user_id == str(current_user.id),
+        )
+    )
+    plan = result.scalar_one_or_none()
     if not plan:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Gameplan not found.",
         )
 
-    plan["is_archived"] = True
-    plan["updated_at"] = datetime.now(timezone.utc)
+    plan.is_archived = True
+    await db.flush()
+
     return GameplanDeleteAck(gameplan_id=gameplan_id)

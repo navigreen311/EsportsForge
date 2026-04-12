@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -51,6 +51,9 @@ class Gameplan(UUIDPrimaryKeyMixin, Base):
     )
     expires_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True, comment="When this plan becomes stale"
+    )
+    is_archived: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, comment="Soft-delete flag"
     )
 
     # Relationships
