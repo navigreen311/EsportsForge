@@ -20,10 +20,10 @@ export default function VisionStatusIcon() {
   const currentMode = useUIStore((s) => s.currentMode);
 
   // Determine status based on integrity / game mode
-  const status: VisionStatus =
-    currentMode === 'ranked' || currentMode === 'tournament'
+  const status =
+    (currentMode === 'ranked' || currentMode === 'tournament'
       ? 'restricted'
-      : 'active';
+      : 'active') as VisionStatus;
 
   const isRestricted = status === 'restricted';
 

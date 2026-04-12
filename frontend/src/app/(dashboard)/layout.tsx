@@ -5,6 +5,7 @@
 
 "use client";
 
+import React from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { clsx } from 'clsx';
@@ -105,17 +106,10 @@ export default function DashboardLayout({
 
         {/* ForgeCore Chat */}
         <ForgeCoreChat />
+
+        {/* Feedback */}
+        <FeedbackButton />
       </div>
-
-      {/* Mobile bottom nav */}
-      <MobileBottomNav />
-
-      {/* ForgeCore Chat */}
-      <ForgeCoreChat />
-
-      {/* Feedback */}
-      <FeedbackButton />
-    </div>
     </SearchShortcutsProvider>
   );
 }

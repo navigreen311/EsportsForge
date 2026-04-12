@@ -64,7 +64,7 @@ function getSynthesis(): SpeechSynthesis | undefined {
 /**
  * Safely access the SpeechRecognition constructor.
  */
-function getRecognitionCtor(): (new () => SpeechRecognition) | undefined {
+function getRecognitionCtor(): (new () => any) | undefined {
   try {
     if (typeof window !== "undefined") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -144,7 +144,7 @@ export const VoiceForgeService = {
           resolve(transcript);
         };
 
-        recognition.onresult = (event: SpeechRecognitionEvent) => {
+        recognition.onresult = (event: any) => {
           for (let i = event.resultIndex; i < event.results.length; i++) {
             if (event.results[i].isFinal) {
               transcript += event.results[i][0].transcript;

@@ -1,14 +1,17 @@
 'use client';
 
+import React from 'react';
+
 interface LoadingSkeletonProps {
   variant?: 'card' | 'list' | 'text' | 'chart';
   count?: number;
 }
 
-function SkeletonPulse({ className }: { className?: string }) {
+function SkeletonPulse({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <div
       className={`animate-pulse rounded bg-dark-800 ${className ?? ''}`}
+      style={style}
     />
   );
 }

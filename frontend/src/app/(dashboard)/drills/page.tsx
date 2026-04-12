@@ -109,7 +109,7 @@ export default function DrillsPage() {
             <div className="space-y-4">
               <DrillRunner
                 drill={currentDrill}
-                onCompleteRep={completeRep}
+                onCompleteRep={() => completeRep(true)}
                 onSkip={skipDrill}
                 onStart={startDrill}
                 onEnd={endSession}
