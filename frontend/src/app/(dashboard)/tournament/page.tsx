@@ -6,7 +6,8 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Trophy,
   Clock,
@@ -19,10 +20,14 @@ import {
   Activity,
   ShieldOff,
   ChevronRight,
+  ChevronDown,
   AlertTriangle,
   Zap,
   Target,
+  Mic,
+  Droplets,
 } from 'lucide-react';
+import { useVoiceForge } from '@/hooks/useVoiceForge';
 
 // --- Mock Data ---
 
@@ -58,28 +63,29 @@ const WARMUP_CHECKLIST_ITEMS = [
   { id: 'killsheet', label: 'Kill sheet loaded', default: false },
 ];
 
-const MEMORY_CARDS = [
-  { opponent: 'xViper_Elite', items: ['Runs cover-3 on 1st down 80%', 'Blitzes on 3rd & long from nickel', 'Goes for it on 4th in opponent territory'] },
-  { opponent: 'ColdRead99', items: ['Heavy zone, rarely man', 'Uses Tampa 2 shell in redzone', 'Audibles out of base on motion'] },
-  { opponent: 'BlitzKing_', items: ['Fire zone on 2nd & long', 'Man coverage outside', 'Vulnerable to TE seam routes'] },
-];
+const MEMORY_CARDS: Record<string, string[]> = {
+  'xViper_Elite': ['Runs cover-3 on 1st down 80%', 'Blitzes on 3rd & long from nickel', 'Goes for it on 4th in opponent territory'],
+  'ColdRead99': ['Heavy zone, rarely man', 'Uses Tampa 2 shell in redzone', 'Audibles out of base on motion'],
+  'BlitzKing_': ['Fire zone on 2nd & long', 'Man coverage outside', 'Vulnerable to TE seam routes'],
+};
 
+// Task 2G: confidence scores added
 const GAMEPLAN = [
-  { id: 1, play: 'Gun Trips TE — Mesh Spot', situation: '1st & 10', note: 'Beats Cover 3' },
-  { id: 2, play: 'Singleback Ace — PA Crossers', situation: '2nd & Med', note: 'Cover 2 beater' },
-  { id: 3, play: 'Shotgun Bunch — Corner Strike', situation: 'Red Zone', note: 'Man beater' },
-  { id: 4, play: 'I-Form Close — HB Stretch', situation: '1st down', note: 'Run setup' },
-  { id: 5, play: 'Gun Empty — 4 Verts', situation: '3rd & Long', note: 'Aggressive shot' },
-  { id: 6, play: 'Pistol Strong — RPO Alert', situation: '2nd & Short', note: 'Read the LB' },
-  { id: 7, play: 'Shotgun Spread — Slants', situation: '3rd & Med', note: 'Quick game' },
-  { id: 8, play: 'Singleback Wing — Counter', situation: '1st & 10', note: 'Misdirection' },
-  { id: 9, play: 'Gun Bunch — Levels Sail', situation: '2nd & Long', note: 'Zone flood' },
-  { id: 10, play: 'Empty Trey — Stick Nod', situation: '3rd & Short', note: 'Easy conversion' },
-  { id: 11, play: 'I-Form — PA Boot', situation: 'Opening script', note: 'Test deep' },
-  { id: 12, play: 'Shotgun Trips — Screen', situation: 'Blitz response', note: 'Punish pressure' },
-  { id: 13, play: 'Gun Doubles — Dagger', situation: 'Cover 2', note: 'Post-dig combo' },
-  { id: 14, play: 'Singleback — Inside Zone', situation: 'Clock control', note: 'Safe yards' },
-  { id: 15, play: 'Hail Mary / Scramble', situation: '2-min desperation', note: 'Last resort' },
+  { id: 1, play: 'Gun Trips TE — Mesh Spot', situation: '1st & 10', note: 'Beats Cover 3', confidence: 94 },
+  { id: 2, play: 'Singleback Ace — PA Crossers', situation: '2nd & Med', note: 'Cover 2 beater', confidence: 88 },
+  { id: 3, play: 'Shotgun Bunch — Corner Strike', situation: 'Red Zone', note: 'Man beater', confidence: 91 },
+  { id: 4, play: 'I-Form Close — HB Stretch', situation: '1st down', note: 'Run setup', confidence: 85 },
+  { id: 5, play: 'Gun Empty — 4 Verts', situation: '3rd & Long', note: 'Aggressive shot', confidence: 72 },
+  { id: 6, play: 'Pistol Strong — RPO Alert', situation: '2nd & Short', note: 'Read the LB', confidence: 80 },
+  { id: 7, play: 'Shotgun Spread — Slants', situation: '3rd & Med', note: 'Quick game', confidence: 93 },
+  { id: 8, play: 'Singleback Wing — Counter', situation: '1st & 10', note: 'Misdirection', confidence: 78 },
+  { id: 9, play: 'Gun Bunch — Levels Sail', situation: '2nd & Long', note: 'Zone flood', confidence: 87 },
+  { id: 10, play: 'Empty Trey — Stick Nod', situation: '3rd & Short', note: 'Easy conversion', confidence: 96 },
+  { id: 11, play: 'I-Form — PA Boot', situation: 'Opening script', note: 'Test deep', confidence: 83 },
+  { id: 12, play: 'Shotgun Trips — Screen', situation: 'Blitz response', note: 'Punish pressure', confidence: 90 },
+  { id: 13, play: 'Gun Doubles — Dagger', situation: 'Cover 2', note: 'Post-dig combo', confidence: 76 },
+  { id: 14, play: 'Singleback — Inside Zone', situation: 'Clock control', note: 'Safe yards', confidence: 98 },
+  { id: 15, play: 'Hail Mary / Scramble', situation: '2-min desperation', note: 'Last resort', confidence: 70 },
 ];
 
 const CLOCK_TREE = [
@@ -90,7 +96,25 @@ const CLOCK_TREE = [
   { time: '0:10', condition: 'Any', action: 'Spike or timeout, last play' },
 ];
 
+const RESET_STEPS = [
+  { step: 1, text: 'Close eyes, 4 deep breaths (box breathing)' },
+  { step: 2, text: 'Name 1 thing you did well last game' },
+  { step: 3, text: 'Identify 1 adjustment for next game' },
+  { step: 4, text: 'Visualize your opening script executing' },
+  { step: 5, text: 'Reset posture — shoulders back, hands loose' },
+];
+
+// Task 2G helper
+function confidenceColor(c: number): string {
+  if (c >= 90) return '#4ADE80';
+  if (c >= 75) return 'white';
+  return '#F59E0B';
+}
+
 export default function TournamentPage() {
+  const router = useRouter();
+  const voice = useVoiceForge();
+
   const [countdown, setCountdown] = useState('');
   const [checklist, setChecklist] = useState<Record<string, boolean>>(
     Object.fromEntries(WARMUP_CHECKLIST_ITEMS.map((i) => [i.id, i.default]))
@@ -102,12 +126,31 @@ export default function TournamentPage() {
   const [fatigue, setFatigue] = useState(28);
   const [breakTimer, setBreakTimer] = useState(12);
 
-  // Countdown timer
+  // Task 2A: expanded opponent in queue
+  const [expandedOpponent, setExpandedOpponent] = useState<string | null>(null);
+
+  // Task 2B: between-round reset state
+  const [resetSteps, setResetSteps] = useState([false, false, false, false, false]);
+  const [breathingActive, setBreathingActive] = useState(false);
+  const [breathTimer, setBreathTimer] = useState(30);
+  const [breathPhase, setBreathPhase] = useState('Inhale');
+
+  // Task 2E: hydration reminder
+  const [showHydration, setShowHydration] = useState(false);
+  const hydrationShown = useRef(false);
+
+  const resetSectionRef = useRef<HTMLDivElement>(null);
+
+  // Countdown timer + hydration (Task 2E)
   useEffect(() => {
     const interval = setInterval(() => {
       const diff = TOURNAMENT.nextMatchTime.getTime() - Date.now();
       if (diff <= 0) {
         setCountdown('LIVE NOW');
+        if (!hydrationShown.current) {
+          setShowHydration(true);
+          hydrationShown.current = true;
+        }
       } else {
         const m = Math.floor(diff / 60000);
         const s = Math.floor((diff % 60000) / 1000);
@@ -117,12 +160,83 @@ export default function TournamentPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Task 2E: auto-dismiss hydration after 8s
+  useEffect(() => {
+    if (!showHydration) return;
+    const t = setTimeout(() => setShowHydration(false), 8000);
+    return () => clearTimeout(t);
+  }, [showHydration]);
+
+  // Task 2B: breathing timer
+  useEffect(() => {
+    if (!breathingActive) return;
+
+    const phases = ['Inhale', 'Hold', 'Exhale', 'Hold'];
+    let elapsed = 0;
+
+    const interval = setInterval(() => {
+      elapsed += 1;
+      const remaining = 30 - elapsed;
+      setBreathTimer(remaining);
+
+      // Cycle phases every 4 seconds
+      const phaseIndex = Math.floor(elapsed / 4) % 4;
+      setBreathPhase(phases[phaseIndex]);
+
+      if (remaining <= 0) {
+        clearInterval(interval);
+        setBreathingActive(false);
+        setBreathTimer(30);
+        setBreathPhase('Inhale');
+        // Auto-check step 1
+        setResetSteps((prev) => {
+          const next = [...prev];
+          next[0] = true;
+          return next;
+        });
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [breathingActive]);
+
   const addNote = () => {
     if (!noteInput.trim()) return;
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setNotes((prev) => [{ time, text: noteInput.trim() }, ...prev]);
     setNoteInput('');
   };
+
+  const resetComplete = resetSteps.every(Boolean);
+  const resetCount = resetSteps.filter(Boolean).length;
+
+  // Task 2C: voice command handler
+  const handleVoiceCommand = useCallback(async () => {
+    const transcript = await voice.listen({ timeout: 5000 });
+    const cmd = transcript.toLowerCase().trim();
+
+    if (cmd.includes('read next briefing') || cmd.includes('next opponent')) {
+      const firstOpp = OPPONENT_QUEUE[0];
+      const cards = MEMORY_CARDS[firstOpp.name];
+      if (cards) {
+        const text = `Next opponent: ${firstOpp.name}. ${firstOpp.archetype}. ${cards.join('. ')}`;
+        voice.speak(text);
+      }
+    } else if (cmd.includes('start reset') || cmd.includes('mental reset')) {
+      resetSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setBreathingActive(true);
+    } else if (cmd.includes('my record') || cmd.includes('what\'s my record')) {
+      voice.speak(
+        `Your record is ${TOURNAMENT.record}. Seed number ${TOURNAMENT.seed}. Currently in ${TOURNAMENT.bracketPosition}.`
+      );
+    }
+  }, [voice]);
+
+  // Task 2F: bracket intelligence
+  const hardestOpponent = OPPONENT_QUEUE.reduce((min, opp) => opp.winRate < min.winRate ? opp : min, OPPONENT_QUEUE[0]);
+  const winRates = OPPONENT_QUEUE.map((o) => o.winRate);
+  const maxRate = Math.max(...winRates);
+  const minRate = Math.min(...winRates);
+  const allWithinRange = (maxRate - minRate) <= 10;
 
   return (
     <div className="space-y-6">
@@ -153,28 +267,129 @@ export default function TournamentPage() {
         </div>
       </div>
 
+      {/* Task 2C: VoiceForge command bar */}
+      {voice.isAvailable && (
+        <div className="flex items-center gap-3 rounded-xl border border-dark-700/50 bg-dark-900 px-4 py-3">
+          <button
+            onClick={handleVoiceCommand}
+            disabled={voice.isListening}
+            className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+              voice.isListening
+                ? 'bg-red-500/20 text-red-400 animate-pulse'
+                : 'bg-forge-500/15 text-forge-400 hover:bg-forge-500/25'
+            }`}
+          >
+            <Mic className="h-4 w-4" />
+          </button>
+          <div className="flex flex-wrap gap-2">
+            {['Read next briefing', 'Start reset', 'My record?'].map((hint) => (
+              <span
+                key={hint}
+                className="rounded-full border border-dark-700 bg-dark-800 px-3 py-1 text-xs text-dark-300"
+              >
+                {hint}
+              </span>
+            ))}
+          </div>
+          {voice.isListening && (
+            <span className="ml-auto text-xs text-forge-400">Listening...</span>
+          )}
+        </div>
+      )}
+
+      {/* Task 2E: Hydration Reminder */}
+      {showHydration && (
+        <div className="rounded-xl border border-forge-400 bg-dark-800 p-5 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Droplets className="h-5 w-5 text-forge-400" />
+            <h3 className="text-lg font-bold text-dark-50">Time&#39;s Up</h3>
+          </div>
+          <p className="text-sm text-dark-300 mb-4">
+            Drink water. Stand up. Take a breath. You&#39;re ready.
+          </p>
+          <button
+            onClick={() => setShowHydration(false)}
+            className="rounded-lg bg-forge-500/15 px-4 py-2 text-sm font-semibold text-forge-400 hover:bg-forge-500/25 transition-colors"
+          >
+            Got it
+          </button>
+        </div>
+      )}
+
       {/* MAIN GRID */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
 
-        {/* OPPONENT QUEUE */}
+        {/* OPPONENT QUEUE — Task 2A */}
         <div className="rounded-xl border border-dark-700/50 bg-dark-900 p-5">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-dark-200 mb-4">
             <Users className="h-4 w-4 text-forge-400" /> Opponent Queue
           </h2>
           <div className="space-y-2">
-            {OPPONENT_QUEUE.map((opp, i) => (
-              <div key={opp.name} className="flex items-center gap-3 rounded-lg bg-dark-800/60 px-3 py-2">
-                <span className="text-xs font-bold text-dark-500 w-5">{i + 1}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-dark-100 truncate">{opp.name}</p>
-                  <p className="text-xs text-dark-400">{opp.archetype}</p>
+            {OPPONENT_QUEUE.map((opp, i) => {
+              const isFirst = i === 0;
+              const isExpanded = expandedOpponent === opp.name;
+              const cards = MEMORY_CARDS[opp.name];
+              return (
+                <div
+                  key={opp.name}
+                  className={`rounded-lg bg-dark-800/60 ${isFirst ? 'border-l-2 border-l-green-500' : ''}`}
+                >
+                  <div className="flex items-center gap-3 px-3 py-2">
+                    <span className="text-xs font-bold text-dark-500 w-5">{i + 1}</span>
+                    <div
+                      className="flex-1 min-w-0 cursor-pointer"
+                      onClick={() => setExpandedOpponent(isExpanded ? null : opp.name)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-dark-100 truncate">{opp.name}</p>
+                        {isFirst && (
+                          <span className="rounded-full bg-green-500/15 border border-green-500/30 px-2 py-0.5 text-[10px] font-bold text-green-400 uppercase">
+                            Next
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-dark-400 flex items-center gap-1">
+                        {opp.archetype}
+                        {cards && (
+                          isExpanded
+                            ? <ChevronDown className="h-3 w-3 text-dark-500" />
+                            : <ChevronRight className="h-3 w-3 text-dark-500" />
+                        )}
+                      </p>
+                    </div>
+                    <span className="text-xs text-dark-400">{opp.winRate}%</span>
+                    <span className={`h-2 w-2 rounded-full ${
+                      opp.prep === 'ready' ? 'bg-forge-400' : opp.prep === 'partial' ? 'bg-amber-400' : 'bg-red-400'
+                    }`} title={`Prep: ${opp.prep}`} />
+                    <button
+                      onClick={() => router.push(`/war-room?opponent=${encodeURIComponent(opp.name)}`)}
+                      className="rounded-full border border-green-500/40 px-2.5 py-1 text-[10px] font-semibold text-green-400 hover:bg-green-500/10 transition-colors whitespace-nowrap"
+                    >
+                      Prep &rarr;
+                    </button>
+                  </div>
+                  {/* Expanded memory card */}
+                  {isExpanded && cards && (
+                    <div className="px-3 pb-3 pt-1 border-t border-dark-700/30 mx-3">
+                      <ul className="space-y-1 mb-2">
+                        {cards.map((item, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-xs text-dark-300">
+                            <ChevronRight className="h-3 w-3 text-dark-500 mt-0.5 flex-shrink-0" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                      <a
+                        href={`/war-room?opponent=${encodeURIComponent(opp.name)}`}
+                        className="text-xs text-forge-400 hover:text-forge-300 transition-colors"
+                      >
+                        View Full Dossier &rarr;
+                      </a>
+                    </div>
+                  )}
                 </div>
-                <span className="text-xs text-dark-400">{opp.winRate}%</span>
-                <span className={`h-2 w-2 rounded-full ${
-                  opp.prep === 'ready' ? 'bg-forge-400' : opp.prep === 'partial' ? 'bg-amber-400' : 'bg-red-400'
-                }`} title={`Prep: ${opp.prep}`} />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -208,9 +423,35 @@ export default function TournamentPage() {
               </div>
             ))}
           </div>
+
+          {/* Task 2F: Bracket Intelligence */}
+          <div className="mt-4 pt-3 border-t border-dark-700/50">
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+              <h3 className="flex items-center gap-2 text-xs font-semibold text-amber-300 mb-1">
+                <AlertTriangle className="h-3.5 w-3.5" /> Bracket Intelligence
+              </h3>
+              {allWithinRange ? (
+                <p className="text-xs text-dark-300">
+                  No clear threat — all matchups within your win range.
+                </p>
+              ) : (
+                <>
+                  <p className="text-xs text-dark-300">
+                    Hardest potential matchup: <span className="font-semibold text-dark-100">{hardestOpponent.name}</span>{' '}
+                    ({hardestOpponent.archetype}). Your win rate vs {hardestOpponent.archetype}:{' '}
+                    <span className="font-semibold text-amber-300">{hardestOpponent.winRate}%</span>.
+                    Likely encounter: Round 3 or later.
+                  </p>
+                  <button className="mt-2 rounded-lg border border-forge-500/30 bg-forge-500/10 px-3 py-1.5 text-xs font-semibold text-forge-400 hover:bg-forge-500/20 transition-colors">
+                    View Counter Package &rarr;
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* WARMUP CHECKLIST */}
+        {/* WARMUP CHECKLIST — Task 2D */}
         <div className="rounded-xl border border-dark-700/50 bg-dark-900 p-5">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-dark-200 mb-4">
             <CheckSquare className="h-4 w-4 text-forge-400" /> Warmup Checklist
@@ -230,33 +471,124 @@ export default function TournamentPage() {
               </label>
             ))}
           </div>
-          <div className="mt-4 pt-3 border-t border-dark-700/50">
+          <div className="mt-4 pt-3 border-t border-dark-700/50 flex items-center justify-between">
             <p className="text-xs text-dark-400">
               {Object.values(checklist).filter(Boolean).length}/{WARMUP_CHECKLIST_ITEMS.length} complete
             </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setChecklist(Object.fromEntries(WARMUP_CHECKLIST_ITEMS.map((i) => [i.id, false])))}
+                className="text-xs text-dark-500 hover:text-dark-300 transition-colors"
+              >
+                Reset Checklist
+              </button>
+              <button
+                onClick={() => setChecklist(Object.fromEntries(WARMUP_CHECKLIST_ITEMS.map((i) => [i.id, true])))}
+                className="rounded-lg bg-forge-500/15 px-3 py-1.5 text-xs font-semibold text-forge-400 hover:bg-forge-500/25 transition-colors"
+              >
+                Complete All
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* BETWEEN-ROUND RESET */}
-        <div className="rounded-xl border border-dark-700/50 bg-dark-900 p-5">
+        {/* BETWEEN-ROUND RESET — Task 2B */}
+        <div ref={resetSectionRef} className="rounded-xl border border-dark-700/50 bg-dark-900 p-5">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-dark-200 mb-4">
             <Brain className="h-4 w-4 text-forge-400" /> Between-Round Reset
           </h2>
           <div className="space-y-3">
-            {[
-              { step: 1, text: 'Close eyes, 4 deep breaths (box breathing)' },
-              { step: 2, text: 'Name 1 thing you did well last game' },
-              { step: 3, text: 'Identify 1 adjustment for next game' },
-              { step: 4, text: 'Visualize your opening script executing' },
-              { step: 5, text: 'Reset posture — shoulders back, hands loose' },
-            ].map((s) => (
+            {RESET_STEPS.map((s, idx) => (
               <div key={s.step} className="flex items-start gap-3">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-forge-500/15 text-xs font-bold text-forge-400 flex-shrink-0">
-                  {s.step}
-                </span>
-                <p className="text-sm text-dark-300">{s.text}</p>
+                {idx === 0 ? (
+                  /* Step 1: breathing timer */
+                  <>
+                    <button
+                      onClick={() => setResetSteps((prev) => { const next = [...prev]; next[0] = !next[0]; return next; })}
+                      className={`flex h-6 w-6 items-center justify-center rounded-full flex-shrink-0 transition-colors ${
+                        resetSteps[0]
+                          ? 'bg-forge-400 text-dark-900'
+                          : 'bg-forge-500/15 text-forge-400'
+                      }`}
+                    >
+                      {resetSteps[0] ? (
+                        <span className="text-xs font-bold">&#10003;</span>
+                      ) : (
+                        <span className="text-xs font-bold">{s.step}</span>
+                      )}
+                    </button>
+                    <div className="flex-1">
+                      <p className={`text-sm ${resetSteps[0] ? 'text-dark-500 line-through' : 'text-dark-300'}`}>
+                        {s.text}
+                      </p>
+                      {!resetSteps[0] && !breathingActive && (
+                        <button
+                          onClick={() => setBreathingActive(true)}
+                          className="mt-1 rounded-md bg-forge-500/15 px-2 py-1 text-xs font-semibold text-forge-400 hover:bg-forge-500/25 transition-colors"
+                        >
+                          [30s] Start Breathing
+                        </button>
+                      )}
+                      {breathingActive && (
+                        <div className="mt-1 flex items-center gap-2">
+                          <span className="text-xs font-mono text-forge-400">{breathTimer}s</span>
+                          <span className="rounded-full bg-forge-500/15 px-2 py-0.5 text-xs font-semibold text-forge-400">
+                            {breathPhase} 4...
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  /* Steps 2-5: tappable checkboxes */
+                  <>
+                    <button
+                      onClick={() => setResetSteps((prev) => { const next = [...prev]; next[idx] = !next[idx]; return next; })}
+                      className={`flex h-6 w-6 items-center justify-center rounded-full flex-shrink-0 cursor-pointer transition-colors ${
+                        resetSteps[idx]
+                          ? 'bg-forge-400 text-dark-900'
+                          : 'bg-forge-500/15 text-forge-400'
+                      }`}
+                    >
+                      {resetSteps[idx] ? (
+                        <span className="text-xs font-bold">&#10003;</span>
+                      ) : (
+                        <span className="text-xs font-bold">{s.step}</span>
+                      )}
+                    </button>
+                    <p className={`text-sm ${resetSteps[idx] ? 'text-dark-500 line-through' : 'text-dark-300'}`}>
+                      {s.text}
+                    </p>
+                  </>
+                )}
               </div>
             ))}
+          </div>
+          <div className="mt-4 pt-3 border-t border-dark-700/50">
+            <p className="text-xs text-dark-400 mb-2">{resetCount}/5 steps complete</p>
+            <div className="flex items-center gap-3">
+              {resetComplete ? (
+                <button
+                  onClick={() => {
+                    fetch('/api/tiltguard/reset-logged', { method: 'POST' }).catch(() => {});
+                  }}
+                  className="rounded-lg bg-green-500/15 border border-green-500/30 px-3 py-1.5 text-xs font-semibold text-green-400 hover:bg-green-500/25 transition-colors"
+                >
+                  Reset Complete
+                </button>
+              ) : null}
+              <button
+                onClick={() => {
+                  setResetSteps([false, false, false, false, false]);
+                  setBreathingActive(false);
+                  setBreathTimer(30);
+                  setBreathPhase('Inhale');
+                }}
+                className="text-xs text-dark-500 hover:text-dark-300 transition-colors"
+              >
+                Start Over
+              </button>
+            </div>
           </div>
         </div>
 
@@ -266,11 +598,11 @@ export default function TournamentPage() {
             <Zap className="h-4 w-4 text-forge-400" /> Memory Cards
           </h2>
           <div className="space-y-3">
-            {MEMORY_CARDS.map((card) => (
-              <div key={card.opponent} className="rounded-lg bg-dark-800/60 p-3">
-                <p className="text-xs font-semibold text-forge-400 mb-1">{card.opponent}</p>
+            {Object.entries(MEMORY_CARDS).map(([opponent, items]) => (
+              <div key={opponent} className="rounded-lg bg-dark-800/60 p-3">
+                <p className="text-xs font-semibold text-forge-400 mb-1">{opponent}</p>
                 <ul className="space-y-1">
-                  {card.items.map((item, i) => (
+                  {items.map((item, i) => (
                     <li key={i} className="flex items-start gap-2 text-xs text-dark-300">
                       <ChevronRight className="h-3 w-3 text-dark-500 mt-0.5 flex-shrink-0" />
                       {item}
@@ -314,7 +646,7 @@ export default function TournamentPage() {
           </div>
         </div>
 
-        {/* CURRENT GAMEPLAN */}
+        {/* CURRENT GAMEPLAN — Task 2G */}
         <div className="rounded-xl border border-dark-700/50 bg-dark-900 p-5 xl:col-span-2">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-dark-200 mb-4">
             <Gamepad2 className="h-4 w-4 text-forge-400" /> Active Gameplan (15 Plays)
@@ -327,6 +659,12 @@ export default function TournamentPage() {
                   <p className="text-xs font-medium text-dark-100 truncate">{play.play}</p>
                   <p className="text-[10px] text-dark-500">{play.situation} — {play.note}</p>
                 </div>
+                <span
+                  className="text-xs font-bold tabular-nums"
+                  style={{ color: confidenceColor(play.confidence) }}
+                >
+                  {play.confidence}%
+                </span>
               </div>
             ))}
           </div>
