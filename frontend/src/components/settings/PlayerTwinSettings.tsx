@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Brain } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Brain, RefreshCw, Loader2 } from 'lucide-react';
 
 const PLAYERTWIN_STORAGE_KEY = 'esportsforge_playertwin';
 
@@ -34,6 +34,39 @@ export default function PlayerTwinSettings() {
   const [wrongFlags, setWrongFlags] = useState<Set<number>>(new Set());
   const [correctFlags, setCorrectFlags] = useState<Set<number>>(new Set());
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isRecalibrating, setIsRecalibrating] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [twinAccuracy, setTwinAccuracy] = useState(78);
+  const [gamesUsed, setGamesUsed] = useState(42);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  }, []);
+
+  const handleRecalibrate = useCallback(() => {
+    if (isRecalibrating) return;
+    setIsRecalibrating(true);
+    setTimeout(() => {
+      setIsRecalibrating(false);
+      setTwinAccuracy((prev) => Math.min(99, prev + 4));
+      showToast('Twin recalibrated — accuracy updated');
+    }, 2000);
+  }, [isRecalibrating, showToast]);
+
+  const handleResetConfirm = useCallback(() => {
+    setIsResetting(true);
+    setTimeout(() => {
+      setIsResetting(false);
+      setShowResetConfirm(false);
+      setTwinAccuracy(0);
+      setGamesUsed(0);
+      setWrongFlags(new Set());
+      setCorrectFlags(new Set());
+      showToast('Twin reset. Play sessions to rebuild.');
+    }, 1500);
+  }, [showToast]);
 
   // Load corrections from localStorage
   useEffect(() => {
@@ -79,9 +112,6 @@ export default function PlayerTwinSettings() {
       return next;
     });
   };
-
-  const twinAccuracy = 78;
-  const gamesUsed = 42;
 
   return (
     <div className="space-y-6">
@@ -326,38 +356,67 @@ export default function PlayerTwinSettings() {
         </h3>
 
         <div className="flex flex-wrap gap-3">
-          <button className="rounded-lg bg-forge-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-forge-400 transition-colors">
-            Recalibrate Twin
+          {/* Recalibrate Twin */}
+          <button
+            onClick={handleRecalibrate}
+            disabled={isRecalibrating}
+            className="flex items-center gap-2 rounded-lg border border-forge-400 px-5 py-2.5 text-sm font-medium text-forge-400 hover:bg-forge-400/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isRecalibrating ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+            {isRecalibrating ? 'Recalibrating...' : 'Recalibrate Twin'}
           </button>
 
+          {/* Reset Twin */}
           {!showResetConfirm ? (
             <button
               onClick={() => setShowResetConfirm(true)}
-              className="rounded-lg bg-red-500/20 px-5 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/30 transition-colors"
+              className="rounded-lg border border-red-500 px-5 py-2.5 text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors"
             >
               Reset Twin
             </button>
           ) : (
-            <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5">
-              <p className="text-xs text-red-300 mr-2">
-                This will erase all twin data. Are you sure?
+            <div className="w-full rounded-lg border border-red-500/30 bg-red-500/10 p-4 mt-2">
+              <p className="text-sm text-red-300 mb-3">
+                <span className="font-semibold">Reset PlayerTwin</span> — This clears all learned data. Recommendations become generic until the twin rebuilds (20+ games). Are you sure?
               </p>
-              <button
-                onClick={() => setShowResetConfirm(false)}
-                className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-500 transition-colors"
-              >
-                Confirm Reset
-              </button>
-              <button
-                onClick={() => setShowResetConfirm(false)}
-                className="rounded-lg bg-dark-700 px-3 py-1.5 text-xs font-medium text-dark-300 hover:bg-dark-600 transition-colors"
-              >
-                Cancel
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowResetConfirm(false)}
+                  disabled={isResetting}
+                  className="rounded-lg bg-dark-700 px-4 py-2 text-xs font-medium text-dark-300 hover:bg-dark-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleResetConfirm}
+                  disabled={isResetting}
+                  className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-xs font-medium text-white hover:bg-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isResetting && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {isResetting ? 'Resetting...' : 'Yes, Reset Twin'}
+                </button>
+              </div>
             </div>
           )}
         </div>
+
+        {isRecalibrating && (
+          <p className="text-xs text-forge-400 mt-3 animate-pulse">
+            Recalibrating from last 20 games...
+          </p>
+        )}
       </div>
+
+      {/* Toast notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 rounded-lg border border-forge-400/30 bg-dark-800 px-5 py-3 shadow-lg">
+          <p className="text-sm text-forge-400">{toastMessage}</p>
+        </div>
+      )}
     </div>
   );
 }

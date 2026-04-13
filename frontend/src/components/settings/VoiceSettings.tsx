@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Mic } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Mic, Wifi, WifiOff, AlertTriangle, Loader2 } from 'lucide-react';
 import { VoiceForgeService } from '@/lib/services/voiceforge';
 
 type CheckInMode = 'voice' | 'text' | 'off';
@@ -72,10 +72,43 @@ export default function VoiceSettings() {
   const [briefingSpeed, setBriefingSpeed] = useState<BriefingSpeed>('normal');
   const [volume, setVolume] = useState(75);
   const [available, setAvailable] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showDocs, setShowDocs] = useState(false);
 
   useEffect(() => {
     setAvailable(VoiceForgeService.isAvailable());
   }, []);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  }, []);
+
+  const handleReconnect = useCallback(() => {
+    setIsChecking(true);
+    // Simulate async check
+    setTimeout(() => {
+      const result = VoiceForgeService.isAvailable();
+      setAvailable(result);
+      setIsChecking(false);
+      showToast(result ? 'VoiceForge connected successfully' : 'VoiceForge is still offline');
+    }, 1000);
+  }, [showToast]);
+
+  const handleTestConnection = useCallback(() => {
+    setIsChecking(true);
+    setTimeout(() => {
+      const result = VoiceForgeService.isAvailable();
+      setAvailable(result);
+      setIsChecking(false);
+      showToast(
+        result
+          ? 'Connection test passed — VoiceForge is reachable'
+          : 'Connection test failed — VoiceForge is not reachable'
+      );
+    }, 1000);
+  }, [showToast]);
 
   const checkInOptions: RadioOption<CheckInMode>[] = [
     { value: 'voice', label: 'Voice' },
@@ -97,20 +130,91 @@ export default function VoiceSettings() {
           <Mic className="w-5 h-5 text-forge-400" />
           <h3 className="text-lg font-semibold text-dark-100">Voice Settings</h3>
         </div>
-        <span className="flex items-center gap-1.5 text-xs font-medium">
-          {available ? (
-            <>
-              <span className="text-emerald-400">VoiceForge: Connected</span>
-              <span className="text-emerald-400">●</span>
-            </>
-          ) : (
-            <>
-              <span className="text-dark-500">VoiceForge: Offline</span>
-              <span className="text-dark-500">○</span>
-            </>
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1.5 text-xs font-medium">
+            {available ? (
+              <>
+                <Wifi className="w-3.5 h-3.5 text-forge-400" />
+                <span className="text-forge-400">VoiceForge: Connected</span>
+                <span className="text-forge-400">●</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-3.5 h-3.5 text-dark-500" />
+                <span className="text-dark-500">VoiceForge: Offline</span>
+                <span className="text-dark-500">○</span>
+              </>
+            )}
+          </span>
+          {!available && (
+            <button
+              onClick={handleReconnect}
+              disabled={isChecking}
+              className="flex items-center gap-1.5 rounded-lg border border-forge-400 px-3 py-1 text-xs font-medium text-forge-400 hover:bg-forge-400/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isChecking ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : null}
+              Reconnect
+            </button>
           )}
-        </span>
+        </div>
       </div>
+
+      {/* Offline Troubleshooting Box */}
+      {!available && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-900/20 p-4 mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
+            <p className="text-sm font-semibold text-amber-400">VoiceForge is offline</p>
+          </div>
+          <p className="text-xs text-dark-400 mb-3">
+            Voice coaching and briefings are unavailable.
+          </p>
+
+          <div className="mb-3">
+            <p className="text-xs font-medium text-dark-300 mb-1.5">Troubleshooting:</p>
+            <ol className="list-decimal list-inside space-y-1 text-xs text-dark-400">
+              <li>Ensure VoiceForge is running (port 3001)</li>
+              <li>Check VOICEFORGE_API_URL in your .env</li>
+              <li>Verify no firewall is blocking the connection</li>
+            </ol>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleTestConnection}
+              disabled={isChecking}
+              className="flex items-center gap-1.5 rounded-lg border border-dark-700 bg-dark-800 px-4 py-2 text-xs font-medium text-dark-300 hover:bg-dark-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isChecking && <Loader2 className="w-3 h-3 animate-spin" />}
+              Test Connection
+            </button>
+            <button
+              onClick={() => setShowDocs((prev) => !prev)}
+              className="rounded-lg border border-dark-700 bg-dark-800 px-4 py-2 text-xs font-medium text-dark-300 hover:bg-dark-700 transition-colors"
+            >
+              View Setup Docs
+            </button>
+          </div>
+
+          {showDocs && (
+            <div className="mt-3 rounded-lg border border-dark-700 bg-dark-800 p-3">
+              <p className="text-xs text-dark-300">
+                Setup documentation is available at:{' '}
+                <a
+                  href="https://docs.esportsforge.gg/voiceforge/setup"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-forge-400 underline hover:text-forge-300"
+                >
+                  https://docs.esportsforge.gg/voiceforge/setup
+                </a>
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* 1. Enable VoiceForge */}
@@ -160,6 +264,13 @@ export default function VoiceSettings() {
           </div>
         </div>
       </div>
+
+      {/* Toast notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 rounded-lg border border-forge-400/30 bg-dark-800 px-5 py-3 shadow-lg">
+          <p className="text-sm text-forge-400">{toastMessage}</p>
+        </div>
+      )}
     </div>
   );
 }
