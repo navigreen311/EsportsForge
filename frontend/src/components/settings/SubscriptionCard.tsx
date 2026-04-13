@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Check, Crown, Zap, Users, Star } from 'lucide-react';
 import type { UserTier } from '@/types/auth';
 import type { SubscriptionTier } from '@/types/settings';
@@ -89,6 +90,22 @@ const tierColors: Record<UserTier, string> = {
 };
 
 export default function SubscriptionCard({ currentTier }: SubscriptionCardProps) {
+  const [upgradingTier, setUpgradingTier] = useState<string | null>(null);
+
+  async function handleTierClick(tierId: string) {
+    setUpgradingTier(tierId);
+    try {
+      await fetch('/api/v1/subscriptions/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier: tierId }),
+      }).catch(() => {});
+      await new Promise((r) => setTimeout(r, 2000));
+    } finally {
+      setUpgradingTier(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Current Tier Display */}
@@ -161,16 +178,20 @@ export default function SubscriptionCard({ currentTier }: SubscriptionCardProps)
 
               {!isCurrent && (
                 <button
-                  className={`w-full rounded-lg py-2 text-sm font-medium transition-colors ${
+                  disabled={upgradingTier === tier.id}
+                  onClick={() => handleTierClick(tier.id)}
+                  className={`w-full rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
                     tier.highlighted
                       ? 'bg-forge-600 text-white hover:bg-forge-500'
                       : 'bg-dark-700 text-dark-200 hover:bg-dark-600'
                   }`}
                 >
-                  {tiers.findIndex((t) => t.id === tier.id) >
-                  tiers.findIndex((t) => t.id === currentTier)
-                    ? 'Upgrade'
-                    : 'Downgrade'}
+                  {upgradingTier === tier.id
+                    ? 'Redirecting to checkout...'
+                    : tiers.findIndex((t) => t.id === tier.id) >
+                        tiers.findIndex((t) => t.id === currentTier)
+                      ? 'Upgrade'
+                      : 'Downgrade'}
                 </button>
               )}
             </div>

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { Save, Loader2, CheckCircle } from 'lucide-react';
 
 // --- Data Definitions ---
 
@@ -89,7 +90,10 @@ export default function IdentityEngine() {
   const [directness, setDirectness] = useState<string>('recommendation');
   const [frequency, setFrequency] = useState<string>('standard');
 
-  // Toast
+  // Save flow
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [toastState, setToastState] = useState<'hidden' | 'recalibrating' | 'complete'>('hidden');
   const [showToast, setShowToast] = useState(false);
 
   // Load from localStorage
@@ -111,22 +115,77 @@ export default function IdentityEngine() {
     } catch {}
   }, []);
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
+    if (isSaving) return;
+
     const data = {
       offensiveIdentity,
       defensivePhilosophy,
       riskTolerance,
-      fourthDown,
+      fourthDownTendency: fourthDown,
       aggressionAfterLead,
       pace,
       comfortZones: Array.from(comfortZones),
-      directness,
-      frequency,
+      agentDirectness: directness,
+      recFrequency: frequency,
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-  };
+
+    // Step 1: Button loading
+    setIsSaving(true);
+    setSaveSuccess(false);
+
+    // Simulate save delay
+    setTimeout(() => {
+      // Persist to localStorage
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+
+      // Step 2: Show recalibrating toast
+      setToastState('recalibrating');
+      setShowToast(true);
+
+      // Step 3: Dispatch recalibrating signal
+      window.dispatchEvent(
+        new CustomEvent('playertwin-recalibrating', { detail: { active: true } })
+      );
+
+      // Step 5: Fire-and-forget API persist
+      fetch('/api/identity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }).catch(() => {});
+
+      // Button success flash
+      setIsSaving(false);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 500);
+
+      // Step 4: Recalibration complete after 2s
+      setTimeout(() => {
+        setToastState('complete');
+        window.dispatchEvent(
+          new CustomEvent('playertwin-recalibrating', { detail: { active: false } })
+        );
+
+        // Auto-dismiss toast 3s after completion
+        setTimeout(() => {
+          setShowToast(false);
+          setToastState('hidden');
+        }, 3000);
+      }, 2000);
+    }, 500);
+  }, [
+    isSaving,
+    offensiveIdentity,
+    defensivePhilosophy,
+    riskTolerance,
+    fourthDown,
+    aggressionAfterLead,
+    pace,
+    comfortZones,
+    directness,
+    frequency,
+  ]);
 
   const toggleComfortZone = (tag: string) => {
     setComfortZones((prev) => {
@@ -370,20 +429,61 @@ export default function IdentityEngine() {
       <div className="flex justify-end">
         <button
           onClick={handleSave}
-          className="rounded-lg bg-forge-600 px-6 py-3 text-sm font-medium text-white hover:bg-forge-500 transition-colors"
+          disabled={isSaving}
+          className={`flex items-center gap-2 rounded-lg px-6 py-3 text-sm font-medium text-white transition-all duration-300 ${
+            saveSuccess
+              ? 'bg-forge-400/20 border border-forge-400/30'
+              : 'bg-forge-600 hover:bg-forge-500'
+          } ${isSaving ? 'opacity-80 cursor-not-allowed' : ''}`}
         >
-          Save Identity
+          {isSaving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4" />
+              Save Identity
+            </>
+          )}
         </button>
       </div>
 
       {/* Toast Notification */}
       {showToast && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-lg border border-forge-500/30 bg-dark-800 px-5 py-3 shadow-lg animate-in fade-in slide-in-from-bottom-4">
-          <p className="text-sm font-medium text-forge-400">
-            Identity saved — PlayerTwin recalibrating
-          </p>
+        <div
+          className="fixed top-4 right-4 z-50 rounded-lg border border-forge-400/30 bg-dark-800 p-4 shadow-lg transition-all duration-300"
+          style={{
+            animation: 'slideInRight 0.3s ease-out',
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <CheckCircle className={`h-5 w-5 flex-shrink-0 ${
+              toastState === 'complete' ? 'text-green-400' : 'text-forge-400'
+            }`} />
+            <p className="text-sm font-medium text-white">
+              {toastState === 'complete'
+                ? 'PlayerTwin updated \u2713'
+                : 'Identity saved \u2014 PlayerTwin recalibrating...'}
+            </p>
+          </div>
         </div>
       )}
+
+      {/* Inline keyframes for toast slide-in */}
+      <style>{`
+        @keyframes slideInRight {
+          from {
+            opacity: 0;
+            transform: translateX(100%);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }

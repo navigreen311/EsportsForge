@@ -1,10 +1,11 @@
 'use client';
 
-import { Trophy, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Trophy, TrendingUp, TrendingDown, Minus, Check, ChevronDown } from 'lucide-react';
 
 interface GameState {
   label: string;
   winRate: number;
+  target: number;
   gamesPlayed: number;
   trend: 'up' | 'down' | 'stable';
   color: string;
@@ -16,6 +17,7 @@ const GAME_STATES: GameState[] = [
   {
     label: 'Ahead 7+',
     winRate: 89,
+    target: 85,
     gamesPlayed: 18,
     trend: 'stable',
     color: 'text-forge-400',
@@ -25,6 +27,7 @@ const GAME_STATES: GameState[] = [
   {
     label: 'Within 7',
     winRate: 62,
+    target: 65,
     gamesPlayed: 31,
     trend: 'up',
     color: 'text-cyan-400',
@@ -34,6 +37,7 @@ const GAME_STATES: GameState[] = [
   {
     label: 'Tied',
     winRate: 55,
+    target: 55,
     gamesPlayed: 14,
     trend: 'up',
     color: 'text-amber-400',
@@ -43,6 +47,7 @@ const GAME_STATES: GameState[] = [
   {
     label: 'Down 7',
     winRate: 38,
+    target: 50,
     gamesPlayed: 22,
     trend: 'down',
     color: 'text-orange-400',
@@ -52,6 +57,7 @@ const GAME_STATES: GameState[] = [
   {
     label: 'Down 14+',
     winRate: 12,
+    target: 35,
     gamesPlayed: 9,
     trend: 'down',
     color: 'text-red-400',
@@ -61,6 +67,7 @@ const GAME_STATES: GameState[] = [
   {
     label: 'Overtime',
     winRate: 67,
+    target: 55,
     gamesPlayed: 6,
     trend: 'up',
     color: 'text-purple-400',
@@ -78,6 +85,29 @@ function TrendIcon({ trend }: { trend: GameState['trend'] }) {
     case 'stable':
       return <Minus className="h-4 w-4 text-dark-400" />;
   }
+}
+
+function TargetStatus({ winRate, target }: { winRate: number; target: number }) {
+  const gap = target - winRate;
+
+  if (gap <= 0) {
+    // On target or above
+    return (
+      <span className="flex items-center gap-1 text-[10px] font-medium" style={{ color: '#4ADE80' }}>
+        <Check className="h-3 w-3" />
+        On target
+      </span>
+    );
+  }
+
+  // Below target
+  const statusColor = gap >= 11 ? '#EF4444' : '#F59E0B';
+  return (
+    <span className="flex items-center gap-1 text-[10px] font-medium" style={{ color: statusColor }}>
+      <ChevronDown className="h-3 w-3" />
+      {gap}% below target
+    </span>
+  );
 }
 
 /**
@@ -127,6 +157,12 @@ export default function WinConditions() {
                 style={{ width: `${state.winRate}%` }}
               />
             </div>
+
+            {/* Target and status */}
+            <p className="mt-1.5 text-[10px] text-dark-500">
+              Target: {state.target}%
+            </p>
+            <TargetStatus winRate={state.winRate} target={state.target} />
 
             <p className="mt-1 text-[10px] text-dark-500">
               {state.gamesPlayed} game{state.gamesPlayed !== 1 ? 's' : ''}
