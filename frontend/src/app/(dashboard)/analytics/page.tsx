@@ -12,7 +12,6 @@ import {
 import WinRateChart from '@/components/analytics/WinRateChart';
 import WeaknessHeatmap from '@/components/analytics/WeaknessHeatmap';
 import AgentAccuracy from '@/components/analytics/AgentAccuracy';
-import BenchmarkRankSection from '@/components/analytics/BenchmarkRankSection';
 import BenchmarkSection from '@/components/analytics/BenchmarkSection';
 import TransferGapChart from '@/components/analytics/TransferGapChart';
 import TransferAIChart from '@/components/analytics/TransferAIChart';
@@ -32,6 +31,7 @@ import {
   GraduationCap,
   ChevronDown,
   Brain,
+  X,
 } from 'lucide-react';
 import {
   LineChart,
@@ -74,13 +74,26 @@ const mockAgentData: AgentAccuracyEntry[] = [
   { agentName: 'SituationAnalyzer', predictionsTotal: 95, predictionsCorrect: 66, accuracy: 69, trend: 'down', lastUpdated: '6h ago' },
 ];
 
-const mockSessions: SessionRecord[] = [
-  { id: 's1', date: '2026-03-22', mode: 'ranked', wins: 3, losses: 1, winRate: 75, opponentGamertag: 'xXDragonSlayerXx', score: '28-14', keyPlays: ['PA Crossers', 'Inside Zone'], duration: 45 },
-  { id: 's2', date: '2026-03-21', mode: 'ranked', wins: 2, losses: 2, winRate: 50, opponentGamertag: 'AirRaidKing', score: '21-24', keyPlays: ['Four Verticals', 'HB Wham'], duration: 52 },
-  { id: 's3', date: '2026-03-20', mode: 'tournament', wins: 4, losses: 0, winRate: 100, opponentGamertag: 'BlitzMaster99', score: '35-10', keyPlays: ['Mesh Concept', 'Wheel Route'], duration: 38 },
-  { id: 's4', date: '2026-03-19', mode: 'training', wins: 2, losses: 3, winRate: 40, opponentGamertag: 'GridironGhost', score: '14-21', keyPlays: ['Stick Concept'], duration: 60 },
-  { id: 's5', date: '2026-03-18', mode: 'ranked', wins: 3, losses: 2, winRate: 60, opponentGamertag: 'PocketGeneral', score: '24-17', keyPlays: ['Counter Run', 'QB Draw'], duration: 48 },
+interface TaggedSession extends SessionRecord {
+  situationalTags: string[];
+}
+
+const mockSessions: TaggedSession[] = [
+  { id: 's1', date: '2026-03-22', mode: 'ranked', wins: 3, losses: 1, winRate: 75, opponentGamertag: 'xXDragonSlayerXx', score: '28-14', keyPlays: ['PA Crossers', 'Inside Zone'], duration: 45, situationalTags: ['3rd-down', 'red-zone'] },
+  { id: 's2', date: '2026-03-21', mode: 'ranked', wins: 2, losses: 2, winRate: 50, opponentGamertag: 'AirRaidKing', score: '21-24', keyPlays: ['Four Verticals', 'HB Wham'], duration: 52, situationalTags: ['2-min-drill', '4th-quarter'] },
+  { id: 's3', date: '2026-03-20', mode: 'tournament', wins: 4, losses: 0, winRate: 100, opponentGamertag: 'BlitzMaster99', score: '35-10', keyPlays: ['Mesh Concept', 'Wheel Route'], duration: 38, situationalTags: ['3rd-down', 'opening-drive'] },
+  { id: 's4', date: '2026-03-19', mode: 'training', wins: 2, losses: 3, winRate: 40, opponentGamertag: 'GridironGhost', score: '14-21', keyPlays: ['Stick Concept'], duration: 60, situationalTags: ['red-zone', 'comeback'] },
+  { id: 's5', date: '2026-03-18', mode: 'ranked', wins: 3, losses: 2, winRate: 60, opponentGamertag: 'PocketGeneral', score: '24-17', keyPlays: ['Counter Run', 'QB Draw'], duration: 48, situationalTags: ['4th-quarter', '3rd-down'] },
 ];
+
+const filterNameMap: Record<string, string> = {
+  '3rd-down': '3rd down conversion',
+  'red-zone': 'red zone',
+  '2-min-drill': '2-minute drill',
+  '4th-quarter': '4th quarter close',
+  'comeback': 'comeback',
+  'opening-drive': 'opening drive',
+};
 
 const mockLoopAI: LoopAITrend[] = Array.from({ length: 14 }, (_, i) => ({
   date: `Mar ${i + 9}`,
@@ -118,6 +131,11 @@ function LoopAITooltip({ active, payload, label }: any) {
 export default function AnalyticsPage() {
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [analyticsTab, setAnalyticsTab] = useState<'performance' | 'film-room'>('performance');
+  const [situationalFilter, setSituationalFilter] = useState<string | null>(null);
+
+  const filteredSessions = situationalFilter
+    ? mockSessions.filter((s) => s.situationalTags.includes(situationalFilter))
+    : mockSessions;
 
   return (
     <div className="space-y-6">
@@ -190,9 +208,6 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
-      {/* 1. BenchmarkAI Competitive Rank (original 5 metrics) */}
-      <BenchmarkRankSection />
-
       {/* BenchmarkAI — 8 metrics with percentile bars */}
       <BenchmarkSection />
 
@@ -232,7 +247,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* 4. Situational Win Rates */}
-      <SituationalWinRates />
+      <SituationalWinRates onFilter={setSituationalFilter} activeFilter={situationalFilter} />
 
       {/* Win Conditions — 6 game states */}
       <WinConditions />
@@ -289,6 +304,22 @@ export default function AnalyticsPage() {
       {/* 6. Fatigue Analytics */}
       <FatigueAnalytics />
 
+      {/* Situational Filter Banner */}
+      {situationalFilter && (
+        <div className="flex items-center justify-between rounded-xl border border-dark-700 bg-dark-800 px-5 py-3">
+          <span className="text-sm text-gray-400">
+            Showing sessions with <span className="text-dark-50 font-medium">{filterNameMap[situationalFilter] ?? situationalFilter}</span> tracked
+          </span>
+          <button
+            onClick={() => setSituationalFilter(null)}
+            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-dark-50 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+            Clear filter
+          </button>
+        </div>
+      )}
+
       {/* Session History with 7. LoopAI columns */}
       <div className="rounded-xl border border-dark-700 bg-dark-900/50 p-6">
         <h2 className="text-lg font-bold text-dark-100 mb-4">Session History</h2>
@@ -306,7 +337,7 @@ export default function AnalyticsPage() {
               </tr>
             </thead>
             <tbody>
-              {mockSessions.map((session) => (
+              {filteredSessions.map((session) => (
                 <>
                   <tr
                     key={session.id}
