@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { Gamepad2, ChevronDown, Sparkles, Loader2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Gamepad2, ChevronDown, Sparkles, Loader2, Volume2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useGameplan } from '@/hooks/useGameplan';
+import { useSessionStore } from '@/lib/sessionStore';
+import { VoiceForgeService } from '@/lib/services/voiceforge';
 import GameplanList from '@/components/gameplan/GameplanList';
 import PlayDetail from '@/components/gameplan/PlayDetail';
 import MetaStatusBar from '@/components/gameplan/MetaStatusBar';
@@ -13,7 +16,8 @@ import First15ScriptView from '@/components/gameplan/First15ScriptView';
 import { AntiBlitzHealthBadge, AntiBlitzHealthBanner } from '@/components/gameplan/AntiBlitzHealth';
 import OpponentTendencyHeader from '@/components/gameplan/OpponentTendencyHeader';
 import FirstFifteenScript from '@/components/gameplan/FirstFifteenScript';
-import type { PackageTab } from '@/types/gameplan';
+import { GameplanSessionBar } from '@/components/session/GameplanSessionBar';
+import type { PackageTab, Play } from '@/types/gameplan';
 
 type ViewTab = PackageTab | 'script';
 
@@ -33,7 +37,6 @@ export default function GameplanPage() {
     setSelectedOpponentId,
     opponent,
     gameplan,
-    activeTab,
     setActiveTab,
     filteredPlays,
     selectedPlay,
@@ -43,6 +46,29 @@ export default function GameplanPage() {
   } = useGameplan();
 
   const [viewTab, setViewTab] = useState<ViewTab>('all');
+  const session = useSessionStore((s) => s.session);
+  const isSessionActive = !!session;
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams?.get('tab') as ViewTab | null;
+  const autoSwitchedRef = useRef(false);
+
+  // Honour ?tab= deep-links (e.g. from CompetitionModeCard "Open Kill Sheet").
+  useEffect(() => {
+    if (requestedTab && tabs.some((t) => t.key === requestedTab)) {
+      setViewTab(requestedTab);
+      if (requestedTab !== 'script') setActiveTab(requestedTab);
+    }
+  }, [requestedTab, setActiveTab]);
+
+  // Auto-switch to Kill Sheet on first visit during an active session.
+  useEffect(() => {
+    if (autoSwitchedRef.current) return;
+    if (!isSessionActive) return;
+    if (requestedTab) return; // explicit tab takes precedence
+    autoSwitchedRef.current = true;
+    setViewTab('kill-sheet');
+    setActiveTab('kill-sheet');
+  }, [isSessionActive, requestedTab, setActiveTab]);
 
   const handleTabChange = (key: ViewTab) => {
     setViewTab(key);
@@ -51,8 +77,29 @@ export default function GameplanPage() {
     }
   };
 
+  const openKillSheet = () => handleTabChange('kill-sheet');
+
+  const readKillSheet = (plays: Play[]) => {
+    if (plays.length === 0) {
+      VoiceForgeService.speak('No kill-shot plays loaded yet.', { interruptCurrent: true });
+      return;
+    }
+    const intro = `Reading your top ${plays.length} kill-shot ${plays.length === 1 ? 'play' : 'plays'} vs ${opponent.name}.`;
+    VoiceForgeService.speak(intro, { interruptCurrent: true });
+    plays.forEach((p, i) => {
+      const beats = p.beats ? ` Beats ${p.beats}.` : '';
+      VoiceForgeService.speak(
+        `Play ${i + 1}: ${p.name}.${beats} ${p.description}`,
+        { interruptCurrent: false }
+      );
+    });
+  };
+
   return (
     <div className="space-y-5">
+      {/* Session context bar (only during active session) */}
+      <GameplanSessionBar onOpenKillSheet={openKillSheet} />
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -109,6 +156,7 @@ export default function GameplanPage() {
         {tabs.map((tab) => {
           const count = tab.count?.(gameplan);
           const isActive = viewTab === tab.key;
+          const isKillSheetActive = tab.key === 'kill-sheet' && isSessionActive;
           return (
             <button
               key={tab.key}
@@ -117,10 +165,22 @@ export default function GameplanPage() {
                 'flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 isActive
                   ? 'bg-dark-700 text-dark-50 shadow-sm'
-                  : 'text-dark-400 hover:text-dark-200'
+                  : 'text-dark-400 hover:text-dark-200',
+                isKillSheetActive && !isActive && 'ring-1 ring-forge-500/40'
               )}
             >
+              {isKillSheetActive && (
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-forge-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-forge-500" />
+                </span>
+              )}
               {tab.label}
+              {isKillSheetActive && (
+                <span className="ml-0.5 text-[9px] font-bold uppercase tracking-wider text-forge-400">
+                  Active
+                </span>
+              )}
               {count !== undefined && (
                 <span
                   className={clsx(
@@ -141,6 +201,26 @@ export default function GameplanPage() {
           );
         })}
       </div>
+
+      {/* Read Kill Sheet voice prompt — only on Kill Sheet during active session */}
+      {viewTab === 'kill-sheet' && isSessionActive && (
+        <div className="flex items-center justify-between rounded-lg border border-forge-500/30 bg-forge-500/5 px-4 py-3">
+          <div>
+            <p className="text-sm font-bold text-forge-300">Hear it before the match</p>
+            <p className="text-[11px] text-dark-400">
+              VoiceForge will read all {gameplan.killSheet.length} kill-shot plays aloud.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => readKillSheet(gameplan.killSheet)}
+            className="inline-flex items-center gap-2 rounded-lg bg-forge-500 px-4 py-2 text-sm font-bold text-dark-950 transition-colors hover:bg-forge-400"
+          >
+            <Volume2 className="h-4 w-4" />
+            Read My Kill Shot Plays
+          </button>
+        </div>
+      )}
 
       {/* Content: Script View or Two-Column Layout */}
       {viewTab === 'script' ? (

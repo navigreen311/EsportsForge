@@ -1,8 +1,9 @@
 /**
  * Dashboard — Main landing page after login.
- * Shows TiltGuard check-in, priority weakness stack, stats, fatigue,
- * benchmarks, progression, recommendations with proof, session actions,
- * narrative, quick actions.
+ * - Idle mode: TiltGuard check-in, priority weakness stack, stats, fatigue,
+ *   benchmarks, progression, recommendations, narrative, quick actions.
+ * - Competition mode: takes over the top of the page when a session is live —
+ *   competition card, post-game flow modals, session timeline at the bottom.
  */
 
 'use client';
@@ -20,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useDashboard } from '@/hooks/useDashboard';
 import { useUIStore } from '@/lib/store';
-import { useSessionStore } from '@/lib/sessionStore';
+import { useSessionStore, useSessionUIStore } from '@/lib/sessionStore';
 import { getTitleById } from '@/lib/titles';
 import { TitleEmptyState } from '@/components/shared/TitleEmptyState';
 import { StatCard } from '@/components/shared/StatCard';
@@ -48,7 +49,16 @@ import { DailyForgeCard } from '@/components/dailyforge/DailyForgeCard';
 import TransferAIWidget from '@/components/dashboard/TransferAIWidget';
 import LoopAIDebrief from '@/components/dashboard/LoopAIDebrief';
 import ProofAIPanel from '@/components/dashboard/ProofAIPanel';
+import { CompetitionModeCard } from '@/components/session/CompetitionModeCard';
+import { SessionTimeline } from '@/components/session/SessionTimeline';
+import {
+  PostGameResultModal,
+  LoopAIUpdateModal,
+} from '@/components/session/PostGameFlow';
 import type { TiltGuardMood } from '@/types/dashboard';
+import type { SessionGameResult } from '@/lib/sessionStore';
+
+type PostGamePhase = 'idle' | 'result' | 'loopai';
 
 export default function DashboardPage() {
   const { data, hasData, statLabels } = useDashboard();
@@ -56,24 +66,32 @@ export default function DashboardPage() {
   const [moodModalOpen, setMoodModalOpen] = useState<boolean | undefined>(undefined);
   const [logMatchOpen, setLogMatchOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [postGamePhase, setPostGamePhase] = useState<PostGamePhase>('idle');
+  const [pendingResult, setPendingResult] = useState<SessionGameResult | null>(null);
+
   const selectedTitle = useUIStore((s) => s.selectedTitle);
   const titleInfo = getTitleById(selectedTitle);
+  const session = useSessionStore((s) => s.session);
+  const recordResult = useSessionStore((s) => s.recordResult);
+  const startNextGame = useSessionStore((s) => s.startNextGame);
   const endSession = useSessionStore((s) => s.endSession);
+  const requestEnd = useSessionUIStore((s) => s.requestEnd);
 
-  // Restore stored mood on mount so the badge survives refresh.
+  const isSessionActive = !!session;
+  const opponent = session?.opponent ?? 'Next Opponent';
+  const killShotName = data.priority?.weakness ?? 'Top Play';
+
   useEffect(() => {
     const stored = loadStoredMood();
     if (stored) setMood(stored);
   }, []);
 
   const handleLogMatchSubmit = (payload: MatchLogPayload) => {
-    // TODO: POST to backend match-log endpoint when wired up.
     console.info('[match-log]', payload);
     setLogMatchOpen(false);
   };
 
   const handleReviewSubmit = (payload: SessionReviewPayload) => {
-    // TODO: POST to backend session-review endpoint when wired up.
     console.info('[session-review]', payload);
     endSession();
     setReviewOpen(false);
@@ -84,9 +102,27 @@ export default function DashboardPage() {
     setReviewOpen(false);
   };
 
+  const handlePostGameResult = (result: SessionGameResult) => {
+    recordResult(result);
+    setPendingResult(result);
+    setPostGamePhase('loopai');
+  };
+
+  const handlePlayAnother = () => {
+    startNextGame();
+    setPendingResult(null);
+    setPostGamePhase('idle');
+  };
+
+  const handleEndFromLoopAI = () => {
+    setPostGamePhase('idle');
+    setPendingResult(null);
+    requestEnd();
+  };
+
   return (
     <div className="space-y-6">
-      {/* 1. TiltGuard Pre-Session Check-In Modal */}
+      {/* TiltGuard Pre-Session Check-In Modal */}
       <TiltGuardCheckin
         onMoodSelect={setMood}
         open={moodModalOpen}
@@ -101,24 +137,21 @@ export default function DashboardPage() {
             Welcome back, {data.username}
           </h1>
           <p className="mt-1 text-dark-400">
-            Here&apos;s your competitive intelligence briefing.
+            {isSessionActive
+              ? 'Competition mode is live. Stay focused.'
+              : "Here's your competitive intelligence briefing."}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* TiltGuard mood badge */}
           <MoodBadge mood={mood} onUpdate={() => setMoodModalOpen(true)} />
-
-          {/* Streak badge */}
           <Badge variant="success" dot>
             <Flame className="h-3.5 w-3.5" />
             {data.stats.currentStreak}-Game Streak
           </Badge>
-
-          {/* Session indicator */}
           <SessionIndicator
             onLogMatch={() => setLogMatchOpen(true)}
-            onEndSession={() => setReviewOpen(true)}
+            onEndSession={() => requestEnd()}
           />
         </div>
       </div>
@@ -128,22 +161,29 @@ export default function DashboardPage() {
         <TitleEmptyState titleName={titleInfo.name} titleIcon={titleInfo.icon} />
       )}
 
-      {/* Daily Forge Card */}
-      <DailyForgeCard />
-
-      {/* Prominent Session Start Card — primary entry point when idle */}
-      <SessionStartCard onLogMatch={() => setLogMatchOpen(true)} />
+      {/* Competition mode — replaces idle hero when session is live */}
+      {isSessionActive ? (
+        <CompetitionModeCard
+          onLogResult={() => setPostGamePhase('result')}
+          onMentalReset={() => setMoodModalOpen(true)}
+        />
+      ) : (
+        <>
+          <DailyForgeCard />
+          <SessionStartCard onLogMatch={() => setLogMatchOpen(true)} />
+        </>
+      )}
 
       {/* Priority Card — #1 */}
       {hasData && <PriorityCard priority={data.priority} />}
 
-      {/* 9. ProgressionOS Install Roadmap Strip */}
+      {/* ProgressionOS Install Roadmap Strip */}
       {hasData && <ProgressionStrip
         current={data.progression.current}
         next={data.progression.next}
       />}
 
-      {/* 5. ImpactRank Priority Stack — #2 and #3 */}
+      {/* ImpactRank Priority Stack — #2 and #3 */}
       {hasData && <PriorityStack priorities={data.priorities} />}
 
       {/* Stat Cards Row */}
@@ -178,40 +218,30 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* 2. Predictive Fatigue Indicator */}
+      {/* Predictive Fatigue Indicator */}
       <FatigueIndicatorCard data={data.fatigue} />
 
-      {/* 3. TransferAI Execution Gap */}
+      {/* TransferAI Execution Gap */}
       <ExecutionGapCard gap={data.executionGap} />
 
       {/* TransferAI Lab vs Live Widget */}
       <TransferAIWidget />
 
-      {/* 6. BenchmarkAI Percentile Panel */}
+      {/* BenchmarkAI Percentile Panel */}
       <BenchmarkPanel benchmarks={data.benchmarks} />
 
       {/* Two-column: Recommendations + Narrative */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-6">
-          {/* 4. LoopAI Last Game Debrief */}
           <LoopAIDebriefCard debrief={data.lastDebrief} />
-
-          {/* LoopAI Session Debrief Bullets */}
           <LoopAIDebrief />
-
-          {/* 7. Recommendations with Proof Layer */}
-          <RecentRecommendations
-            recommendations={data.recentRecommendations}
-          />
+          <RecentRecommendations recommendations={data.recentRecommendations} />
         </div>
 
         <div className="space-y-6">
-          {/* ProofAI Evidence Panel */}
           <ProofAIPanel />
-
           <WeeklyNarrative narrative={data.weeklyNarrative} />
 
-          {/* Upcoming Tournament */}
           {data.upcomingTournament && (
             <Card padding="md">
               <div className="flex items-center gap-3">
@@ -233,9 +263,7 @@ export default function DashboardPage() {
                     </span>
                   </div>
                 </div>
-                <Badge variant="warning" size="sm">
-                  Upcoming
-                </Badge>
+                <Badge variant="warning" size="sm">Upcoming</Badge>
               </div>
             </Card>
           )}
@@ -245,7 +273,10 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <QuickActions actions={data.quickActions} />
 
-      {/* Session-related modals */}
+      {/* Session timeline (only during competition mode) */}
+      {isSessionActive && <SessionTimeline />}
+
+      {/* Idle/legacy modals */}
       <LogMatchModal
         open={logMatchOpen}
         onClose={() => setLogMatchOpen(false)}
@@ -256,6 +287,23 @@ export default function DashboardPage() {
         onClose={() => setReviewOpen(false)}
         onSubmit={handleReviewSubmit}
         onSkip={handleReviewSkip}
+      />
+
+      {/* Competition-mode post-game flow */}
+      <PostGameResultModal
+        open={postGamePhase === 'result'}
+        opponent={opponent}
+        killShotName={killShotName}
+        onClose={() => setPostGamePhase('idle')}
+        onSubmit={handlePostGameResult}
+      />
+      <LoopAIUpdateModal
+        open={postGamePhase === 'loopai'}
+        killShotName={killShotName}
+        result={pendingResult}
+        onClose={() => setPostGamePhase('idle')}
+        onPlayAnother={handlePlayAnother}
+        onEndSession={handleEndFromLoopAI}
       />
     </div>
   );

@@ -26,6 +26,10 @@ import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { OfflineBanner } from '@/components/shared/OfflineBanner';
 import { useUIStore } from '@/lib/store';
 import { SearchShortcutsProvider } from '@/components/search/SearchShortcutsProvider';
+import { ActiveSessionBanner } from '@/components/session/ActiveSessionBanner';
+import { SessionEndOrchestrator } from '@/components/session/SessionEndOrchestrator';
+import { useSessionStepTracker } from '@/hooks/useSessionStepTracker';
+import { useSessionUIStore } from '@/lib/sessionStore';
 
 interface MobileNavItem {
   label: string;
@@ -76,7 +80,12 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
+  // Suppress unused-var on sidebarCollapsed — referenced for future layout logic.
+  void useUIStore((s) => s.sidebarCollapsed);
+  const requestEnd = useSessionUIStore((s) => s.requestEnd);
+
+  // Auto-mark War Room / Gameplan steps as the player navigates.
+  useSessionStepTracker();
 
   return (
     <SearchShortcutsProvider>
@@ -89,6 +98,9 @@ export default function DashboardLayout({
         {/* Main area */}
         <div className="flex flex-1 flex-col overflow-hidden">
           <TopBar />
+
+          {/* Global active-session banner (renders only when a session is live) */}
+          <ActiveSessionBanner onEndSession={requestEnd} />
 
           {/* Content */}
           <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
@@ -109,6 +121,9 @@ export default function DashboardLayout({
 
         {/* Feedback */}
         <FeedbackButton />
+
+        {/* Session end summary — listens for global "end requested" signal */}
+        <SessionEndOrchestrator />
       </div>
     </SearchShortcutsProvider>
   );
