@@ -89,6 +89,18 @@ class GameplanAI:
             notes=f"Gameplan built on {effective_scheme} scheme.",
         )
 
+        if self.db is not None:
+            from app.models.gameplan import Gameplan as GameplanModel
+            db_record = GameplanModel(
+                user_id=user_id,
+                title=f"Gameplan — {effective_scheme}",
+                opponent_id=opponent_id,
+                plays=[p.model_dump() for p in gameplan.plays],
+                meta_snapshot=meta_snapshot,
+            )
+            self.db.add(db_record)
+            await self.db.flush()
+
         return gameplan
 
     async def build_kill_sheet(
