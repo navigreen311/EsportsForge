@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   Flame,
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useDashboard } from '@/hooks/useDashboard';
 import { useUIStore } from '@/lib/store';
+import { useSessionStore } from '@/lib/sessionStore';
 import { getTitleById } from '@/lib/titles';
 import { TitleEmptyState } from '@/components/shared/TitleEmptyState';
 import { StatCard } from '@/components/shared/StatCard';
@@ -31,7 +32,13 @@ import RecentRecommendations from '@/components/dashboard/RecentRecommendations'
 import WeeklyNarrative from '@/components/dashboard/WeeklyNarrative';
 import QuickActions from '@/components/dashboard/QuickActions';
 import SessionIndicator from '@/components/dashboard/SessionIndicator';
-import TiltGuardCheckin, { MoodBadge } from '@/components/dashboard/TiltGuardCheckin';
+import { SessionStartCard } from '@/components/dashboard/SessionStartCard';
+import { LogMatchModal, type MatchLogPayload } from '@/components/dashboard/LogMatchModal';
+import { SessionReviewModal, type SessionReviewPayload } from '@/components/dashboard/SessionReviewModal';
+import TiltGuardCheckin, {
+  MoodBadge,
+  loadStoredMood,
+} from '@/components/dashboard/TiltGuardCheckin';
 import FatigueIndicatorCard from '@/components/dashboard/FatigueIndicator';
 import ExecutionGapCard from '@/components/dashboard/ExecutionGapCard';
 import LoopAIDebriefCard from '@/components/dashboard/LoopAIDebriefCard';
@@ -46,13 +53,45 @@ import type { TiltGuardMood } from '@/types/dashboard';
 export default function DashboardPage() {
   const { data, hasData, statLabels } = useDashboard();
   const [mood, setMood] = useState<TiltGuardMood | null>(null);
+  const [moodModalOpen, setMoodModalOpen] = useState<boolean | undefined>(undefined);
+  const [logMatchOpen, setLogMatchOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const selectedTitle = useUIStore((s) => s.selectedTitle);
   const titleInfo = getTitleById(selectedTitle);
+  const endSession = useSessionStore((s) => s.endSession);
+
+  // Restore stored mood on mount so the badge survives refresh.
+  useEffect(() => {
+    const stored = loadStoredMood();
+    if (stored) setMood(stored);
+  }, []);
+
+  const handleLogMatchSubmit = (payload: MatchLogPayload) => {
+    // TODO: POST to backend match-log endpoint when wired up.
+    console.info('[match-log]', payload);
+    setLogMatchOpen(false);
+  };
+
+  const handleReviewSubmit = (payload: SessionReviewPayload) => {
+    // TODO: POST to backend session-review endpoint when wired up.
+    console.info('[session-review]', payload);
+    endSession();
+    setReviewOpen(false);
+  };
+
+  const handleReviewSkip = () => {
+    endSession();
+    setReviewOpen(false);
+  };
 
   return (
     <div className="space-y-6">
       {/* 1. TiltGuard Pre-Session Check-In Modal */}
-      <TiltGuardCheckin onMoodSelect={setMood} />
+      <TiltGuardCheckin
+        onMoodSelect={setMood}
+        open={moodModalOpen}
+        onOpenChange={(o) => setMoodModalOpen(o ? true : undefined)}
+      />
 
       {/* Welcome Banner */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -68,7 +107,7 @@ export default function DashboardPage() {
 
         <div className="flex flex-wrap items-center gap-3">
           {/* TiltGuard mood badge */}
-          <MoodBadge mood={mood} />
+          <MoodBadge mood={mood} onUpdate={() => setMoodModalOpen(true)} />
 
           {/* Streak badge */}
           <Badge variant="success" dot>
@@ -77,7 +116,10 @@ export default function DashboardPage() {
           </Badge>
 
           {/* Session indicator */}
-          <SessionIndicator session={data.activeSession} />
+          <SessionIndicator
+            onLogMatch={() => setLogMatchOpen(true)}
+            onEndSession={() => setReviewOpen(true)}
+          />
         </div>
       </div>
 
@@ -88,6 +130,9 @@ export default function DashboardPage() {
 
       {/* Daily Forge Card */}
       <DailyForgeCard />
+
+      {/* Prominent Session Start Card — primary entry point when idle */}
+      <SessionStartCard onLogMatch={() => setLogMatchOpen(true)} />
 
       {/* Priority Card — #1 */}
       {hasData && <PriorityCard priority={data.priority} />}
@@ -199,6 +244,19 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <QuickActions actions={data.quickActions} />
+
+      {/* Session-related modals */}
+      <LogMatchModal
+        open={logMatchOpen}
+        onClose={() => setLogMatchOpen(false)}
+        onSubmit={handleLogMatchSubmit}
+      />
+      <SessionReviewModal
+        open={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        onSubmit={handleReviewSubmit}
+        onSkip={handleReviewSkip}
+      />
     </div>
   );
 }

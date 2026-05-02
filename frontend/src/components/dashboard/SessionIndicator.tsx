@@ -1,74 +1,58 @@
 /**
- * Active session indicator widget — shows current session or "No active session"
- * with action buttons.
+ * Active session indicator widget — when a session is running, shows a live
+ * timer + mode + Drill/Log Match/End Session controls. When idle, just shows
+ * "No active session" (the prominent SessionStartCard is the real entry point).
  */
 
 'use client';
 
-import { Radio, Gamepad2, Target, BookOpen, Square, Clock } from 'lucide-react';
+import { useEffect } from 'react';
+import { Gamepad2, Target, ClipboardList, Square } from 'lucide-react';
 import { clsx } from 'clsx';
 import Link from 'next/link';
 import { Card } from '@/components/shared/Card';
-import type { SessionStatus } from '@/types/dashboard';
+import { useSessionStore, useSessionElapsed } from '@/lib/sessionStore';
+import type { GameMode } from '@/lib/store';
 
-const modeLabels: Record<string, string> = {
-  ranked: 'Ranked Match',
-  tournament: 'Tournament Match',
-  training: 'Training Session',
+const modeLabels: Record<GameMode, string> = {
+  ranked: 'RANKED',
+  tournament: 'TOURNAMENT',
+  training: 'TRAINING',
 };
 
 interface SessionIndicatorProps {
-  session: SessionStatus | null;
+  onLogMatch: () => void;
+  onEndSession: () => void;
 }
 
-export default function SessionIndicator({ session }: SessionIndicatorProps) {
-  const isActive = session?.isActive ?? false;
+export default function SessionIndicator({
+  onLogMatch,
+  onEndSession,
+}: SessionIndicatorProps) {
+  const session = useSessionStore((s) => s.session);
+  const hydrated = useSessionStore((s) => s.hydrated);
+  const hydrate = useSessionStore((s) => s.hydrate);
+  const elapsed = useSessionElapsed(session);
 
-  if (isActive && session) {
+  useEffect(() => {
+    if (!hydrated) hydrate();
+  }, [hydrated, hydrate]);
+
+  if (session) {
     return (
       <Card padding="sm" className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-forge-500/20">
-          <Radio className="h-4 w-4 animate-pulse text-forge-400" />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold text-forge-400">
-            {modeLabels[session.type ?? ''] ?? 'Active Session'}
-          </p>
-          <p className="truncate text-[10px] text-dark-400">
-            {session.opponent ? `vs ${session.opponent}` : 'In progress'}
-            {session.score ? ` — ${session.score}` : ''}
-            {session.startedAt && (
-              <span className="ml-1 inline-flex items-center gap-0.5">
-                <Clock className="inline h-2.5 w-2.5" />
-                {session.startedAt}
-              </span>
-            )}
-          </p>
-        </div>
-
-        <button className="rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-[10px] font-bold text-red-400 transition-colors hover:bg-red-500/20">
-          <Square className="mr-1 inline h-2.5 w-2.5" />
-          End Session
-        </button>
-
         <span className="relative flex h-2.5 w-2.5">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-forge-400 opacity-75" />
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-forge-500" />
         </span>
-      </Card>
-    );
-  }
-
-  return (
-    <Card padding="sm">
-      <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-dark-800">
-          <Gamepad2 className="h-4 w-4 text-dark-500" />
-        </div>
 
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-dark-400">No active session</p>
+          <p className="text-xs font-bold text-forge-400">
+            {modeLabels[session.mode]} — {elapsed}
+          </p>
+          {session.opponent && (
+            <p className="truncate text-[10px] text-dark-400">vs {session.opponent}</p>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -79,21 +63,37 @@ export default function SessionIndicator({ session }: SessionIndicatorProps) {
             <Target className="mr-1 inline h-3 w-3" />
             Drill
           </Link>
-          <Link
-            href="/analytics"
+          <button
+            type="button"
+            onClick={onLogMatch}
             className="rounded-md bg-dark-800 px-2 py-1 text-[10px] font-medium text-dark-300 transition-colors hover:bg-dark-700 hover:text-dark-100"
           >
-            <Gamepad2 className="mr-1 inline h-3 w-3" />
+            <ClipboardList className="mr-1 inline h-3 w-3" />
             Log Match
-          </Link>
-          <Link
-            href="/gameplan"
-            className="rounded-md bg-dark-800 px-2 py-1 text-[10px] font-medium text-dark-300 transition-colors hover:bg-dark-700 hover:text-dark-100"
+          </button>
+          <button
+            type="button"
+            onClick={onEndSession}
+            className={clsx(
+              'rounded-md border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-[10px] font-bold text-red-400',
+              'transition-colors hover:bg-red-500/20'
+            )}
           >
-            <BookOpen className="mr-1 inline h-3 w-3" />
-            Gameplan
-          </Link>
+            <Square className="mr-1 inline h-2.5 w-2.5" />
+            End Session
+          </button>
         </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card padding="sm">
+      <div className="flex items-center gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-dark-800">
+          <Gamepad2 className="h-4 w-4 text-dark-500" />
+        </div>
+        <p className="text-xs font-medium text-dark-400">No active session</p>
       </div>
     </Card>
   );

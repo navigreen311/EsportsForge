@@ -6,6 +6,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Flame,
   Target,
@@ -15,8 +16,10 @@ import {
   RefreshCw,
   CheckCircle2,
   Circle,
+  Loader2,
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useSessionStore } from '@/lib/sessionStore';
 
 interface DailyMission {
   drill: { title: string; irScore: number; time: string };
@@ -51,6 +54,7 @@ const STORAGE_KEY = 'dailyforge_state';
 interface DailyForgeState {
   date: string;
   checks: boolean[];
+  drillInProgress: boolean;
   streak: number;
   missionIndex: number;
   history: string[]; // last 14 dates completed
@@ -64,6 +68,7 @@ function getDefaultState(): DailyForgeState {
   return {
     date: getTodayStr(),
     checks: [false, false, false, false],
+    drillInProgress: false,
     streak: 1,
     missionIndex: Math.floor(Math.random() * MOCK_MISSIONS.length),
     history: [],
@@ -88,12 +93,13 @@ function loadState(): DailyForgeState {
       return {
         date: getTodayStr(),
         checks: [false, false, false, false],
+        drillInProgress: false,
         streak,
         missionIndex: Math.floor(Math.random() * MOCK_MISSIONS.length),
         history: newHistory.slice(-14),
       };
     }
-    return parsed;
+    return { ...parsed, drillInProgress: parsed.drillInProgress ?? false };
   } catch {
     return getDefaultState();
   }
@@ -101,6 +107,8 @@ function loadState(): DailyForgeState {
 
 export function DailyForgeCard() {
   const [state, setState] = useState<DailyForgeState>(getDefaultState);
+  const router = useRouter();
+  const startSession = useSessionStore((s) => s.startSession);
 
   useEffect(() => {
     setState(loadState());
@@ -119,15 +127,25 @@ export function DailyForgeCard() {
     setState((prev) => {
       const newChecks = [...prev.checks];
       newChecks[index] = !newChecks[index];
-      return { ...prev, checks: newChecks };
+      // Completing the drill clears the in-progress amber state.
+      const drillInProgress = index === 0 && newChecks[0] ? false : prev.drillInProgress;
+      return { ...prev, checks: newChecks, drillInProgress };
     });
   }, []);
+
+  const startDrill = useCallback(() => {
+    if (state.checks[0]) return; // already complete
+    setState((prev) => ({ ...prev, drillInProgress: true }));
+    startSession('training', { drillId: mission.drill.title });
+    router.push('/drills');
+  }, [state.checks, mission.drill.title, startSession, router]);
 
   const regenerate = useCallback(() => {
     setState((prev) => ({
       ...prev,
       missionIndex: (prev.missionIndex + 1) % MOCK_MISSIONS.length,
       checks: [false, false, false, false],
+      drillInProgress: false,
     }));
   }, []);
 
@@ -193,42 +211,61 @@ export function DailyForgeCard() {
         {items.map((item, idx) => {
           const Icon = item.icon;
           const checked = state.checks[idx];
+          const isDrill = idx === 0;
+          const inProgress = isDrill && state.drillInProgress && !checked;
+
           return (
             <div
               key={item.label}
               className={clsx(
                 'flex items-start gap-3 rounded-lg border px-3 py-2.5 transition-all',
-                checked
-                  ? 'border-forge-500/30 bg-forge-950/20'
-                  : 'border-dark-700/40 bg-dark-800/50'
+                checked && 'border-forge-500/30 bg-forge-950/20',
+                !checked && inProgress && 'border-amber-500/40 bg-amber-950/20',
+                !checked && !inProgress && 'border-dark-700/40 bg-dark-800/50'
               )}
             >
               <button
                 onClick={() => toggleCheck(idx)}
                 className="mt-0.5 flex-shrink-0"
+                aria-label={checked ? `Mark ${item.label} incomplete` : `Mark ${item.label} complete`}
               >
                 {checked ? (
                   <CheckCircle2 className="h-4 w-4 text-forge-400" />
+                ) : inProgress ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-amber-400" />
                 ) : (
                   <Circle className="h-4 w-4 text-dark-600" />
                 )}
               </button>
-              <div className="flex-1 min-w-0">
+              <button
+                type="button"
+                onClick={isDrill ? startDrill : () => toggleCheck(idx)}
+                disabled={checked}
+                className="flex-1 min-w-0 text-left disabled:cursor-default"
+                aria-label={isDrill ? 'Start drill' : `Acknowledge ${item.label}`}
+              >
                 <div className="flex items-center gap-2 mb-0.5">
                   <Icon className={clsx('h-3.5 w-3.5', item.color)} />
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-dark-400">
                     {item.label}
                   </span>
+                  {inProgress && (
+                    <span className="text-[10px] font-semibold text-amber-400">
+                      In progress
+                    </span>
+                  )}
                 </div>
                 <p
                   className={clsx(
-                    'text-xs leading-relaxed',
-                    checked ? 'text-dark-500 line-through' : 'text-dark-200'
+                    'text-xs leading-relaxed transition-colors',
+                    checked && 'text-dark-500 line-through',
+                    !checked && inProgress && 'text-amber-200',
+                    !checked && !inProgress && 'text-dark-200'
                   )}
                 >
                   {item.text}
                 </p>
-              </div>
+              </button>
             </div>
           );
         })}
@@ -263,10 +300,15 @@ export function DailyForgeCard() {
 
       {/* Complete State */}
       {allComplete && (
-        <div className="mt-4 flex items-center justify-center gap-2 rounded-lg bg-forge-500/10 px-4 py-2.5">
-          <CheckCircle2 className="h-4 w-4 text-forge-400" />
-          <span className="text-xs font-semibold text-forge-400">
-            All missions complete! Streak maintained.
+        <div className="mt-4 flex flex-col items-center justify-center gap-1 rounded-lg border border-forge-500/30 bg-forge-500/10 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-forge-400" />
+            <span className="text-xs font-semibold text-forge-400">
+              Daily Forge Complete
+            </span>
+          </div>
+          <span className="text-[10px] text-dark-400">
+            PlayerTwin updated — streak maintained
           </span>
         </div>
       )}
