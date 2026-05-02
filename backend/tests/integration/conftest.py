@@ -49,3 +49,14 @@ from app.api.v1.router import api_v1_router  # noqa: E402
 
 if not _router_already_mounted("/api/v1/auth"):
     app.include_router(api_v1_router)
+
+
+# Integration tests reference a `test_client` fixture, but the shared
+# parent conftest defines it as `client`. Alias the parent fixture so
+# the existing test files don't all need to be touched.
+import pytest_asyncio  # noqa: E402
+
+
+@pytest_asyncio.fixture
+async def test_client(client):
+    yield client
