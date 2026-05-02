@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -104,6 +105,39 @@ class MetaBot:
 
     async def scan_weekly_meta(self, title: str = "madden26") -> MetaReport:
         """Return the current meta state as a weekly report."""
+        if self.claude_client and self.claude_client.is_available:
+            try:
+                system = (
+                    "You are a Madden 26 meta analyst. Return a JSON weekly meta report with keys: "
+                    "patch_version, top_strategies (list), rising_strategies (list), "
+                    "declining_strategies (list), exploits (list of objects with name, description, "
+                    "counter, time_remaining, risk_level), meta_summary. Respond with valid JSON only."
+                )
+                prompt = json.dumps({"title": title, "patch": _CURRENT_PATCH})
+                response = await self.claude_client.generate_json(prompt, system=system)
+                exploits = [
+                    MetaExploit(
+                        name=e["name"],
+                        description=e["description"],
+                        counter=e.get("counter"),
+                        time_remaining=e.get("time_remaining"),
+                        risk_level=e.get("risk_level", "medium"),
+                    )
+                    for e in response.get("exploits", [])
+                ]
+                return MetaReport(
+                    title=title,
+                    patch_version=response.get("patch_version", _CURRENT_PATCH),
+                    report_date=datetime.now(timezone.utc).date().isoformat(),
+                    top_strategies=response.get("top_strategies", []),
+                    rising_strategies=response.get("rising_strategies", []),
+                    declining_strategies=response.get("declining_strategies", []),
+                    exploits=exploits,
+                    meta_summary=response.get("meta_summary", ""),
+                )
+            except Exception:
+                pass
+
         exploits = [
             MetaExploit(
                 name=e["name"],

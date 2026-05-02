@@ -115,9 +115,9 @@ class ClaudeClient:
         model: str | None = None,
         max_calls_per_minute: int = 50,
     ) -> None:
-        self._api_key = api_key or settings.anthropic_api_key
+        self._api_key = api_key if api_key is not None else settings.anthropic_api_key
         self._model = model or settings.claude_model
-        self._client = anthropic.AsyncAnthropic(api_key=self._api_key)
+        self._client = anthropic.AsyncAnthropic(api_key=self._api_key or None)
         self._rate_limiter = _RateLimiter(max_calls=max_calls_per_minute)
         self.usage = TokenUsage()
 

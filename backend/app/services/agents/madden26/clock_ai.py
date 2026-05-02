@@ -5,6 +5,7 @@ Provides real-time clock management intelligence for Madden 26 competitive play.
 
 from __future__ import annotations
 
+import json
 import math
 
 from app.schemas.madden26.clock import (
@@ -67,6 +68,41 @@ class ClockAI:
     # -----------------------------------------------------------------------
     # Public API
     # -----------------------------------------------------------------------
+
+    async def get_clock_decision_ai(self, game_state: GameState) -> ClockDecision:
+        """AI-enhanced clock decision; falls back to rule-based when Claude is unavailable."""
+        if self.claude_client and self.claude_client.is_available:
+            try:
+                system = (
+                    "You are a Madden 26 clock management expert. Analyze the game state and "
+                    "return a JSON clock decision with keys: action (one of hurry_up, milk_clock, "
+                    "spike, call_timeout, normal, kneel), reasoning, urgency (0.0-1.0), "
+                    "recommended_play_type, seconds_burned_estimate. Respond with valid JSON only."
+                )
+                prompt = json.dumps({
+                    "quarter": game_state.quarter,
+                    "time_remaining_seconds": game_state.time_remaining_seconds,
+                    "score_user": game_state.score_user,
+                    "score_opponent": game_state.score_opponent,
+                    "down": game_state.down,
+                    "yards_to_go": game_state.yards_to_go,
+                    "yard_line": game_state.yard_line,
+                    "is_user_possession": game_state.is_user_possession,
+                    "timeouts_user": game_state.timeouts_user,
+                    "timeouts_opponent": game_state.timeouts_opponent,
+                })
+                response = await self.claude_client.generate_json(prompt, system=system)
+                play_type = response.get("recommended_play_type")
+                return ClockDecision(
+                    action=ClockAction(response["action"]),
+                    reasoning=response.get("reasoning", ""),
+                    urgency=float(response.get("urgency", 0.5)),
+                    recommended_play_type=PlayType(play_type) if play_type else None,
+                    seconds_burned_estimate=float(response.get("seconds_burned_estimate", 0.0)),
+                )
+            except Exception:
+                pass
+        return self.get_clock_decision(game_state)
 
     def get_clock_decision(self, game_state: GameState) -> ClockDecision:
         """Determine the optimal clock action for the current game state."""
