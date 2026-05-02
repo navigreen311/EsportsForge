@@ -7,6 +7,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useWeapon } from '@/hooks/useArsenal';
 import {
   FlaskConical,
   Play,
@@ -93,6 +95,9 @@ interface RepResult {
 }
 
 export default function SimLabPage() {
+  const searchParams = useSearchParams();
+  const weaponId = searchParams?.get('weapon') ?? null;
+  const { data: preloadedWeapon } = useWeapon(weaponId);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [selectedOpponent, setSelectedOpponent] = useState(MOCK_OPPONENTS[0]);
   const [isSimulating, setIsSimulating] = useState(false);
@@ -144,6 +149,19 @@ export default function SimLabPage() {
 
   return (
     <div className="space-y-6">
+      {/* Arsenal preload notice */}
+      {preloadedWeapon && (
+        <div className="flex items-center gap-3 rounded-xl border border-forge-500/30 bg-emerald-950/20 px-4 py-3">
+          <Zap className="h-5 w-5 flex-shrink-0 text-forge-400" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-dark-100">
+              SimLab scenario preloaded for {preloadedWeapon.name}
+            </p>
+            <p className="text-[11px] text-dark-400">{preloadedWeapon.when_to_use}</p>
+          </div>
+        </div>
+      )}
+
       {/* HEADER */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
