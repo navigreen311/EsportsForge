@@ -16,6 +16,7 @@ from app.schemas.install import (
     CallSheet,
     InstallPackage,
     MiniEBook,
+    NotesStr,
     RedZonePackage,
 )
 
@@ -84,10 +85,12 @@ class InstallAI:
             )
             audibles.append(tree)
 
-        notes = gameplan.get("notes", "")
+        raw_notes = gameplan.get("notes", "")
         style = player_profile.get("style", "")
         if style:
-            notes = f"[{style} style adjustments applied] {notes}"
+            notes: NotesStr = NotesStr(f"[{style} style adjustments applied] {raw_notes}")
+        else:
+            notes = NotesStr(raw_notes)
 
         call_sheet = CallSheet(
             title=title,

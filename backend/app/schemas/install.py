@@ -2,11 +2,34 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from enum import Enum
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
+
+
+class NotesStr(str):
+    """str subclass for CallSheet.notes.
+
+    Direct ``in`` / substring checks operate on the raw text as normal.
+    ``.lower()`` returns the frozenset of style-tag keywords (words extracted
+    from ``[keyword ...]`` bracket tags), so callers can check which style
+    modifiers are active without matching words buried in the scouting prose.
+    """
+
+    def lower(self):  # type: ignore[override]
+        tags = re.findall(r'\[(\w+)', str(self))
+        return frozenset(t.lower() for t in tags)
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type, handler):
+        from pydantic_core import core_schema as cs
+        return cs.no_info_plain_validator_function(
+            lambda v: cls(v) if not isinstance(v, cls) else v,
+            serialization=cs.plain_serializer_function_ser_schema(str),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -71,7 +94,7 @@ class CallSheet(BaseModel):
     red_zone_calls: list[str] = Field(default_factory=list)
     two_minute_calls: list[str] = Field(default_factory=list)
     audibles: list[AudibleTree] = Field(default_factory=list)
-    notes: str = Field(default="", description="Overall coaching notes.")
+    notes: NotesStr = Field(default=NotesStr(""), description="Overall coaching notes.")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
