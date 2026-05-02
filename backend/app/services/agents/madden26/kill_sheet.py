@@ -159,7 +159,7 @@ class KillSheetGenerator:
     # Public API
     # -----------------------------------------------------------------------
 
-    def generate_kill_sheet(
+    async def generate_kill_sheet(
         self,
         user_id: str,
         opponent_data: OpponentData,
@@ -176,7 +176,7 @@ class KillSheetGenerator:
         ranked.sort(key=lambda p: p.effectiveness_score, reverse=True)
         top_kills = ranked[: self.TARGET_KILLS]
 
-        return KillSheet(
+        sheet = KillSheet(
             id=str(uuid.uuid4()),
             user_id=user_id,
             opponent_id=opponent_data.opponent_id,
@@ -185,6 +185,12 @@ class KillSheetGenerator:
             generated_at=datetime.now(timezone.utc).isoformat(),
             version=1,
         )
+
+        if self.db:
+            self.db.add(sheet)
+            await self.db.flush()
+
+        return sheet
 
     def rank_plays_by_opponent(
         self,

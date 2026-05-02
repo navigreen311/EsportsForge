@@ -247,7 +247,7 @@ class MatchupAI:
     # get_matchup_history
     # ------------------------------------------------------------------
 
-    def get_matchup_history(
+    async def get_matchup_history(
         self,
         user_id: str,
         opponent_id: str,
@@ -255,9 +255,21 @@ class MatchupAI:
     ) -> list[MatchupResult]:
         """Return historical matchup results.
 
-        In production this queries a database. ``history`` param allows
-        direct injection for testing.
+        Queries the database when available, otherwise falls back to the
+        ``history`` list for testing or offline use.
         """
+        if self.db:
+            from sqlalchemy import select
+            from app.models.game_session import GameSession
+
+            result = await self.db.execute(
+                select(GameSession).where(
+                    GameSession.user_id == user_id,
+                    GameSession.opponent_id == opponent_id,
+                )
+            )
+            return result.scalars().all()
+
         if not history:
             return []
 
