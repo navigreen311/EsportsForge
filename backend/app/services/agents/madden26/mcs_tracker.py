@@ -302,6 +302,20 @@ class MCSTracker:
     # Private helpers
     # -----------------------------------------------------------------------
 
+    async def get_tournament_sessions(self, user_id: str) -> list:
+        """Return tournament game sessions for a user from the DB."""
+        if self.db is None:
+            return []
+        from sqlalchemy import select
+        from app.models.game_session import GameSession, GameMode
+        result = await self.db.execute(
+            select(GameSession).where(
+                GameSession.user_id == user_id,
+                GameSession.mode == GameMode.TOURNAMENT,
+            )
+        )
+        return result.scalars().all()
+
     def _calculate_trend(self, form: dict) -> FormTrend:
         """Derive a form trend from raw stats."""
         if not form:

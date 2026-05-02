@@ -414,6 +414,17 @@ class RecruitingIQ:
     # Internal helpers
     # ------------------------------------------------------------------
 
+    async def get_recruiting_targets(self, user_id: str) -> list:
+        """Return saved recruiting targets for a user from the DB."""
+        if self.db is None:
+            return []
+        from sqlalchemy import select
+        from app.models.cfb26 import CFBRecruitingTarget
+        result = await self.db.execute(
+            select(CFBRecruitingTarget).where(CFBRecruitingTarget.user_id == user_id)
+        )
+        return result.scalars().all()
+
     def _generate_action_items(
         self,
         recruit: RecruitData,
