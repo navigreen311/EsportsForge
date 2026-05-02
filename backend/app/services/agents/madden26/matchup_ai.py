@@ -247,28 +247,22 @@ class MatchupAI:
     # get_matchup_history
     # ------------------------------------------------------------------
 
-    async def get_matchup_history(
+    def get_matchup_history(
         self,
         user_id: str,
         opponent_id: str,
         history: list[dict[str, Any]] | None = None,
-    ) -> list[MatchupResult]:
+    ):
         """Return historical matchup results.
 
-        Queries the database when available, otherwise falls back to the
-        ``history`` list for testing or offline use.
+        Returns a coroutine when a DB session is bound (caller awaits the
+        async DB query); otherwise returns a synchronous ``list`` derived
+        from the optional ``history`` argument. This dual contract keeps
+        the offline tests sync-callable while still letting DB-aware
+        callers ``await`` the same method name.
         """
         if self.db:
-            from sqlalchemy import select
-            from app.models.game_session import GameSession
-
-            result = await self.db.execute(
-                select(GameSession).where(
-                    GameSession.user_id == user_id,
-                    GameSession.opponent_id == opponent_id,
-                )
-            )
-            return result.scalars().all()
+            return self._get_matchup_history_db(user_id, opponent_id)
 
         if not history:
             return []
@@ -298,6 +292,21 @@ class MatchupAI:
             ))
 
         return results
+
+    async def _get_matchup_history_db(
+        self, user_id: str, opponent_id: str
+    ) -> list[MatchupResult]:
+        """Async DB query used by ``get_matchup_history`` when a session is bound."""
+        from sqlalchemy import select
+        from app.models.game_session import GameSession
+
+        result = await self.db.execute(
+            select(GameSession).where(
+                GameSession.user_id == user_id,
+                GameSession.opponent_id == opponent_id,
+            )
+        )
+        return result.scalars().all()
 
     # ------------------------------------------------------------------
     # Private helpers
