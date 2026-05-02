@@ -20,7 +20,7 @@ from app.schemas.player_twin import (
 )
 from app.services.backbone import execution_engine, identity_engine, player_twin
 
-router = APIRouter(prefix="/player-twin", tags=["PlayerTwin"])
+router = APIRouter(tags=["PlayerTwin"])
 
 
 # ── Full profile ──────────────────────────────────────────────────────────

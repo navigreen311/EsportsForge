@@ -60,3 +60,14 @@ import pytest_asyncio  # noqa: E402
 @pytest_asyncio.fixture
 async def test_client(client):
     yield client
+
+
+# The auth-flow integration suite hits register/login in rapid
+# succession; production rate-limit middleware caps those at 5 per
+# 15-minute window which trips after a handful of tests and produces
+# 429s instead of the expected 422 / 200 responses. Disable the
+# throttle for the test process — the suite still exercises the
+# normal validation paths.
+from app.middleware.rate_limit import RateLimitMiddleware  # noqa: E402
+
+RateLimitMiddleware._clean_and_count = lambda self, key: 0  # type: ignore[method-assign]

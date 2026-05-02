@@ -22,7 +22,7 @@ from app.schemas.mental import (
 )
 from app.services.backbone import benchmark_ai, confidence_tracker, narrative_engine
 
-router = APIRouter(prefix="/mental", tags=["mental"])
+router = APIRouter(tags=["mental"])
 
 
 # ---------------------------------------------------------------------------
