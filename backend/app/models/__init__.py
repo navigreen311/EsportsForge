@@ -25,6 +25,12 @@ from app.models.vault_entry import VaultEntry
 from app.models.notification import Notification
 from app.models.support_ticket import SupportTicket
 from app.models.api_usage import ApiUsage
+from app.models.secret_weapon import (
+    SecretWeapon,
+    WeaponUsageLog,
+    UserArsenal,
+    TITLE_IDS,
+)
 
 __all__ = [
     # Mixins
@@ -65,4 +71,9 @@ __all__ = [
     "VaultEntry",
     "Notification",
     "ApiUsage",
+    # Arsenal
+    "SecretWeapon",
+    "WeaponUsageLog",
+    "UserArsenal",
+    "TITLE_IDS",
 ]

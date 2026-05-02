@@ -17,9 +17,10 @@ import { AntiBlitzHealthBadge, AntiBlitzHealthBanner } from '@/components/gamepl
 import OpponentTendencyHeader from '@/components/gameplan/OpponentTendencyHeader';
 import FirstFifteenScript from '@/components/gameplan/FirstFifteenScript';
 import { GameplanSessionBar } from '@/components/session/GameplanSessionBar';
+import { ArsenalTabPanel } from '@/components/arsenal/ArsenalTabPanel';
 import type { PackageTab, Play } from '@/types/gameplan';
 
-type ViewTab = PackageTab | 'script';
+type ViewTab = PackageTab | 'script' | 'arsenal';
 
 const tabs: { key: ViewTab; label: string; count?: (gp: ReturnType<typeof useGameplan>['gameplan']) => number }[] = [
   { key: 'all', label: 'All Plays', count: (gp) => gp.plays.length },
@@ -28,6 +29,7 @@ const tabs: { key: ViewTab; label: string; count?: (gp: ReturnType<typeof useGam
   { key: 'anti-blitz', label: 'Anti-Blitz', count: (gp) => gp.antiBlitzPackage.length },
   { key: '2-min-drill', label: '2-Min Drill', count: (gp) => gp.twoMinDrillPackage.length },
   { key: 'script', label: 'Script View' },
+  { key: 'arsenal', label: '⚡ Arsenal' },
 ];
 
 export default function GameplanPage() {
@@ -56,7 +58,8 @@ export default function GameplanPage() {
   useEffect(() => {
     if (requestedTab && tabs.some((t) => t.key === requestedTab)) {
       setViewTab(requestedTab);
-      if (requestedTab !== 'script') setActiveTab(requestedTab);
+      if (requestedTab !== 'script' && requestedTab !== 'arsenal')
+        setActiveTab(requestedTab);
     }
   }, [requestedTab, setActiveTab]);
 
@@ -72,7 +75,7 @@ export default function GameplanPage() {
 
   const handleTabChange = (key: ViewTab) => {
     setViewTab(key);
-    if (key !== 'script') {
+    if (key !== 'script' && key !== 'arsenal') {
       setActiveTab(key as PackageTab);
     }
   };
@@ -223,7 +226,9 @@ export default function GameplanPage() {
       )}
 
       {/* Content: Script View or Two-Column Layout */}
-      {viewTab === 'script' ? (
+      {viewTab === 'arsenal' ? (
+        <ArsenalTabPanel />
+      ) : viewTab === 'script' ? (
         <div className="space-y-5">
           <First15ScriptView opponentName={opponent.name} />
           <FirstFifteenScript />

@@ -24,6 +24,7 @@ import {
   X,
   Archive,
   Shield,
+  Zap,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useUIStore, TITLE_OPTIONS, TIER_CONFIG } from '@/lib/store';
@@ -34,11 +35,13 @@ interface NavItem {
   label: string;
   href: string;
   icon: LucideIcon;
+  badge?: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Gameplan', href: '/gameplan', icon: Gamepad2 },
+  { label: 'Arsenal', href: '/arsenal', icon: Zap, badge: 'NEW' },
   { label: 'Opponents', href: '/opponents', icon: Users },
   { label: 'Vault', href: '/vault', icon: Archive },
   { label: 'War Room', href: '/war-room', icon: Shield },
@@ -142,7 +145,12 @@ function NavLink({
         )}
       />
       {!collapsed && <span>{item.label}</span>}
-      {isActive && !collapsed && (
+      {!collapsed && item.badge && (
+        <span className="ml-auto rounded-full bg-forge-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-forge-300">
+          {item.badge}
+        </span>
+      )}
+      {isActive && !collapsed && !item.badge && (
         <div className="ml-auto h-1.5 w-1.5 rounded-full bg-forge-400" />
       )}
     </Link>

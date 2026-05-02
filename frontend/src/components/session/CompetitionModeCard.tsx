@@ -24,6 +24,7 @@ import { useCoachingStatus } from '@/hooks/useCoachingStatus';
 import { useUIStore } from '@/lib/store';
 import { TIER_CONFIG } from '@/lib/store';
 import { CoachingStatusRow } from './CoachingStatus';
+import { ArsenalAlert } from './ArsenalAlert';
 import { VoiceForgeService } from '@/lib/services/voiceforge';
 import { useDashboard } from '@/hooks/useDashboard';
 
@@ -103,6 +104,9 @@ export function CompetitionModeCard({
         </p>
         <p className="text-sm leading-relaxed text-dark-100">"{headlineRec}"</p>
       </div>
+
+      {/* ArsenalAI alert (renders only when a trigger fires) */}
+      <ArsenalAlert />
 
       {/* Action grid */}
       <div className="grid grid-cols-2 gap-2 px-5 py-4">

@@ -7,6 +7,7 @@
 
 import { Shield } from 'lucide-react';
 import PreGameWarRoom from '@/components/warroom/PreGameWarRoom';
+import { WeaponSummaryCard } from '@/components/arsenal/WeaponSummaryCard';
 
 export default function WarRoomPage() {
   return (
@@ -21,6 +22,9 @@ export default function WarRoomPage() {
           Intel briefing, kill sheet, and mental prep before you compete.
         </p>
       </div>
+
+      {/* Saved Arsenal weapons for this matchup */}
+      <WeaponSummaryCard />
 
       {/* War Room Content */}
       <PreGameWarRoom />

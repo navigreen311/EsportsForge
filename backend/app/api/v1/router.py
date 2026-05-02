@@ -86,6 +86,13 @@ _mount("app.api.v1.endpoints.gameplans",       prefix="/gameplans",       tags=[
 _mount("app.api.v1.endpoints.recommendations", prefix="/recommendations", tags=["Recommendations"])
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Secret Weapon Arsenal
+# ═══════════════════════════════════════════════════════════════════════════
+_mount("app.api.v1.endpoints.arsenal",         prefix="/arsenal",         tags=["Arsenal"])
+_mount("app.api.v1.endpoints.arsenal_ai",      prefix="/arsenal",         tags=["Arsenal"])
+_mount("app.api.v1.endpoints.arsenal_upload",  prefix="/arsenal",         tags=["Arsenal"])
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Title Modules — Madden 26
 # ═══════════════════════════════════════════════════════════════════════════
 _mount("app.api.v1.endpoints.madden26.roster",    prefix="/madden26/roster",    tags=["Madden 26"])

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useSessionStore } from '@/lib/sessionStore';
+import { useMyArsenal } from '@/hooks/useArsenal';
 
 interface DailyMission {
   drill: { title: string; irScore: number; time: string };
@@ -109,6 +110,8 @@ export function DailyForgeCard() {
   const [state, setState] = useState<DailyForgeState>(getDefaultState);
   const router = useRouter();
   const startSession = useSessionStore((s) => s.startSession);
+  const { data: savedWeapons = [] } = useMyArsenal();
+  const featuredWeapon = savedWeapons[0];
 
   useEffect(() => {
     setState(loadState());
@@ -171,6 +174,18 @@ export function DailyForgeCard() {
     { label: 'Mental Cue', icon: Brain, text: mission.mentalCue, color: 'text-purple-400' },
     { label: 'Meta Tip', icon: Zap, text: mission.metaTip, color: 'text-sky-400' },
   ];
+  if (featuredWeapon) {
+    items.push({
+      label: 'Secret Weapon',
+      icon: Zap,
+      text: `Review your ${featuredWeapon.name} setup`,
+      color: 'text-forge-400',
+    });
+  }
+  // Pad checks if a weapon was added since last render.
+  if (featuredWeapon && state.checks.length < items.length) {
+    state.checks = [...state.checks, ...Array(items.length - state.checks.length).fill(false)];
+  }
 
   return (
     <div
