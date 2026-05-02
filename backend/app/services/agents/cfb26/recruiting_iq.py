@@ -74,7 +74,9 @@ class RecruitingIQ:
     with AI models trained on historical recruiting data.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, db=None, claude_client=None) -> None:
+        self.db = db
+        self.claude_client = claude_client
         self._boards: dict[str, RecruitingBoard] = {}
 
     # ------------------------------------------------------------------
@@ -123,7 +125,7 @@ class RecruitingIQ:
                 recruit=recruit,
                 evaluation=evaluation,
                 priority=priority,
-                rank_on_board=0,  # assigned after sort
+                rank_on_board=1,  # placeholder; reassigned after sort
                 action_items=action_items,
             ))
 
@@ -440,3 +442,8 @@ class RecruitingIQ:
 
 # Module-level singleton
 recruiting_iq = RecruitingIQ()
+
+
+def get_recruiting_iq(db=None, claude_client=None) -> RecruitingIQ:
+    """Factory — returns a RecruitingIQ bound to the given db/claude_client."""
+    return RecruitingIQ(db=db, claude_client=claude_client)

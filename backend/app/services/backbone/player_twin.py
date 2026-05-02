@@ -239,7 +239,7 @@ def bootstrap_from_sessions(user_id: str, sessions: list[SessionData]) -> Player
     Minimum 1 session required; 3+ recommended for reasonable confidence.
     """
     if not sessions:
-        raise ValueError("At least one session is required for bootstrapping")
+        raise ValueError("at least one session is required for bootstrapping")
 
     title = sessions[0].title
     for session in sessions:

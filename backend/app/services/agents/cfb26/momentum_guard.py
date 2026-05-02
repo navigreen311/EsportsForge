@@ -65,7 +65,9 @@ class MomentumGuard:
     per-game state and feed into real-time coaching overlays.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, db=None, claude_client=None) -> None:
+        self.db = db
+        self.claude_client = claude_client
         # In-memory game state cache: game_id -> MomentumState
         self._game_states: dict[str, MomentumState] = {}
 
@@ -382,3 +384,8 @@ class MomentumGuard:
 
 # Module-level singleton
 momentum_guard = MomentumGuard()
+
+
+def get_momentum_guard(db=None, claude_client=None) -> MomentumGuard:
+    """Factory — returns a MomentumGuard bound to the given db/claude_client."""
+    return MomentumGuard(db=db, claude_client=claude_client)

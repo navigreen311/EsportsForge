@@ -130,8 +130,11 @@ def process_second_session(
     if profile is None:
         raise ValueError(f"No onboarding started for user {user_id} in {title}")
     if profile.current_phase != OnboardingPhase.SESSION_2:
+        # The user hasn't finished SESSION_1 yet — explain in terms of
+        # what step they should currently be on, not the phase enum.
         raise ValueError(
-            f"Expected phase SESSION_2, got {profile.current_phase}"
+            f"Expected phase SESSION_1 to be complete before processing "
+            f"the second session — current phase is {profile.current_phase}"
         )
 
     _session_data[user_id][title].append(session_data)

@@ -18,6 +18,7 @@ from app.schemas.warzone.combat import (
     RotationRequest,
     SquadMember,
     SquadOpsRequest,
+    SquadRole,
     WarzoneTwinRequest,
     WeaponClass,
     ZoneRequest,

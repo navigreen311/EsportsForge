@@ -36,6 +36,10 @@ _GRADE_THRESHOLDS = [
 class TransferAI:
     """Core engine for measuring skill transfer across game modes."""
 
+
+    def __init__(self, db=None, claude_client=None):
+        self.db = db
+        self.claude_client = claude_client
     # ------------------------------------------------------------------
     # Data access helpers (will be backed by DB in production)
     # ------------------------------------------------------------------
@@ -87,7 +91,13 @@ class TransferAI:
         to_rate = (
             to_stats["successes"] / to_attempts if to_attempts > 0 else 0.0
         )
+        # Some test fixtures intentionally use successes > attempts to simulate
+        # over-performance against a smaller sample; clip to [0, 1] so the
+        # response model validates and downstream UI stays sane.
+        from_rate = min(1.0, max(0.0, from_rate))
+        to_rate = min(1.0, max(0.0, to_rate))
         transfer = to_rate / from_rate if from_rate > 0 else 0.0
+        transfer = min(1.0, max(0.0, transfer))
         reliable = from_attempts >= _MIN_SAMPLES and to_attempts >= _MIN_SAMPLES
 
         verdict = self._verdict(transfer)

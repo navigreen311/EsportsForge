@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     stripe_price_elite: str = ""
     stripe_price_team: str = ""
 
+    # Redis pool
+    redis_max_connections: int = 50
+    redis_socket_timeout: float = 5.0
+
     # Cache TTLs (seconds)
     cache_ttl_agent_output: int = 300
     cache_ttl_player_state: int = 300

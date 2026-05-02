@@ -270,6 +270,25 @@ class SchemeAI:
     suggest hot route adjustments.
     """
 
+    def __init__(self, db=None, claude_client=None):
+        self.db = db
+        self.claude_client = claude_client
+
+    # ------------------------------------------------------------------
+    # DB helpers (graceful no-ops when db is None)
+    # ------------------------------------------------------------------
+
+    async def _get_scheme_from_db(self, scheme_name: str):
+        """Look up a scheme override in the DB. Returns None when missing."""
+        if self.db is None:
+            return None
+        from sqlalchemy import select
+        from app.models.madden26 import MaddenScheme
+        result = await self.db.execute(
+            select(MaddenScheme).where(MaddenScheme.name == scheme_name)
+        )
+        return result.scalar_one_or_none()
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------

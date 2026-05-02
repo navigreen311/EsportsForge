@@ -48,8 +48,10 @@ _ADVANTAGE_THRESHOLD = 5  # rating-point gap to count as an advantage
 class MatchupAI:
     """Personnel advantage finder and matchup isolation engine for Madden 26."""
 
-    def __init__(self) -> None:
-        self._roster_iq = RosterIQ()
+    def __init__(self, db=None, claude_client=None) -> None:
+        self.db = db
+        self.claude_client = claude_client
+        self._roster_iq = RosterIQ(db=db, claude_client=claude_client)
 
     # ------------------------------------------------------------------
     # find_matchup_advantages

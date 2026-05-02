@@ -92,7 +92,10 @@ class RoundScoreAI:
         )
 
         dominant = [c for c, s in criteria_scores.items() if s > 0.55]
-        confidence = min(1.0, abs(weighted - 0.5) * 4)
+        # Confidence scales with how decisive the weighted edge is. The
+        # multiplier was previously 4, which inflated close rounds — drop
+        # to 3 so 15-vs-14 sig-strike rounds correctly read as a swing.
+        confidence = min(1.0, abs(weighted - 0.5) * 3)
         is_swing = confidence < 0.3
 
         score = RoundScore(

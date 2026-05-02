@@ -176,6 +176,10 @@ class RosterRoadmap(BaseModel):
         default="",
         description="Recruiting philosophy summary.",
     )
+    championship_window: str = Field(
+        default="",
+        description="Human-readable description of the projected peak year(s).",
+    )
     generated_at: datetime = Field(default_factory=datetime.utcnow)
 
 

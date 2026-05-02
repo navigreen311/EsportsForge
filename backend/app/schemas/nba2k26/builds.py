@@ -39,13 +39,15 @@ class Archetype(str, Enum):
 
 
 class BadgeTier(str, Enum):
-    """Badge level tiers."""
+    """Badge level tiers. Values are rank-prefixed so string comparison
+    (`tier.value >= other.value`) reflects the natural BRONZE < SILVER <
+    GOLD < HALL_OF_FAME < LEGEND ordering."""
 
-    BRONZE = "bronze"
-    SILVER = "silver"
-    GOLD = "gold"
-    HALL_OF_FAME = "hall_of_fame"
-    LEGEND = "legend"
+    BRONZE = "1-bronze"
+    SILVER = "2-silver"
+    GOLD = "3-gold"
+    HALL_OF_FAME = "4-hall_of_fame"
+    LEGEND = "5-legend"
 
 
 class BadgeCategory(str, Enum):

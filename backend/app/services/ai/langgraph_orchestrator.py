@@ -56,7 +56,11 @@ def _density_for_pressure(pressure: str) -> str:
         PressureState.MEDIUM: "standard",
         PressureState.LOW: "detailed",
     }
-    return mapping.get(PressureState(pressure), "standard")
+    try:
+        return mapping.get(PressureState(pressure), "standard")
+    except ValueError:
+        # Unknown / unsupported pressure label — fall back to default.
+        return "standard"
 
 
 # ---------------------------------------------------------------------------

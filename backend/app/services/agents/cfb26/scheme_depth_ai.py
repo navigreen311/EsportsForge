@@ -221,7 +221,9 @@ class SchemeDepthAI:
     and integrate with PlayerTwin for personalized learning paths.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, db=None, claude_client=None) -> None:
+        self.db = db
+        self.claude_client = claude_client
         # In-memory mastery tracking: (user_id, scheme_type) -> MasteryLevel
         self._mastery_store: dict[tuple[str, str], MasteryLevel] = {}
 
@@ -496,3 +498,8 @@ class SchemeDepthAI:
 
 # Module-level singleton
 scheme_depth_ai = SchemeDepthAI()
+
+
+def get_scheme_depth_ai(db=None, claude_client=None) -> SchemeDepthAI:
+    """Factory — returns a SchemeDepthAI bound to the given db/claude_client."""
+    return SchemeDepthAI(db=db, claude_client=claude_client)
