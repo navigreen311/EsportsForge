@@ -472,6 +472,17 @@ class SchemeDepthAI:
     # Scheme counters
     # ------------------------------------------------------------------
 
+    async def get_scheme_from_db(self, scheme_name: str):
+        """Look up a CFB scheme override in the DB. Returns None when missing."""
+        if self.db is None:
+            return None
+        from sqlalchemy import select
+        from app.models.cfb26 import CFBScheme
+        result = await self.db.execute(
+            select(CFBScheme).where(CFBScheme.name == scheme_name)
+        )
+        return result.scalar_one_or_none()
+
     def get_scheme_counter(self, opponent_scheme: SchemeType) -> CounterScheme:
         """Get counter strategy for opponent's scheme.
 
