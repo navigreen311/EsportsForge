@@ -1,12 +1,13 @@
 /**
  * TiltGuard pre-session mood check-in modal.
- * Shows once per day on first dashboard load.
+ * Shows once per day on first dashboard load; can be re-opened from the
+ * mood badge dropdown to update mid-session.
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Shield, Zap, Smile, Moon, Frown, Flame } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Shield, Zap, Smile, Moon, Frown, Flame, ChevronDown } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Modal } from '@/components/shared/Modal';
 import type { TiltGuardMood } from '@/types/dashboard';
@@ -25,25 +26,41 @@ const MOOD_OPTIONS: {
   { value: 'tilted', label: 'Tilted', icon: Flame, color: 'text-red-400', bg: 'bg-red-500/20 border-red-500/30' },
 ];
 
-const STORAGE_KEY = 'tiltguard-checkin-date';
+const DATE_KEY = 'tiltguard-checkin-date';
+const MOOD_KEY = 'tiltguard-checkin-mood';
 
 interface TiltGuardCheckinProps {
   onMoodSelect: (mood: TiltGuardMood) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export default function TiltGuardCheckin({ onMoodSelect }: TiltGuardCheckinProps) {
-  const [open, setOpen] = useState(false);
+export default function TiltGuardCheckin({
+  onMoodSelect,
+  open: controlledOpen,
+  onOpenChange,
+}: TiltGuardCheckinProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
 
   useEffect(() => {
+    if (isControlled) return;
     const today = new Date().toDateString();
-    const lastCheckin = localStorage.getItem(STORAGE_KEY);
+    const lastCheckin = localStorage.getItem(DATE_KEY);
     if (lastCheckin !== today) {
-      setOpen(true);
+      setInternalOpen(true);
     }
-  }, []);
+  }, [isControlled]);
 
   const handleSelect = (mood: TiltGuardMood) => {
-    localStorage.setItem(STORAGE_KEY, new Date().toDateString());
+    localStorage.setItem(DATE_KEY, new Date().toDateString());
+    localStorage.setItem(MOOD_KEY, mood);
     onMoodSelect(mood);
     setOpen(false);
   };
@@ -81,8 +98,34 @@ export default function TiltGuardCheckin({ onMoodSelect }: TiltGuardCheckinProps
   );
 }
 
-/** Compact mood badge for top bar */
-export function MoodBadge({ mood }: { mood: TiltGuardMood | null }) {
+/** Read the persisted mood (set during today's check-in). */
+export function loadStoredMood(): TiltGuardMood | null {
+  if (typeof window === 'undefined') return null;
+  const today = new Date().toDateString();
+  if (localStorage.getItem(DATE_KEY) !== today) return null;
+  return (localStorage.getItem(MOOD_KEY) as TiltGuardMood | null) ?? null;
+}
+
+/** Compact mood badge — clickable to update mood mid-session. */
+export function MoodBadge({
+  mood,
+  onUpdate,
+}: {
+  mood: TiltGuardMood | null;
+  onUpdate?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
   if (!mood) return null;
 
   const opt = MOOD_OPTIONS.find((o) => o.value === mood);
@@ -92,20 +135,50 @@ export function MoodBadge({ mood }: { mood: TiltGuardMood | null }) {
   const isWarning = mood === 'tilted' || mood === 'frustrated';
 
   return (
-    <div className="flex items-center gap-2">
-      <span
+    <div className="relative flex items-center gap-2" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
         className={clsx(
-          'inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium',
+          'inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-medium transition-all hover:brightness-110',
           opt.bg
         )}
+        aria-haspopup="menu"
+        aria-expanded={open}
       >
         <Icon className={clsx('h-3.5 w-3.5', opt.color)} />
-        {opt.label}
-      </span>
+        <span className={opt.color}>{opt.label}</span>
+        <ChevronDown className={clsx('h-3 w-3', opt.color)} />
+      </button>
+
       {isWarning && (
         <span className="text-[10px] text-amber-400">
           Consider a 5-min reset before queuing
         </span>
+      )}
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-20 mt-1.5 w-52 overflow-hidden rounded-lg border border-dark-700 bg-dark-900 shadow-xl"
+        >
+          <div className="border-b border-dark-700/60 px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wider text-dark-500">
+              Current mood
+            </p>
+            <p className={clsx('text-xs font-semibold', opt.color)}>{opt.label}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onUpdate?.();
+            }}
+            className="block w-full px-3 py-2 text-left text-xs font-medium text-dark-200 transition-colors hover:bg-dark-800 hover:text-dark-50"
+          >
+            Update mood
+          </button>
+        </div>
       )}
     </div>
   );
