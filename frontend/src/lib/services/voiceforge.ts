@@ -113,6 +113,42 @@ export const VoiceForgeService = {
   },
 
   // -----------------------------------------------------------------------
+  // speakAsync — Promise resolves on utterance end (or rejects on cancel)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Speak `text` and resolve when speech finishes. Useful for chaining
+   * step-by-step coaching where each step waits for the previous to end.
+   */
+  speakAsync(text: string, opts: SpeakOptions = {}): Promise<void> {
+    if (!VOICEFORGE_ENABLED) return Promise.resolve();
+    const synth = getSynthesis();
+    if (!synth) return Promise.resolve();
+
+    return new Promise<void>((resolve) => {
+      try {
+        if (opts.interruptCurrent) synth.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = Math.min(2, Math.max(0.5, opts.speed ?? 1));
+        utterance.onend = () => resolve();
+        utterance.onerror = () => resolve();
+        synth.speak(utterance);
+      } catch {
+        resolve();
+      }
+    });
+  },
+
+  /** Returns true when speech synthesis is currently mid-utterance. */
+  isSpeaking(): boolean {
+    try {
+      return getSynthesis()?.speaking ?? false;
+    } catch {
+      return false;
+    }
+  },
+
+  // -----------------------------------------------------------------------
   // listen
   // -----------------------------------------------------------------------
 

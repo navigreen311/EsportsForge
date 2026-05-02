@@ -5,8 +5,8 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Zap, Search, X } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -19,6 +19,7 @@ import {
 import { WeaponCard } from '@/components/arsenal/WeaponCard';
 import { WeaponFilters } from '@/components/arsenal/WeaponFilters';
 import { WeaponDetail } from '@/components/arsenal/WeaponDetail';
+import { VoiceCommandBar } from '@/components/arsenal/VoiceCommandBar';
 import { TITLE_DISPLAY_NAME } from '@/lib/arsenal/titleMeta';
 
 type Tab = 'my' | 'all';
@@ -35,6 +36,17 @@ export default function ArsenalPage() {
   const [filters, setFilters] = useState<WF>({ sort: 'most-recent' });
   const [search, setSearch] = useState('');
   const [openWeaponId, setOpenWeaponId] = useState<string | null>(null);
+  const [openInPractice, setOpenInPractice] = useState(false);
+  const searchParams = useSearchParams();
+
+  // Deep-link: ?weapon=ID opens the slide-over (used by ArsenalAI alerts).
+  useEffect(() => {
+    const id = searchParams?.get('weapon');
+    if (id) {
+      setOpenWeaponId(id);
+      setOpenInPractice(searchParams?.get('practice') === '1');
+    }
+  }, [searchParams]);
 
   const allQuery = useWeapons({ ...filters, q: search.trim() || undefined });
   const myQuery = useMyArsenal();
@@ -63,6 +75,18 @@ export default function ArsenalPage() {
           </span>
         </div>
       </div>
+
+      {/* Voice command bar */}
+      <VoiceCommandBar
+        onOpenWeapon={(id) => {
+          setOpenInPractice(false);
+          setOpenWeaponId(id);
+        }}
+        onPracticeWeapon={(id) => {
+          setOpenInPractice(true);
+          setOpenWeaponId(id);
+        }}
+      />
 
       {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto rounded-lg border border-dark-700/50 bg-dark-900/60 p-1">
@@ -146,7 +170,11 @@ export default function ArsenalPage() {
 
       <WeaponDetail
         weaponId={openWeaponId}
-        onClose={() => setOpenWeaponId(null)}
+        startInPracticeMode={openInPractice}
+        onClose={() => {
+          setOpenWeaponId(null);
+          setOpenInPractice(false);
+        }}
       />
     </div>
   );

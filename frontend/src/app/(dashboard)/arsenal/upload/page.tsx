@@ -19,6 +19,8 @@ import { clsx } from 'clsx';
 import api from '@/lib/api';
 import { useActiveArsenalTitle, useUpdateWeapon } from '@/hooks/useArsenal';
 import { TITLE_DISPLAY_NAME } from '@/lib/arsenal/titleMeta';
+import { VoiceForgeService } from '@/lib/services/voiceforge';
+import { useArsenalVoice, toneSpeed } from '@/lib/arsenal/voiceSettings';
 import type { Weapon } from '@/hooks/useArsenal';
 
 type Mode = 'text' | 'url' | 'document' | 'video';
@@ -32,6 +34,7 @@ const MODE_OPTIONS: { value: Mode; label: string; icon: typeof Type }[] = [
 
 export default function UploadPage() {
   const titleId = useActiveArsenalTitle();
+  const voice = useArsenalVoice();
   const [mode, setMode] = useState<Mode>('text');
   const [text, setText] = useState('');
   const [url, setUrl] = useState('');
@@ -79,6 +82,16 @@ export default function UploadPage() {
         weapon = data;
       }
       setGenerated(weapon);
+
+      // Spoken confirmation so the player can step away from the keyboard.
+      if (voice.enabled && VoiceForgeService.isAvailable()) {
+        const setupCount = (weapon.setup_steps ?? []).length;
+        const execCount = (weapon.instructions ?? []).length;
+        VoiceForgeService.speak(
+          `New weapon added to your Arsenal: ${weapon.name}. I have extracted ${setupCount} setup ${setupCount === 1 ? 'step' : 'steps'} and ${execCount} execution ${execCount === 1 ? 'step' : 'steps'}. Tap "read it" or "practice it" to continue.`,
+          { interruptCurrent: true, speed: toneSpeed(voice.tone) }
+        );
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Upload failed';
       setError(msg);

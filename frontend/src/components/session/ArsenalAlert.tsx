@@ -6,13 +6,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Zap, X, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useArsenalAI } from '@/hooks/useArsenalAI';
 import { VoiceForgeService } from '@/lib/services/voiceforge';
 import { useSessionStore } from '@/lib/sessionStore';
 import api from '@/lib/api';
+import { PreExecutionBrief } from './PreExecutionBrief';
+import { useArsenalVoice, toneSpeed } from '@/lib/arsenal/voiceSettings';
+import { buildDebriefLine } from '@/lib/arsenal/voiceScripts';
+import { useWeapon } from '@/hooks/useArsenal';
 
 const URGENCY_TONE: Record<'now' | 'soon' | 'watch', string> = {
   now: 'border-forge-500/60 bg-forge-500/15 text-forge-300',
@@ -44,10 +47,12 @@ function speakAlert(titleId: string | undefined, reason: string, weaponName: str
 export function ArsenalAlert() {
   const { last, visible, dismiss } = useArsenalAI();
   const session = useSessionStore((s) => s.session);
-  const router = useRouter();
+  const voice = useArsenalVoice();
   const lastSpokenRef = useRef<string | null>(null);
   const [showResultPrompt, setShowResultPrompt] = useState(false);
+  const [briefOpen, setBriefOpen] = useState(false);
   const followupTimer = useRef<number | null>(null);
+  const debriefWeapon = useWeapon(last.weapon_id ?? null);
 
   useEffect(() => {
     if (!visible) return;
@@ -113,6 +118,25 @@ export function ArsenalAlert() {
       /* non-fatal */
     }
     setShowResultPrompt(false);
+
+    // Post-deployment voice debrief.
+    if (
+      outcome !== 'not-used' &&
+      voice.enabled &&
+      voice.postDebrief &&
+      VoiceForgeService.isAvailable() &&
+      debriefWeapon.data
+    ) {
+      const line = buildDebriefLine(debriefWeapon.data, outcome === 'yes');
+      window.setTimeout(() => {
+        VoiceForgeService.speak(line, {
+          interruptCurrent: true,
+          speed: toneSpeed(voice.tone),
+          priority: 'high',
+        });
+      }, 2000);
+    }
+
     dismiss();
   };
 
@@ -147,7 +171,7 @@ export function ArsenalAlert() {
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <button
               type="button"
-              onClick={() => router.push(`/arsenal?weapon=${last.weapon_id}`)}
+              onClick={() => setBriefOpen(true)}
               className="inline-flex items-center gap-1 rounded-md border border-current/30 bg-dark-900/40 px-2 py-1 text-[11px] font-medium hover:bg-dark-900/60"
             >
               View Setup
@@ -197,6 +221,20 @@ export function ArsenalAlert() {
           </div>
         )}
       </div>
+
+      <PreExecutionBrief
+        open={briefOpen}
+        weaponId={last.weapon_id ?? null}
+        urgency={last.urgency}
+        onClose={() => setBriefOpen(false)}
+        onDeploy={() => {
+          if (followupTimer.current) window.clearTimeout(followupTimer.current);
+          followupTimer.current = window.setTimeout(
+            () => setShowResultPrompt(true),
+            60_000
+          );
+        }}
+      />
     </div>
   );
 }
