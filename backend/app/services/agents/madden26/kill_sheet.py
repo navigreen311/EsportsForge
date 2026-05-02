@@ -192,6 +192,38 @@ class KillSheetGenerator:
 
         return sheet
 
+    async def generate_kill_sheet_ai(
+        self,
+        user_id: str,
+        opponent_data: OpponentData,
+        roster: Roster,
+    ) -> KillSheet:
+        """Generate a kill sheet via Claude AI; falls back to static ranking when unavailable."""
+        if self.claude_client and self.claude_client.is_available:
+            try:
+                prompt = (
+                    f"Generate a 5-play kill sheet to beat {opponent_data.opponent_name}. "
+                    f"Opponent: zone {opponent_data.zone_coverage_rate:.0%}, "
+                    f"man {opponent_data.man_coverage_rate:.0%}, "
+                    f"blitz {opponent_data.blitz_rate:.0%}. "
+                    f"User QB overall {roster.qb_overall}. "
+                    f"Return JSON with a 'kills' array."
+                )
+                data = await self.claude_client.generate_json(prompt)
+                kills = [RankedPlay(**k) for k in data.get("kills", [])]
+                return KillSheet(
+                    id=str(uuid.uuid4()),
+                    user_id=user_id,
+                    opponent_id=opponent_data.opponent_id,
+                    opponent_name=opponent_data.opponent_name,
+                    kills=kills,
+                    generated_at=datetime.now(timezone.utc).isoformat(),
+                    version=1,
+                )
+            except Exception:
+                pass
+        return await self.generate_kill_sheet(user_id, opponent_data, roster)
+
     def rank_plays_by_opponent(
         self,
         plays: list[dict],
