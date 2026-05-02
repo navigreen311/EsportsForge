@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -276,6 +276,19 @@ class RotationPlan(BaseModel):
     player_position: PlayerPosition
     recommended_style: RotationStyle
     zone_tax: ZoneTax
+
+    @field_validator("zone_tax", mode="before")
+    @classmethod
+    def _coerce_zone_tax(cls, v: object) -> ZoneTax:
+        if isinstance(v, ZoneTax):
+            return v
+        return ZoneTax(
+            time_pressure=getattr(v, "time_pressure", 0.0),
+            total_tax_score=getattr(v, "total_tax_score", 0.0),
+            fight_probability=getattr(v, "fight_probability", 0.0),
+            health_risk=getattr(v, "health_risk", 0.0),
+            material_cost=getattr(v, "material_cost", 0),
+        )
     path_waypoints: list[tuple[float, float]] = Field(default_factory=list)
     third_party_risk_zones: list[tuple[float, float]] = Field(default_factory=list)
     priority_actions: list[str] = Field(default_factory=list)
