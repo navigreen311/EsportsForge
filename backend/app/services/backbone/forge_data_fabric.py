@@ -21,7 +21,6 @@ from app.services.backbone.data_adapters import (
     get_adapter,
 )
 from app.services.backbone.entity_resolution import (
-    BehavioralFingerprint,
     OpponentRecord,
     get_behavioral_fingerprint,
     resolve_opponent,
@@ -44,6 +43,7 @@ _SAMPLE_SIZE_WEIGHT = 0.15
 # ---------------------------------------------------------------------------
 # Internal data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class DataQualityScore:

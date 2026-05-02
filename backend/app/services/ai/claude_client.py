@@ -31,6 +31,7 @@ logger = structlog.get_logger(__name__)
 # Token usage tracker
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TokenUsage:
     """Cumulative token usage across all calls."""
@@ -103,6 +104,7 @@ _RETRYABLE = (
 # ---------------------------------------------------------------------------
 # Claude Client
 # ---------------------------------------------------------------------------
+
 
 class ClaudeClient:
     """Async wrapper around the Anthropic Messages API."""

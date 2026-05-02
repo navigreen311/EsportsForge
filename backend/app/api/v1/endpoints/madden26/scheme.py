@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 
 from app.schemas.madden26.scheme import (
     CoverageMatrix,
     CoverageMatrixRequest,
-    CoverageType,
     HotRoute,
     HotRouteRequest,
     SchemeAnalysis,
-    SchemeName,
     Situation,
     SituationPlay,
 )

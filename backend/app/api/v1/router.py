@@ -16,6 +16,7 @@ api_router = APIRouter()
 # Helper — safe import + mount
 # ---------------------------------------------------------------------------
 
+
 def _mount(module_path: str, prefix: str, tags: list[str]) -> None:
     """Import *module_path*, pull its ``router`` attribute, and include it."""
     try:
@@ -162,11 +163,16 @@ _mount("app.api.v1.endpoints.pga2k25.swing",      prefix="/pga2k25/swing",      
 # ═══════════════════════════════════════════════════════════════════════════
 # Title Modules — Video Poker
 # ═══════════════════════════════════════════════════════════════════════════
-_mount("app.api.v1.endpoints.video_poker.strategy",             prefix="/video-poker/strategy",             tags=["Video Poker"])
-_mount("app.api.v1.endpoints.video_poker.pay_table",            prefix="/video-poker/pay-table",            tags=["Video Poker"])
-_mount("app.api.v1.endpoints.video_poker.bankroll",             prefix="/video-poker/bankroll",             tags=["Video Poker"])
-_mount("app.api.v1.endpoints.video_poker.variance",             prefix="/video-poker/variance",             tags=["Video Poker"])
-_mount("app.api.v1.endpoints.video_poker.responsible_gambling",  prefix="/video-poker/responsible-gambling", tags=["Video Poker"])
+_mount("app.api.v1.endpoints.video_poker.strategy",
+       prefix="/video-poker/strategy",             tags=["Video Poker"])
+_mount("app.api.v1.endpoints.video_poker.pay_table",
+       prefix="/video-poker/pay-table",            tags=["Video Poker"])
+_mount("app.api.v1.endpoints.video_poker.bankroll",
+       prefix="/video-poker/bankroll",             tags=["Video Poker"])
+_mount("app.api.v1.endpoints.video_poker.variance",
+       prefix="/video-poker/variance",             tags=["Video Poker"])
+_mount("app.api.v1.endpoints.video_poker.responsible_gambling",
+       prefix="/video-poker/responsible-gambling", tags=["Video Poker"])
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Integrations
@@ -202,3 +208,10 @@ _mount("app.api.v1.endpoints.referrals",       prefix="/referrals",       tags=[
 _mount("app.api.v1.endpoints.push",            prefix="/push",            tags=["Push"])
 _mount("app.api.v1.endpoints.certifications",  prefix="/certifications",  tags=["Certifications"])
 _mount("app.api.v1.endpoints.leaderboard",     prefix="/leaderboard",     tags=["Leaderboard"])
+
+
+# Backwards-compatible alias — tests/integration/conftest.py imports
+# `api_v1_router`. Keep both names exported so historic imports keep working.
+api_v1_router = api_router
+
+__all__ = ["api_router", "api_v1_router"]

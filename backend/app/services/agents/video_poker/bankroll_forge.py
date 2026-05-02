@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any
 
 from app.schemas.video_poker.bankroll import (
     BankrollPlan,

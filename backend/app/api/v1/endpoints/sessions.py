@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["Sessions"])
@@ -129,7 +129,7 @@ async def list_sessions(
 
     total = len(items)
     start = (page - 1) * page_size
-    page_items = items[start : start + page_size]
+    page_items = items[start: start + page_size]
 
     return SessionListOut(
         items=[SessionOut(**s) for s in page_items],

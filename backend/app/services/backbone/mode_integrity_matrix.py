@@ -29,14 +29,16 @@ COMPLIANCE_REGISTRY: dict[str, FeatureCompliance] = {
     # ── Backbone agents ────────────────────────────────────────────────
     "forge_data_fabric": FeatureCompliance(
         feature_name="forge_data_fabric",
-        environments=[Environment.OFFLINE_LAB, Environment.RANKED_ONLINE, Environment.TOURNAMENT, Environment.BROADCAST],
+        environments=[Environment.OFFLINE_LAB, Environment.RANKED_ONLINE,
+                      Environment.TOURNAMENT, Environment.BROADCAST],
         timings=[Timing.PRE_GAME, Timing.BETWEEN_SERIES, Timing.POST_GAME],
         risk_level=RiskLevel.SAFE,
         anti_cheat_status=AntiCheatStatus.VERIFIED_SAFE,
     ),
     "forge_core": FeatureCompliance(
         feature_name="forge_core",
-        environments=[Environment.OFFLINE_LAB, Environment.RANKED_ONLINE, Environment.TOURNAMENT, Environment.BROADCAST],
+        environments=[Environment.OFFLINE_LAB, Environment.RANKED_ONLINE,
+                      Environment.TOURNAMENT, Environment.BROADCAST],
         timings=[Timing.PRE_GAME, Timing.BETWEEN_SERIES, Timing.POST_GAME],
         risk_level=RiskLevel.SAFE,
         anti_cheat_status=AntiCheatStatus.VERIFIED_SAFE,
@@ -93,7 +95,8 @@ COMPLIANCE_REGISTRY: dict[str, FeatureCompliance] = {
     ),
     "madden26_film_room": FeatureCompliance(
         feature_name="madden26_film_room",
-        environments=[Environment.OFFLINE_LAB, Environment.RANKED_ONLINE, Environment.TOURNAMENT, Environment.BROADCAST],
+        environments=[Environment.OFFLINE_LAB, Environment.RANKED_ONLINE,
+                      Environment.TOURNAMENT, Environment.BROADCAST],
         timings=[Timing.PRE_GAME, Timing.BETWEEN_SERIES, Timing.POST_GAME],
         risk_level=RiskLevel.SAFE,
         anti_cheat_status=AntiCheatStatus.VERIFIED_SAFE,

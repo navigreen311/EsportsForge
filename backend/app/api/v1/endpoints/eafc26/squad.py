@@ -9,7 +9,6 @@ from app.schemas.eafc26.squad import (
     CardValue,
     ChemistryReport,
     EAFCPlaystyleProfile,
-    EAFCTwinProfile,
     PlayerCard,
     RageSubDetection,
     SquadAnalysis,

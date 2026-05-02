@@ -16,7 +16,6 @@ from typing import Any, TypedDict
 import structlog
 from langgraph.graph import END, StateGraph
 
-from app.core.config import settings
 from app.schemas.forgecore import GameMode, PressureState
 from app.services.ai.agent_prompts import AGENT_PROMPTS
 from app.services.ai.claude_client import ClaudeClient

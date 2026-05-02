@@ -1,6 +1,5 @@
 """Authentication endpoints: register, login, refresh, me."""
 
-import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import JWTError

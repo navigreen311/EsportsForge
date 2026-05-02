@@ -14,7 +14,6 @@ from app.schemas.integrity import (
     FeatureCompliance,
     FilteredOutput,
     IntegritySettings,
-    RiskLevel,
     Timing,
 )
 from app.services.backbone.mode_integrity_matrix import (

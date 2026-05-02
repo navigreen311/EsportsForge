@@ -8,9 +8,8 @@ maintains a priority-ordered drill queue per player per title.
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
 from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from app.schemas.drill import (
     DrillQueue,

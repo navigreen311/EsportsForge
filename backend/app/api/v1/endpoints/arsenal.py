@@ -133,7 +133,7 @@ async def list_weapons(
         diff_order = {"easy": 0, "medium": 1, "hard": 2}
         rows = (await db.execute(stmt)).scalars().all()
         rows = sorted(rows, key=lambda w: diff_order.get(w.difficulty, 3))
-        rows = rows[offset : offset + limit]
+        rows = rows[offset: offset + limit]
         saved_ids = await _saved_ids_for(db, current_user.id)
         return [_to_response(r, saved_ids) for r in rows]
     else:  # most-recent

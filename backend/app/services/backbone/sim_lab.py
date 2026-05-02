@@ -18,7 +18,6 @@ from app.schemas.simulation import (
     GameState,
     Scenario,
     ScenarioType,
-    SimRequest,
     SimulationResult,
 )
 

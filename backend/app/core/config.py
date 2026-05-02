@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     stripe_price_elite: str = ""
     stripe_price_team: str = ""
 
+    # Cache TTLs (seconds)
+    cache_ttl_agent_output: int = 300
+    cache_ttl_player_state: int = 300
+    cache_ttl_meta_snapshot: int = 86400
+    cache_ttl_opponent_dossier: int = 1800
+    cache_ttl_session: int = 14400
+
     # Network / Logging
     allowed_hosts: list[str] = ["*"]
     log_level: str = "INFO"

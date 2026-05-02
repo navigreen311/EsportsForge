@@ -10,7 +10,6 @@ import logging
 from typing import Any
 
 from app.schemas.visionaudio import (
-    LootTier,
     LootTierDetection,
     SquadLocation,
     ZonePositionRead,

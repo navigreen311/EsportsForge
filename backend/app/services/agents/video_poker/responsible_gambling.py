@@ -26,7 +26,6 @@ from app.schemas.video_poker.responsible_gambling import (
     SelfExclusionStatus,
     SessionTimeLimit,
     SessionTimeLimitStatus,
-    ResponsibleGamblingProfile,
 )
 
 logger = logging.getLogger(__name__)
@@ -558,7 +557,8 @@ class ResponsibleGamblingGuard:
         # Cooling-off
         if self.check_cooling_off(cooling_off, now):
             blocks.append(
-                f"Cooling-off period active until {cooling_off.end_time.strftime('%Y-%m-%d %H:%M UTC')}."  # type: ignore[union-attr]
+                # type: ignore[union-attr]
+                f"Cooling-off period active until {cooling_off.end_time.strftime('%Y-%m-%d %H:%M UTC')}."
             )
 
         # Session time

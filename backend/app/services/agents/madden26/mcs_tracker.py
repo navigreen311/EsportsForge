@@ -6,7 +6,6 @@ and generating tournament-specific gameplans.
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime, timezone
 
 from app.schemas.madden26.tournament import (
@@ -41,15 +40,18 @@ _TOURNAMENTS: dict[str, dict] = {
                 "round_number": 1,
                 "round_name": "Round of 16",
                 "matches": [
-                    {"match_id": "m1", "round_number": 1, "player_a_id": "p1", "player_a_name": "ProPlayer1", "player_b_id": "p2", "player_b_name": "ProPlayer2", "winner_id": "p1", "score_a": 28, "score_b": 14, "status": "completed"},
-                    {"match_id": "m2", "round_number": 1, "player_a_id": "p3", "player_a_name": "ProPlayer3", "player_b_id": "p4", "player_b_name": "ProPlayer4", "winner_id": "p3", "score_a": 21, "score_b": 17, "status": "completed"},
+                    {"match_id": "m1", "round_number": 1, "player_a_id": "p1", "player_a_name": "ProPlayer1", "player_b_id": "p2",
+                        "player_b_name": "ProPlayer2", "winner_id": "p1", "score_a": 28, "score_b": 14, "status": "completed"},
+                    {"match_id": "m2", "round_number": 1, "player_a_id": "p3", "player_a_name": "ProPlayer3", "player_b_id": "p4",
+                        "player_b_name": "ProPlayer4", "winner_id": "p3", "score_a": 21, "score_b": 17, "status": "completed"},
                 ],
             },
             {
                 "round_number": 2,
                 "round_name": "Quarterfinals",
                 "matches": [
-                    {"match_id": "m5", "round_number": 2, "player_a_id": "p1", "player_a_name": "ProPlayer1", "player_b_id": "p3", "player_b_name": "ProPlayer3", "status": "pending"},
+                    {"match_id": "m5", "round_number": 2, "player_a_id": "p1", "player_a_name": "ProPlayer1",
+                        "player_b_id": "p3", "player_b_name": "ProPlayer3", "status": "pending"},
                 ],
             },
         ],
@@ -67,7 +69,8 @@ _PLAYER_FORM: dict[str, dict] = {
         "avg_for": 24.5,
         "avg_against": 16.2,
         "recent": [
-            {"opponent_name": "ProPlayer2", "result": "W", "score": "28-14", "date": "2026-03-20", "tournament_name": "MCS Qualifier #1"},
+            {"opponent_name": "ProPlayer2", "result": "W", "score": "28-14",
+                "date": "2026-03-20", "tournament_name": "MCS Qualifier #1"},
             {"opponent_name": "RandomPlayer", "result": "W", "score": "35-10", "date": "2026-03-18"},
             {"opponent_name": "TopDog", "result": "L", "score": "14-21", "date": "2026-03-15"},
             {"opponent_name": "NewComer", "result": "W", "score": "31-7", "date": "2026-03-12"},
@@ -84,7 +87,8 @@ _PLAYER_FORM: dict[str, dict] = {
         "avg_for": 20.1,
         "avg_against": 18.5,
         "recent": [
-            {"opponent_name": "ProPlayer4", "result": "W", "score": "21-17", "date": "2026-03-20", "tournament_name": "MCS Qualifier #1"},
+            {"opponent_name": "ProPlayer4", "result": "W", "score": "21-17",
+                "date": "2026-03-20", "tournament_name": "MCS Qualifier #1"},
             {"opponent_name": "Underdog", "result": "L", "score": "10-14", "date": "2026-03-17"},
             {"opponent_name": "RisingStar", "result": "W", "score": "24-21", "date": "2026-03-14"},
         ],
@@ -214,21 +218,36 @@ class MCSTracker:
 
         # Build a balanced 15-play tournament book
         plays: list[TournamentPlay] = [
-            TournamentPlay(play_name="Gun Bunch Wk - Corner Strike", formation="Gun Bunch", situation="3rd & medium vs cover 3", priority=1, target_opponent_weakness="zone coverage"),
-            TournamentPlay(play_name="Shotgun Trips TE - Mesh", formation="Shotgun Trips TE", situation="3rd & short-medium", priority=2, target_opponent_weakness="man coverage"),
-            TournamentPlay(play_name="I-Form Close - Power O", formation="I-Form Close", situation="Goal line / short yardage", priority=3, target_opponent_weakness="undersized DL"),
-            TournamentPlay(play_name="Gun Empty Trey - Blitz Beater", formation="Gun Empty", situation="Blitz situations", priority=4, target_opponent_weakness="aggressive blitz"),
-            TournamentPlay(play_name="Singleback Ace - PA Crossers", formation="Singleback Ace", situation="Play action on 1st/2nd down", priority=5, target_opponent_weakness="run-commit LBs"),
-            TournamentPlay(play_name="Pistol Strong - Counter", formation="Pistol Strong", situation="Red zone / 2nd & short", priority=6, target_opponent_weakness="aggressive edge players"),
-            TournamentPlay(play_name="Gun Bunch Wk - Screen Wheel", formation="Gun Bunch", situation="Blitz heavy / pressure", priority=7, target_opponent_weakness="overcommitting pass rush"),
-            TournamentPlay(play_name="Shotgun Cluster - Out Route", formation="Shotgun Cluster", situation="2-point conversion", priority=8, target_opponent_weakness="off coverage"),
-            TournamentPlay(play_name="Under Center Ace - Boot Over", formation="Under Center Ace", situation="Red zone / 2-point", priority=9, target_opponent_weakness="zone blitz"),
-            TournamentPlay(play_name="Singleback Bunch - HB Dive", formation="Singleback Bunch", situation="Clock management / safe run", priority=10, target_opponent_weakness="light box"),
-            TournamentPlay(play_name="Shotgun Y-Trips - Deep Post", formation="Shotgun Y-Trips", situation="1st down shot play", priority=11, target_opponent_weakness="single high safety"),
-            TournamentPlay(play_name="Gun Split Close - Levels", formation="Gun Split Close", situation="3rd & long", priority=12, target_opponent_weakness="zone coverage gaps"),
-            TournamentPlay(play_name="I-Form Tight - QB Sneak", formation="I-Form Tight", situation="4th & inches", priority=13, target_opponent_weakness="spread DL alignment"),
-            TournamentPlay(play_name="Shotgun Doubles - Slants", formation="Shotgun Doubles", situation="Quick game / hot route", priority=14, target_opponent_weakness="press coverage"),
-            TournamentPlay(play_name="Gun Trey Open - HB Wheel", formation="Gun Trey Open", situation="2-minute drill", priority=15, target_opponent_weakness="LB in coverage"),
+            TournamentPlay(play_name="Gun Bunch Wk - Corner Strike", formation="Gun Bunch",
+                           situation="3rd & medium vs cover 3", priority=1, target_opponent_weakness="zone coverage"),
+            TournamentPlay(play_name="Shotgun Trips TE - Mesh", formation="Shotgun Trips TE",
+                           situation="3rd & short-medium", priority=2, target_opponent_weakness="man coverage"),
+            TournamentPlay(play_name="I-Form Close - Power O", formation="I-Form Close",
+                           situation="Goal line / short yardage", priority=3, target_opponent_weakness="undersized DL"),
+            TournamentPlay(play_name="Gun Empty Trey - Blitz Beater", formation="Gun Empty",
+                           situation="Blitz situations", priority=4, target_opponent_weakness="aggressive blitz"),
+            TournamentPlay(play_name="Singleback Ace - PA Crossers", formation="Singleback Ace",
+                           situation="Play action on 1st/2nd down", priority=5, target_opponent_weakness="run-commit LBs"),
+            TournamentPlay(play_name="Pistol Strong - Counter", formation="Pistol Strong",
+                           situation="Red zone / 2nd & short", priority=6, target_opponent_weakness="aggressive edge players"),
+            TournamentPlay(play_name="Gun Bunch Wk - Screen Wheel", formation="Gun Bunch",
+                           situation="Blitz heavy / pressure", priority=7, target_opponent_weakness="overcommitting pass rush"),
+            TournamentPlay(play_name="Shotgun Cluster - Out Route", formation="Shotgun Cluster",
+                           situation="2-point conversion", priority=8, target_opponent_weakness="off coverage"),
+            TournamentPlay(play_name="Under Center Ace - Boot Over", formation="Under Center Ace",
+                           situation="Red zone / 2-point", priority=9, target_opponent_weakness="zone blitz"),
+            TournamentPlay(play_name="Singleback Bunch - HB Dive", formation="Singleback Bunch",
+                           situation="Clock management / safe run", priority=10, target_opponent_weakness="light box"),
+            TournamentPlay(play_name="Shotgun Y-Trips - Deep Post", formation="Shotgun Y-Trips",
+                           situation="1st down shot play", priority=11, target_opponent_weakness="single high safety"),
+            TournamentPlay(play_name="Gun Split Close - Levels", formation="Gun Split Close",
+                           situation="3rd & long", priority=12, target_opponent_weakness="zone coverage gaps"),
+            TournamentPlay(play_name="I-Form Tight - QB Sneak", formation="I-Form Tight",
+                           situation="4th & inches", priority=13, target_opponent_weakness="spread DL alignment"),
+            TournamentPlay(play_name="Shotgun Doubles - Slants", formation="Shotgun Doubles",
+                           situation="Quick game / hot route", priority=14, target_opponent_weakness="press coverage"),
+            TournamentPlay(play_name="Gun Trey Open - HB Wheel", formation="Gun Trey Open",
+                           situation="2-minute drill", priority=15, target_opponent_weakness="LB in coverage"),
         ]
 
         return TournamentBook(

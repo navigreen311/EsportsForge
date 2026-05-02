@@ -1,7 +1,7 @@
 """CFB RosterIQ — school-by-school depth chart intelligence and dynasty projection."""
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 

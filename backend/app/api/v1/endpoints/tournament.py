@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 
 from app.schemas.tournament import (
     HydrationReminder,
@@ -10,7 +10,6 @@ from app.schemas.tournament import (
     QueueSheet,
     ResetScript,
     ResetType,
-    TournamentPrep,
     WarmupChecklist,
 )
 from app.services.backbone.tourna_ops import TournaOps

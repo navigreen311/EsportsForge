@@ -1,5 +1,7 @@
 """EsportsForge Backend — FastAPI Application Entry Point."""
 
+from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.security import SecurityHeadersMiddleware
 import time
 from contextlib import asynccontextmanager
 
@@ -47,8 +49,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.middleware.security import SecurityHeadersMiddleware
-from app.middleware.rate_limit import RateLimitMiddleware
 
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(

@@ -10,7 +10,6 @@ from abc import ABC, abstractmethod
 
 from app.schemas.input_lab import (
     DrillSpec,
-    EliteBenchmark,
     InputEvent,
     InputType,
     MechanicalLeak,

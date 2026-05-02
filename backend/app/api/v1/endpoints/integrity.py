@@ -1,6 +1,6 @@
 """API endpoints for IntegrityMode — compliance governance."""
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 
 from app.schemas.integrity import (
     ComplianceMatrixResponse,

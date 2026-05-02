@@ -14,7 +14,6 @@ from app.schemas.eafc26.tactics import (
     InputTimingResult,
     SkillChain,
     SkillMoveAnalysis,
-    SkillMoveData,
     SkillRating,
     SkillTrainingPlan,
     TimingGrade,

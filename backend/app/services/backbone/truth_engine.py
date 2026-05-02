@@ -26,8 +26,6 @@ from app.schemas.truth_engine import (
     DegradationReport,
     DegradationSeverity,
     OutcomeVerdict,
-    PredictionContext,
-    PredictionRecord,
     StaleLogicFlag,
     TruthReport,
 )
@@ -227,7 +225,8 @@ class TruthEngine:
         for i in range(num_buckets):
             low = round(i * bucket_size, 2)
             high = round((i + 1) * bucket_size, 2)
-            in_bucket = [r for r in records if low <= r.confidence < high or (i == num_buckets - 1 and r.confidence == high)]
+            in_bucket = [r for r in records if low <= r.confidence <
+                         high or (i == num_buckets - 1 and r.confidence == high)]
 
             if not in_bucket:
                 buckets.append(

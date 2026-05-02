@@ -4,12 +4,11 @@ import platform
 import time
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.deps import get_db
-from app.db.base import engine
 
 router = APIRouter()
 

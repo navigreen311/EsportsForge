@@ -187,7 +187,7 @@ def get_patch_changelog(
             f"from_patch ({from_patch}) must precede to_patch ({to_patch})"
         )
 
-    intermediate = patches[from_idx + 1 : to_idx + 1]
+    intermediate = patches[from_idx + 1: to_idx + 1]
     all_notes: list[str] = []
     patch_list: list[dict[str, Any]] = []
     for p in intermediate:

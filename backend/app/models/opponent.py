@@ -1,6 +1,5 @@
 """Opponent model — scouted or encountered opponents."""
 
-import uuid
 from datetime import datetime
 from typing import Any, Optional
 

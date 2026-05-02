@@ -7,9 +7,7 @@ into new titles by leveraging existing cognitive strengths.
 
 from __future__ import annotations
 
-import uuid
 from datetime import datetime
-from typing import Any
 
 import structlog
 
@@ -30,26 +28,44 @@ logger = structlog.get_logger(__name__)
 # Format: (from_title, to_title, skill_name, category, grade, rate, notes, hours)
 TRANSFER_KNOWLEDGE: list[tuple[str, str, str, SkillCategory, TransferGrade, float, str, float]] = [
     # Madden <-> CFB
-    ("madden26", "cfb26", "Pre-snap reads", SkillCategory.PATTERN_RECOGNITION, TransferGrade.DIRECT, 0.95, "Nearly identical pre-snap mechanics.", 2.0),
-    ("madden26", "cfb26", "Play calling", SkillCategory.STRATEGIC, TransferGrade.HIGH, 0.80, "Playbook structures differ but concepts transfer.", 8.0),
-    ("madden26", "cfb26", "Clock management", SkillCategory.DECISION_SPEED, TransferGrade.DIRECT, 0.92, "Same core clock rules apply.", 1.0),
-    ("madden26", "cfb26", "User coverage", SkillCategory.MECHANICAL, TransferGrade.HIGH, 0.85, "Timing windows slightly different.", 5.0),
-    ("madden26", "cfb26", "Opponent reading", SkillCategory.OPPONENT_READING, TransferGrade.DIRECT, 0.90, "Same behavioral cues apply.", 2.0),
-    ("cfb26", "madden26", "Pre-snap reads", SkillCategory.PATTERN_RECOGNITION, TransferGrade.DIRECT, 0.95, "Nearly identical pre-snap mechanics.", 2.0),
-    ("cfb26", "madden26", "Play calling", SkillCategory.STRATEGIC, TransferGrade.HIGH, 0.78, "Pro formations require adjustment.", 10.0),
-    ("cfb26", "madden26", "Clock management", SkillCategory.DECISION_SPEED, TransferGrade.DIRECT, 0.92, "Same core clock rules.", 1.0),
-    ("cfb26", "madden26", "User coverage", SkillCategory.MECHANICAL, TransferGrade.HIGH, 0.83, "Speed/athleticism balance differs.", 6.0),
-    ("cfb26", "madden26", "Opponent reading", SkillCategory.OPPONENT_READING, TransferGrade.DIRECT, 0.90, "Same behavioral cues apply.", 2.0),
+    ("madden26", "cfb26", "Pre-snap reads", SkillCategory.PATTERN_RECOGNITION,
+     TransferGrade.DIRECT, 0.95, "Nearly identical pre-snap mechanics.", 2.0),
+    ("madden26", "cfb26", "Play calling", SkillCategory.STRATEGIC, TransferGrade.HIGH,
+     0.80, "Playbook structures differ but concepts transfer.", 8.0),
+    ("madden26", "cfb26", "Clock management", SkillCategory.DECISION_SPEED,
+     TransferGrade.DIRECT, 0.92, "Same core clock rules apply.", 1.0),
+    ("madden26", "cfb26", "User coverage", SkillCategory.MECHANICAL,
+     TransferGrade.HIGH, 0.85, "Timing windows slightly different.", 5.0),
+    ("madden26", "cfb26", "Opponent reading", SkillCategory.OPPONENT_READING,
+     TransferGrade.DIRECT, 0.90, "Same behavioral cues apply.", 2.0),
+    ("cfb26", "madden26", "Pre-snap reads", SkillCategory.PATTERN_RECOGNITION,
+     TransferGrade.DIRECT, 0.95, "Nearly identical pre-snap mechanics.", 2.0),
+    ("cfb26", "madden26", "Play calling", SkillCategory.STRATEGIC,
+     TransferGrade.HIGH, 0.78, "Pro formations require adjustment.", 10.0),
+    ("cfb26", "madden26", "Clock management", SkillCategory.DECISION_SPEED,
+     TransferGrade.DIRECT, 0.92, "Same core clock rules.", 1.0),
+    ("cfb26", "madden26", "User coverage", SkillCategory.MECHANICAL,
+     TransferGrade.HIGH, 0.83, "Speed/athleticism balance differs.", 6.0),
+    ("cfb26", "madden26", "Opponent reading", SkillCategory.OPPONENT_READING,
+     TransferGrade.DIRECT, 0.90, "Same behavioral cues apply.", 2.0),
     # FPS-like cross-genre skills
-    ("madden26", "fc25", "Reaction time", SkillCategory.REACTION_TIME, TransferGrade.MODERATE, 0.60, "Different input types but raw reaction transfers.", 15.0),
-    ("madden26", "fc25", "Spatial awareness", SkillCategory.SPATIAL_AWARENESS, TransferGrade.LOW, 0.30, "Field vs pitch spatial models differ significantly.", 30.0),
-    ("madden26", "fc25", "Opponent reading", SkillCategory.OPPONENT_READING, TransferGrade.MODERATE, 0.55, "Behavioral reading transfers, but sport-specific cues do not.", 20.0),
-    ("madden26", "fc25", "Resource management", SkillCategory.RESOURCE_MANAGEMENT, TransferGrade.LOW, 0.25, "Stamina/substitution models are completely different.", 25.0),
+    ("madden26", "fc25", "Reaction time", SkillCategory.REACTION_TIME,
+     TransferGrade.MODERATE, 0.60, "Different input types but raw reaction transfers.", 15.0),
+    ("madden26", "fc25", "Spatial awareness", SkillCategory.SPATIAL_AWARENESS,
+     TransferGrade.LOW, 0.30, "Field vs pitch spatial models differ significantly.", 30.0),
+    ("madden26", "fc25", "Opponent reading", SkillCategory.OPPONENT_READING, TransferGrade.MODERATE,
+     0.55, "Behavioral reading transfers, but sport-specific cues do not.", 20.0),
+    ("madden26", "fc25", "Resource management", SkillCategory.RESOURCE_MANAGEMENT,
+     TransferGrade.LOW, 0.25, "Stamina/substitution models are completely different.", 25.0),
     # General cognitive transfers
-    ("any", "any", "Tilt management", SkillCategory.ADAPTATION, TransferGrade.DIRECT, 0.95, "Mental composure is game-agnostic.", 0.0),
-    ("any", "any", "Tournament nerves", SkillCategory.ADAPTATION, TransferGrade.DIRECT, 0.90, "Pressure handling transfers across all titles.", 0.0),
-    ("any", "any", "VOD review skills", SkillCategory.PATTERN_RECOGNITION, TransferGrade.HIGH, 0.80, "Analytical framework transfers, specifics need learning.", 5.0),
-    ("any", "any", "Communication", SkillCategory.COMMUNICATION, TransferGrade.DIRECT, 0.95, "Team communication skills are universal.", 1.0),
+    ("any", "any", "Tilt management", SkillCategory.ADAPTATION,
+     TransferGrade.DIRECT, 0.95, "Mental composure is game-agnostic.", 0.0),
+    ("any", "any", "Tournament nerves", SkillCategory.ADAPTATION, TransferGrade.DIRECT,
+     0.90, "Pressure handling transfers across all titles.", 0.0),
+    ("any", "any", "VOD review skills", SkillCategory.PATTERN_RECOGNITION, TransferGrade.HIGH,
+     0.80, "Analytical framework transfers, specifics need learning.", 5.0),
+    ("any", "any", "Communication", SkillCategory.COMMUNICATION,
+     TransferGrade.DIRECT, 0.95, "Team communication skills are universal.", 1.0),
 ]
 
 # ---------------------------------------------------------------------------

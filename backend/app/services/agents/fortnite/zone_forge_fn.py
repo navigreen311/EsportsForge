@@ -8,10 +8,8 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any
 
 from app.schemas.fortnite.gameplay import (
-    MaterialType,
     PlayerPosition,
     RotationPlan,
     RotationStyle,

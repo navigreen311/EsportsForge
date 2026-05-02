@@ -41,12 +41,18 @@ _PUNCH_DATA: dict[PunchType, dict[str, float]] = {
 _COMBO_LIBRARY: list[dict[str, Any]] = [
     {"name": "1-2", "punches": [PunchType.JAB, PunchType.CROSS], "situation": "Range finding"},
     {"name": "1-1-2", "punches": [PunchType.JAB, PunchType.JAB, PunchType.CROSS], "situation": "Setting up the cross"},
-    {"name": "1-2-3", "punches": [PunchType.JAB, PunchType.CROSS, PunchType.LEAD_HOOK], "situation": "Combination attack"},
-    {"name": "1-2-5-2", "punches": [PunchType.JAB, PunchType.CROSS, PunchType.LEAD_UPPERCUT, PunchType.CROSS], "situation": "Inside fighting"},
-    {"name": "3-2-3", "punches": [PunchType.LEAD_HOOK, PunchType.CROSS, PunchType.LEAD_HOOK], "situation": "Mid-range exchanges"},
-    {"name": "Body-Body-Head", "punches": [PunchType.BODY_JAB, PunchType.BODY_HOOK, PunchType.LEAD_HOOK], "situation": "Level change attack"},
-    {"name": "Jab-Body-Overhand", "punches": [PunchType.JAB, PunchType.BODY_HOOK, PunchType.OVERHAND], "situation": "Dropping guard with body work"},
-    {"name": "1-6-3-2", "punches": [PunchType.JAB, PunchType.REAR_UPPERCUT, PunchType.LEAD_HOOK, PunchType.CROSS], "situation": "Finishing sequence"},
+    {"name": "1-2-3", "punches": [PunchType.JAB, PunchType.CROSS,
+                                  PunchType.LEAD_HOOK], "situation": "Combination attack"},
+    {"name": "1-2-5-2", "punches": [PunchType.JAB, PunchType.CROSS,
+                                    PunchType.LEAD_UPPERCUT, PunchType.CROSS], "situation": "Inside fighting"},
+    {"name": "3-2-3", "punches": [PunchType.LEAD_HOOK, PunchType.CROSS,
+                                  PunchType.LEAD_HOOK], "situation": "Mid-range exchanges"},
+    {"name": "Body-Body-Head", "punches": [PunchType.BODY_JAB, PunchType.BODY_HOOK,
+                                           PunchType.LEAD_HOOK], "situation": "Level change attack"},
+    {"name": "Jab-Body-Overhand", "punches": [PunchType.JAB, PunchType.BODY_HOOK,
+                                              PunchType.OVERHAND], "situation": "Dropping guard with body work"},
+    {"name": "1-6-3-2", "punches": [PunchType.JAB, PunchType.REAR_UPPERCUT,
+                                    PunchType.LEAD_HOOK, PunchType.CROSS], "situation": "Finishing sequence"},
 ]
 
 

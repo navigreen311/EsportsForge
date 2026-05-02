@@ -15,8 +15,6 @@ from app.schemas.opponent import (
     EncounterRecord,
     KillSheet,
     RivalDossier,
-    Tendency,
-    TendencyType,
 )
 
 logger = logging.getLogger(__name__)

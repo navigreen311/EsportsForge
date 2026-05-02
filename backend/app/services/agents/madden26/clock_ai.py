@@ -6,8 +6,6 @@ Provides real-time clock management intelligence for Madden 26 competitive play.
 from __future__ import annotations
 
 import math
-import uuid
-from datetime import datetime, timezone
 
 from app.schemas.madden26.clock import (
     ClockAction,
