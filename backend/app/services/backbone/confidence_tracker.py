@@ -117,7 +117,7 @@ def get_confidence_score(user_id: str, title: str) -> ConfidenceScore:
     clutch_rate = (
         sum(1 for g in clutch_games if g.get("won")) / len(clutch_games)
         if clutch_games
-        else 0.5
+        else win_rate  # fall back to overall win rate when no clutch sample
     )
 
     # Consistency — measured as inverse of variance in recent win streaks

@@ -197,11 +197,11 @@ def get_best_response(scenario: Scenario) -> str:
     state = scenario.base_state
     advantage = _evaluate_state_advantage(state)
 
-    if advantage >= 0.65:
+    if advantage >= 0.55:
         return "Maintain advantage — run the clock, low-risk plays."
-    if advantage >= 0.45:
+    if advantage >= 0.40:
         return "Balanced approach — mix aggression with safe options."
-    if advantage >= 0.25:
+    if advantage >= 0.20:
         return "Aggressive catch-up — high-reward plays, manage risk."
     return "Desperation mode — maximize big-play potential."
 

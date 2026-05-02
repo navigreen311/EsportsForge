@@ -94,6 +94,10 @@ class MetaBot:
     exploits, and checks for staleness after patches.
     """
 
+
+    def __init__(self, db=None, claude_client=None):
+        self.db = db
+        self.claude_client = claude_client
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------

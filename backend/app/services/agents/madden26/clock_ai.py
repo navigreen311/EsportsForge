@@ -31,6 +31,10 @@ class ClockAI:
     timeout usage, and what-if scenario simulation.
     """
 
+
+    def __init__(self, db=None, claude_client=None):
+        self.db = db
+        self.claude_client = claude_client
     # Average seconds consumed per play type in Madden 26
     PLAY_TIME_MAP: dict[PlayType, int] = {
         PlayType.RUN: 40,

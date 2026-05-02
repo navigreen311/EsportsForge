@@ -152,7 +152,7 @@ class ImpactRank:
                 user_id=user_id,
                 weakness=w,
                 best_fix=best_fix,
-                rank=0,  # assigned after sort
+                rank=1,  # placeholder; reassigned after sort
                 composite_score=round(composite, 6),
             )
             rankings.append(ranking)

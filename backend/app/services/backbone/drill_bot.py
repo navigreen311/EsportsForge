@@ -303,11 +303,13 @@ class DrillBot:
         if success:
             session.reps_successful += 1
 
-        # Dynamic calibration adjustment
-        adjustment = adjust_after_rep(
-            user_id, session.drill_spec.weakness_label, success
-        )
-        session.current_difficulty = adjustment.new_difficulty
+        # Dynamic calibration tracker — record the rep but DO NOT bump
+        # the session's current_difficulty here. Difficulty is only
+        # adjusted via calibrate_drill_difficulty(), which inspects the
+        # session's success rate and decides direction. Auto-bumping each
+        # rep was overshooting (often capping at 1.0) and made the
+        # explicit calibration call a no-op.
+        adjust_after_rep(user_id, session.drill_spec.weakness_label, success)
 
         # Check completion
         if session.is_complete:

@@ -136,7 +136,10 @@ def filter_recommendation(
 
     fit_score = 1.0
     if not risk_ok:
-        fit_score -= 0.3
+        # A risk mismatch is the primary reason a recommendation will be
+        # rejected — penalise it heavily so a conservative player isn't
+        # dragged into high-difficulty plays they wouldn't normally run.
+        fit_score -= 0.5
     fit_score -= pressure_penalty
     fit_score = max(0.0, min(1.0, round(fit_score, 4)))
 

@@ -34,7 +34,7 @@ UserTier = UserRole
 TIER_TITLE_LIMITS: dict[UserRole, int | None] = {
     UserRole.FREE: 1,
     UserRole.COMPETITIVE: 3,
-    UserRole.ELITE: 6,
+    UserRole.ELITE: None,
     UserRole.TEAM: None,
 }
 

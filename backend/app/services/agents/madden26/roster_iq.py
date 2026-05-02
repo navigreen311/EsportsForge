@@ -116,6 +116,10 @@ def _get_rating_attr(ratings: PlayerRating, attr: str) -> int:
 class RosterIQ:
     """NFL personnel analysis engine for Madden 26."""
 
+
+    def __init__(self, db=None, claude_client=None):
+        self.db = db
+        self.claude_client = claude_client
     # ------------------------------------------------------------------
     # analyze_roster
     # ------------------------------------------------------------------

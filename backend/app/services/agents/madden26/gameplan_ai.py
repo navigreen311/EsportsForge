@@ -29,9 +29,11 @@ class GameplanAI:
     their opponent's tendencies, roster strengths, and the current meta.
     """
 
-    def __init__(self) -> None:
-        self._scheme_ai = SchemeAI()
-        self._meta_bot = MetaBot()
+    def __init__(self, db=None, claude_client=None) -> None:
+        self.db = db
+        self.claude_client = claude_client
+        self._scheme_ai = SchemeAI(db=db, claude_client=claude_client)
+        self._meta_bot = MetaBot(db=db, claude_client=claude_client)
 
     # ------------------------------------------------------------------
     # Public API

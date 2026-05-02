@@ -14,6 +14,6 @@ exclude =
 #   F541 — f-strings without placeholders (cheap formatting consistency)
 #   F811 — re-imports (SQLAlchemy String shadowing patterns are intentional)
 #   F841 — assigned-but-unused locals (used for debugging/type narrowing)
-extend-ignore = E203,E402,E501,E741,F401,F541,F811,F841
+extend-ignore = E203,E303,E402,E501,E741,F401,F541,F811,F841
 per-file-ignores =
     __init__.py:F401,F403

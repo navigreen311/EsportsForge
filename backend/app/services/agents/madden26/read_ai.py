@@ -88,6 +88,10 @@ _BLITZ_INDICATORS: dict[BlitzSource, list[str]] = {
 class ReadAI:
     """Pre-snap defensive read engine for Madden 26."""
 
+
+    def __init__(self, db=None, claude_client=None):
+        self.db = db
+        self.claude_client = claude_client
     # ------------------------------------------------------------------
     # identify_coverage
     # ------------------------------------------------------------------

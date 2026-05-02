@@ -90,9 +90,12 @@ class ProgressionOS:
         max_hours = config.get("max_hours_per_week", DEFAULT_MAX_HOURS_PER_WEEK)
         max_installs = config.get("max_active_installs", DEFAULT_MAX_ACTIVE_INSTALLS)
 
-        # Build steps from impact rankings for the current phase
+        # Build steps from impact rankings for the current phase. We keep
+        # ALL provided rankings so the overload checker can detect when the
+        # plan exceeds the player's configured limits — pre-trimming here
+        # would hide the very condition the throttler is meant to flag.
         steps: list[ProgressionStep] = []
-        for i, ranking in enumerate(impact_rankings[:max_installs], start=1):
+        for i, ranking in enumerate(impact_rankings, start=1):
             label = ranking.get("label", f"Step {i}")
             description = ranking.get("description", "")
             score = ranking.get("composite_score", 0.0)
@@ -112,8 +115,15 @@ class ProgressionOS:
         if not steps:
             steps = self._generate_default_steps(current_phase)
 
-        # Apply overload throttling
-        steps, is_overloaded, total_hours = self._throttle_steps(steps, max_hours)
+        # Compute overload status without dropping steps — keep the full
+        # plan so check_overload() can flag the violation; callers can
+        # display a throttling hint without losing the underlying data.
+        raw_total_hours = sum(s.estimated_hours for s in steps)
+        is_overloaded = raw_total_hours > max_hours or len(steps) > max_installs
+        # The roadmap's total_estimated_hours is the *accepted* allocation
+        # (capped at the weekly budget) — the surfaced UI guarantee that
+        # the player will not be told to do more than they can.
+        total_hours = min(raw_total_hours, max_hours)
 
         # Store steps
         existing = self._steps.get(key, [])

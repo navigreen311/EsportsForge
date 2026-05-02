@@ -88,7 +88,15 @@ COMPLIANCE_REGISTRY: dict[str, FeatureCompliance] = {
     ),
     "madden26_adjustments": FeatureCompliance(
         feature_name="madden26_adjustments",
-        environments=[Environment.OFFLINE_LAB, Environment.RANKED_ONLINE],
+        # Include TOURNAMENT in the environment whitelist so axis-3 (risk
+        # level) is what blocks tournament use. That gives callers the
+        # specific "tournament-restricted" reason rather than the
+        # generic "not permitted in environment".
+        environments=[
+            Environment.OFFLINE_LAB,
+            Environment.RANKED_ONLINE,
+            Environment.TOURNAMENT,
+        ],
         timings=[Timing.PRE_GAME, Timing.BETWEEN_SERIES],
         risk_level=RiskLevel.TOURNAMENT_RESTRICTED,
         anti_cheat_status=AntiCheatStatus.UNDER_REVIEW,

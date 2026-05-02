@@ -251,12 +251,12 @@ class SquadOps:
             score = 0.0
             reasons: list[str] = []
 
-            # KD contribution
-            kd_score = min(30.0, player.kd_ratio * 10)
+            # KD contribution — Slayer-types are the top revive target
+            kd_score = min(40.0, player.kd_ratio * 16)
             score += kd_score
 
             # Damage output
-            dmg_score = min(25.0, player.avg_damage / 50)
+            dmg_score = min(35.0, player.avg_damage / 40)
             score += dmg_score
 
             # Clutch ability (especially important in late game)
