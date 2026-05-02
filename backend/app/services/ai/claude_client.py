@@ -115,11 +115,19 @@ class ClaudeClient:
         model: str | None = None,
         max_calls_per_minute: int = 50,
     ) -> None:
-        self._api_key = api_key or settings.anthropic_api_key
+        self._api_key = api_key if api_key is not None else settings.anthropic_api_key
         self._model = model or settings.claude_model
-        self._client = anthropic.AsyncAnthropic(api_key=self._api_key)
+        self._client = anthropic.AsyncAnthropic(api_key=self._api_key or None)
         self._rate_limiter = _RateLimiter(max_calls=max_calls_per_minute)
         self.usage = TokenUsage()
+
+    # -- availability --------------------------------------------------------
+
+    @property
+    def is_available(self) -> bool:
+        """True when the API key looks like a real key (non-empty, non-placeholder)."""
+        key = self._api_key or ""
+        return bool(key) and not key.startswith("YOUR_")
 
     # -- core call -----------------------------------------------------------
 
@@ -139,6 +147,10 @@ class ClaudeClient:
         temperature: float = 0.3,
     ) -> str:
         """Send a single prompt to Claude and return the text response."""
+        if not self.is_available:
+            raise RuntimeError(
+                "Claude client is not available — set a valid ANTHROPIC_API_KEY"
+            )
         model = model or self._model
         self._rate_limiter.acquire()
 
