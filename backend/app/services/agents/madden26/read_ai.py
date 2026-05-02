@@ -143,6 +143,25 @@ class ReadAI:
             recommended_targets=best_match["targets"],
         )
 
+    async def identify_coverage_ai(
+        self, pre_snap_info: dict[str, Any]
+    ) -> CoverageRead:
+        """Identify coverage via Claude AI; falls back to rule-based when unavailable."""
+        if self.claude_client and self.claude_client.is_available:
+            try:
+                prompt = f"Identify defensive coverage from pre-snap alignment: {pre_snap_info}. Return JSON."
+                data = await self.claude_client.generate_json(prompt)
+                return CoverageRead(
+                    primary_coverage=CoverageType(data["primary_coverage"]),
+                    confidence=ConfidenceLevel(data["confidence"]),
+                    indicators=data.get("indicators", []),
+                    vulnerable_zones=data.get("vulnerable_zones", []),
+                    recommended_targets=data.get("recommended_targets", []),
+                )
+            except Exception:
+                pass
+        return self.identify_coverage(pre_snap_info)
+
     # ------------------------------------------------------------------
     # identify_blitz
     # ------------------------------------------------------------------
@@ -204,6 +223,27 @@ class ReadAI:
             protection_adjustment=protection,
             indicators=detected_indicators or indicators_raw,
         )
+
+    async def identify_blitz_ai(
+        self, pre_snap_info: dict[str, Any]
+    ) -> BlitzRead:
+        """Detect blitz via Claude AI; falls back to rule-based when unavailable."""
+        if self.claude_client and self.claude_client.is_available:
+            try:
+                prompt = f"Detect blitz from pre-snap defensive alignment: {pre_snap_info}. Return JSON."
+                data = await self.claude_client.generate_json(prompt)
+                return BlitzRead(
+                    blitz_detected=data["blitz_detected"],
+                    blitz_probability=data["blitz_probability"],
+                    likely_source=BlitzSource(data["likely_source"]),
+                    number_of_rushers=data["number_of_rushers"],
+                    hot_route_suggestion=data.get("hot_route_suggestion"),
+                    protection_adjustment=data.get("protection_adjustment"),
+                    indicators=data.get("indicators", []),
+                )
+            except Exception:
+                pass
+        return self.identify_blitz(pre_snap_info)
 
     # ------------------------------------------------------------------
     # get_pattern_recognition
