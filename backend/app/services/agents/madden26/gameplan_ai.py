@@ -50,17 +50,59 @@ class GameplanAI:
         """Generate a full 10-play gameplan."""
         effective_scheme = scheme or "west_coast"
 
-        # Build core plays from scheme concepts
-        core_plays = await self._build_core_plays(effective_scheme, roster)
-
-        # Build situational packages
+        # Build supporting packages from static data (always needed)
         rz_package = await self._build_red_zone_package(effective_scheme)
         ab_package = await self._build_anti_blitz_package(effective_scheme)
 
-        # Opening script — first 5 plays designed to probe the defense
-        opening = [p.name for p in core_plays[:5]]
+        if self.claude_client is not None and self.claude_client.is_available:
+            try:
+                response = await self.claude_client.generate_json(
+                    f"Generate a 10-play gameplan for the '{effective_scheme}' scheme "
+                    "in Madden 26. Return JSON with keys: plays (list of 10 objects each "
+                    "with name, formation, play_type, concept, primary_read, beats, "
+                    "situation_tags, notes), opening_script (list of 5 play names), "
+                    "gameplan_notes (str)."
+                )
+                plays = [
+                    Play(
+                        name=p["name"],
+                        formation=p.get("formation", "Gun Doubles"),
+                        play_type=p.get("play_type", "pass_short"),
+                        concept=p.get("concept", "Drive"),
+                        primary_read=p.get("primary_read", "Check down"),
+                        beats=p.get("beats", []),
+                        situation_tags=p.get("situation_tags", []),
+                        notes=p.get("notes"),
+                    )
+                    for p in response.get("plays", [])
+                ]
+                opening = response.get("opening_script", [p.name for p in plays[:5]])
+                audible_tree = await self.generate_audible_tree(
+                    base_play=plays[0].name if plays else "PA Boot Over",
+                    reads=[CoverageType.COVER_3, CoverageType.COVER_1, CoverageType.COVER_0],
+                )
+                gameplan = Gameplan(
+                    id=uuid.uuid4(),
+                    user_id=user_id,
+                    opponent_id=opponent_id,
+                    scheme=effective_scheme,
+                    plays=plays[:10],
+                    opening_script=opening,
+                    audible_tree=audible_tree,
+                    red_zone_package=rz_package,
+                    anti_blitz_package=ab_package,
+                    confidence=0.85,
+                    generated_at=datetime.now(timezone.utc).isoformat(),
+                    notes=response.get("gameplan_notes", f"AI gameplan on {effective_scheme}."),
+                )
+                await self._persist_gameplan(gameplan, effective_scheme, user_id, opponent_id, None)
+                return gameplan
+            except Exception:
+                pass  # Fall through to template
 
-        # Build audible tree for the primary play
+        # Template fallback
+        core_plays = await self._build_core_plays(effective_scheme, roster)
+        opening = [p.name for p in core_plays[:5]]
         audible_tree = await self.generate_audible_tree(
             base_play=core_plays[0].name if core_plays else "PA Boot Over",
             reads=[CoverageType.COVER_3, CoverageType.COVER_1, CoverageType.COVER_0],
@@ -70,7 +112,6 @@ class GameplanAI:
         if meta_aware:
             meta = await self._meta_bot.scan_weekly_meta()
             meta_snapshot = meta.meta_summary
-            # Optionally adjust based on meta
             core_plays = self._apply_meta_adjustments(core_plays, meta)
 
         gameplan = Gameplan(
@@ -88,20 +129,30 @@ class GameplanAI:
             generated_at=datetime.now(timezone.utc).isoformat(),
             notes=f"Gameplan built on {effective_scheme} scheme.",
         )
-
-        if self.db is not None:
-            from app.models.gameplan import Gameplan as GameplanModel
-            db_record = GameplanModel(
-                user_id=user_id,
-                title=f"Gameplan — {effective_scheme}",
-                opponent_id=opponent_id,
-                plays=[p.model_dump() for p in gameplan.plays],
-                meta_snapshot=meta_snapshot,
-            )
-            self.db.add(db_record)
-            await self.db.flush()
-
+        await self._persist_gameplan(gameplan, effective_scheme, user_id, opponent_id, meta_snapshot)
         return gameplan
+
+    async def _persist_gameplan(
+        self,
+        gameplan: Gameplan,
+        scheme: str,
+        user_id: uuid.UUID,
+        opponent_id: Optional[uuid.UUID],
+        meta_snapshot: Optional[str],
+    ) -> None:
+        """Persist the gameplan via the optional DB session, no-op when db is None."""
+        if self.db is None:
+            return
+        from app.models.gameplan import Gameplan as GameplanModel
+        db_record = GameplanModel(
+            user_id=user_id,
+            title=f"Gameplan — {scheme}",
+            opponent_id=opponent_id,
+            plays=[p.model_dump() for p in gameplan.plays],
+            meta_snapshot=meta_snapshot,
+        )
+        self.db.add(db_record)
+        await self.db.flush()
 
     async def build_kill_sheet(
         self, opponent_data: dict[str, Any], opponent_id: Optional[uuid.UUID] = None,

@@ -297,9 +297,48 @@ class SchemeAI:
         """Return a full breakdown of the given scheme."""
         key = self._resolve_scheme_key(scheme_name)
         data = _SCHEME_DATA.get(key, _DEFAULT_SCHEME)
+        matrix = await self.build_coverage_answer_matrix(scheme_name)
+
+        if self.claude_client is not None and self.claude_client.is_available:
+            try:
+                response = await self.claude_client.generate_json(
+                    f"Analyze the '{scheme_name}' scheme for Madden 26. "
+                    "Return JSON with keys: description (str), strengths (list[str]), "
+                    "weaknesses (list[str]), core_concepts (list of objects with name, "
+                    "formation, primary_read, tags, beats_coverages, down_distance_fit, "
+                    "stackable_with), best_formations (list[str]), "
+                    "recommended_playbooks (list[str])."
+                )
+                concepts = [
+                    Concept(
+                        name=c["name"],
+                        formation=c.get("formation", "Gun Doubles"),
+                        play_name=f"{c.get('formation', 'Gun Doubles')} — {c['name']}",
+                        primary_read=c.get("primary_read", f"Primary read for {c['name']}"),
+                        tags=c.get("tags", []),
+                        beats_coverages=c.get("beats_coverages", []),
+                        down_distance_fit=c.get("down_distance_fit", []),
+                        stackable_with=c.get("stackable_with", []),
+                    )
+                    for c in response.get("core_concepts", [])
+                ]
+                return SchemeAnalysis(
+                    scheme=scheme_name,
+                    description=response.get("description", data["description"]),
+                    strengths=response.get("strengths", data["strengths"]),
+                    weaknesses=response.get("weaknesses", data["weaknesses"]),
+                    core_concepts=concepts,
+                    best_formations=response.get("best_formations", data["best_formations"]),
+                    coverage_answers=matrix,
+                    situation_plays=self._build_situation_map(concepts),
+                    recommended_playbooks=response.get(
+                        "recommended_playbooks", data.get("recommended_playbooks", [])
+                    ),
+                )
+            except Exception:
+                pass  # Fall through to static data
 
         concepts = self._get_concepts_for_scheme(key)
-        matrix = await self.build_coverage_answer_matrix(scheme_name)
         situation_map = self._build_situation_map(concepts)
 
         return SchemeAnalysis(
