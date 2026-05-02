@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Zap, Search, X } from 'lucide-react';
@@ -30,6 +30,14 @@ const TAB_LABEL: Record<Tab, string> = {
 };
 
 export default function ArsenalPage() {
+  return (
+    <Suspense fallback={null}>
+      <ArsenalPageInner />
+    </Suspense>
+  );
+}
+
+function ArsenalPageInner() {
   const router = useRouter();
   const titleId = useActiveArsenalTitle();
   const [tab, setTab] = useState<Tab>('all');

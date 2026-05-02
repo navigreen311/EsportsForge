@@ -149,7 +149,6 @@ class KillSheetGenerator:
     rank and select the highest-probability plays.
     """
 
-
     def __init__(self, db=None, claude_client=None):
         self.db = db
         self.claude_client = claude_client

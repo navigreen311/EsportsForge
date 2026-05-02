@@ -31,7 +31,6 @@ class ClockAI:
     timeout usage, and what-if scenario simulation.
     """
 
-
     def __init__(self, db=None, claude_client=None):
         self.db = db
         self.claude_client = claude_client

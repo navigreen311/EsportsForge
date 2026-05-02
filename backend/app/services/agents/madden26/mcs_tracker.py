@@ -103,7 +103,6 @@ class MCSTracker:
     gameplans, and opponent form tracking for the Madden Championship Series.
     """
 
-
     def __init__(self, db=None, claude_client=None):
         self.db = db
         self.claude_client = claude_client

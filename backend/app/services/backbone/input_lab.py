@@ -21,7 +21,6 @@ from app.services.backbone.input_adapters import BaseInputAdapter, get_adapter
 class InputLab:
     """Central InputLab engine — delegates to per-input-type adapters."""
 
-
     def __init__(self, db=None, claude_client=None):
         self.db = db
         self.claude_client = claude_client

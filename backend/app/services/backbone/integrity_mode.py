@@ -35,7 +35,6 @@ _user_modes: dict[str, IntegritySettings] = {}
 class IntegrityMode:
     """Compliance gatekeeper for every feature in EsportsForge."""
 
-
     def __init__(self, db=None, claude_client=None):
         self.db = db
         self.claude_client = claude_client

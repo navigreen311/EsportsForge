@@ -36,7 +36,6 @@ _GRADE_THRESHOLDS = [
 class TransferAI:
     """Core engine for measuring skill transfer across game modes."""
 
-
     def __init__(self, db=None, claude_client=None):
         self.db = db
         self.claude_client = claude_client
