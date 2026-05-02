@@ -2,18 +2,15 @@
 
 from __future__ import annotations
 
-from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 
 from app.schemas.truth_engine import (
-    AccuracyFilters,
     AgentAccuracy,
     AuditRequest,
     AuditResponse,
     ConfidenceCalibration,
     DegradationReport,
-    OutcomeVerdict,
     RollbackHistory,
     RollbackRequest,
     StaleLogicFlag,

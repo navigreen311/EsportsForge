@@ -64,9 +64,12 @@ class ForgeCore:
                 "status": "mock",
                 "data": {
                     "priorities": [
-                        {"rank": 1, "area": "coverage_reads", "impact": 0.85, "description": "Improve pre-snap coverage identification"},
-                        {"rank": 2, "area": "pocket_movement", "impact": 0.72, "description": "Better pocket presence under pressure"},
-                        {"rank": 3, "area": "route_timing", "impact": 0.68, "description": "Throwing timing on deep routes"},
+                        {"rank": 1, "area": "coverage_reads", "impact": 0.85,
+                            "description": "Improve pre-snap coverage identification"},
+                        {"rank": 2, "area": "pocket_movement", "impact": 0.72,
+                            "description": "Better pocket presence under pressure"},
+                        {"rank": 3, "area": "route_timing", "impact": 0.68,
+                            "description": "Throwing timing on deep routes"},
                     ],
                     "confidence": 0.75,
                 },
@@ -78,7 +81,8 @@ class ForgeCore:
                 "status": "mock",
                 "data": {
                     "plays": [
-                        {"order": i, "play": f"Play_{i}", "formation": "Shotgun", "concept": "Quick read", "reason": "Exploits tendency"}
+                        {"order": i, "play": f"Play_{i}", "formation": "Shotgun",
+                            "concept": "Quick read", "reason": "Exploits tendency"}
                         for i in range(1, 11)
                     ],
                     "adjustments": ["If blitz heavy, audible to hot routes", "If cover 3, attack seams"],
@@ -106,7 +110,8 @@ class ForgeCore:
                 "status": "mock",
                 "data": {
                     "drills": [
-                        {"name": "Coverage Read Drill", "duration_min": 10, "focus": "pre-snap reads", "difficulty": "medium"},
+                        {"name": "Coverage Read Drill", "duration_min": 10,
+                            "focus": "pre-snap reads", "difficulty": "medium"},
                         {"name": "Pocket Escape Drill", "duration_min": 8, "focus": "scramble timing", "difficulty": "hard"},
                         {"name": "Route Timing Drill", "duration_min": 12, "focus": "throw timing", "difficulty": "medium"},
                     ],

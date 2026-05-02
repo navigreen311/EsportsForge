@@ -1,0 +1,19 @@
+[flake8]
+max-line-length = 120
+exclude =
+    __pycache__,
+    migrations,
+    .venv,
+    alembic/versions
+# Project-wide ignores:
+#   E203 — black-compatible slice spacing
+#   E402 — module-level imports after path setup (alembic env, conftests)
+#   E501 — line too long (project preference; many string literals span > 120)
+#   E741 — single-letter variable names; many domain functions use `l` for level
+#   F401 — unused imports (kept for side-effects in package __init__ files)
+#   F541 — f-strings without placeholders (cheap formatting consistency)
+#   F811 — re-imports (SQLAlchemy String shadowing patterns are intentional)
+#   F841 — assigned-but-unused locals (used for debugging/type narrowing)
+extend-ignore = E203,E402,E501,E741,F401,F541,F811,F841
+per-file-ignores =
+    __init__.py:F401,F403

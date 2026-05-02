@@ -8,8 +8,6 @@ between competitive sets: fast, focused, high-impact.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-from uuid import uuid4
 
 from app.schemas.drill import (
     AdaptRecommendation,

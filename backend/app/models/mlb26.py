@@ -4,7 +4,7 @@ import enum
 import uuid
 from typing import Any, Optional
 
-from sqlalchemy import Enum, Float, ForeignKey, Integer, String
+from sqlalchemy import Float, ForeignKey, Integer, String
 from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

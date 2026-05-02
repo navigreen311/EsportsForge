@@ -11,7 +11,6 @@ from collections import defaultdict
 
 from app.schemas.nba2k26.gameplay import (
     AuctionSnipe,
-    LineupSlot,
     MyTeamCard,
     MyTeamLineup,
 )

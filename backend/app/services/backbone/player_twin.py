@@ -12,16 +12,13 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any
 
 from app.schemas.player_twin import (
     BenchmarkComparison,
     CanExecuteResponse,
     ExecutionScore,
     PanicPattern,
-    PlayerIdentity,
     PlayerTwinProfile,
-    PressureLevel,
     RecommendationInput,
     SessionData,
     TendencyEntry,
@@ -34,6 +31,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # In-memory profile store  (user_id -> title -> _ProfileState)
 # ---------------------------------------------------------------------------
+
 
 class _ProfileState:
     """Mutable internal state backing a PlayerTwinProfile."""

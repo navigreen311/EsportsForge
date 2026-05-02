@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from typing import Any
 
 from app.schemas.eafc26.squad import (
     BudgetOptimization,

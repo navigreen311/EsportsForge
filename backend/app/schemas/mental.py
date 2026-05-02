@@ -191,3 +191,135 @@ class SessionSummary(BaseModel):
     key_moments: list[str] = Field(default_factory=list)
     improvements: list[str] = Field(default_factory=list)
     areas_to_work_on: list[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# TiltGuard schemas
+# ---------------------------------------------------------------------------
+
+
+class TiltType(str, Enum):
+    """Categorisation of tilt origin."""
+
+    RAGE = "rage"
+    FRUSTRATION = "frustration"
+    ANXIETY = "anxiety"
+    OVERCONFIDENCE = "overconfidence"
+    UNDERCONFIDENCE = "underconfidence"
+
+
+class InterventionKind(str, Enum):
+    """The kind of intervention TiltGuard surfaces."""
+
+    BREATHING = "breathing"
+    HYDRATION = "hydration"
+    MODE_SWITCH = "mode_switch"
+    BREAK = "break"
+    SESSION_END = "session_end"
+
+
+class CheckinResult(BaseModel):
+    """Pre-session mood/energy check-in outcome."""
+
+    user_id: str
+    mood_score: int = Field(ge=1, le=10)
+    energy_score: int = Field(ge=1, le=10)
+    risk_level: str = Field(description="'low', 'medium', or 'high'")
+    recommendation: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class TiltStatus(BaseModel):
+    """Live tilt-detection snapshot."""
+
+    user_id: str
+    is_tilted: bool = False
+    tilt_type: TiltType | None = None
+    severity: float = Field(0.0, ge=0.0, le=1.0)
+    confidence: float = Field(0.0, ge=0.0, le=1.0)
+    detected_at: datetime | None = None
+
+
+class TiltEvent(BaseModel):
+    """Persisted record of a single tilt detection."""
+
+    event_id: str
+    user_id: str
+    tilt_type: TiltType
+    severity: float = Field(ge=0.0, le=1.0)
+    trigger: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class TiltOrFatigue(BaseModel):
+    """Differential classification between emotional tilt and cognitive fatigue."""
+
+    classification: str = Field(description="'tilt', 'fatigue', or 'none'")
+    tilt_probability: float = Field(ge=0.0, le=1.0)
+    fatigue_probability: float = Field(ge=0.0, le=1.0)
+    indicators: list[str] = Field(default_factory=list)
+    reasoning: str = ""
+
+
+class Intervention(BaseModel):
+    """Actionable suggestion delivered when tilt is detected."""
+
+    kind: InterventionKind
+    message: str
+    duration_minutes: int | None = None
+    priority: int = Field(1, ge=1, le=5)
+
+
+class PeakHours(BaseModel):
+    """Player's best/worst performance windows by hour-of-day."""
+
+    user_id: str
+    best_hours: list[int] = Field(default_factory=list)
+    worst_hours: list[int] = Field(default_factory=list)
+    avg_performance_by_hour: dict[int, float] = Field(default_factory=dict)
+
+
+# ---------------------------------------------------------------------------
+# Predictive Fatigue schemas
+# ---------------------------------------------------------------------------
+
+
+class FatigueLevel(str, Enum):
+    """Five-tier cognitive fatigue ladder."""
+
+    FRESH = "fresh"
+    MILD = "mild"
+    MODERATE = "moderate"
+    SEVERE = "severe"
+    CRITICAL = "critical"
+
+
+class SessionRecommendation(BaseModel):
+    """Recommended session duration and break cadence."""
+
+    user_id: str
+    optimal_minutes: int
+    max_before_decline: int
+    suggested_break_interval: int
+    reasoning: str
+
+
+class TournamentDayPlan(BaseModel):
+    """Peak-performance plan for tournament day."""
+
+    user_id: str
+    peak_windows: list[dict[str, Any]] = Field(default_factory=list)
+    rest_windows: list[dict[str, Any]] = Field(default_factory=list)
+    warmup_plan: str = ""
+    total_play_minutes: int = 0
+    notes: str = ""
+
+
+class DeclineReport(BaseModel):
+    """Real-time cognitive-decline report for a live session."""
+
+    is_declining: bool
+    decline_rate: float = 0.0
+    minutes_until_critical: float | None = None
+    affected_metrics: list[str] = Field(default_factory=list)
+    recommendation: str = ""

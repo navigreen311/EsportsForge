@@ -8,8 +8,6 @@ from pydantic import BaseModel, Field
 from app.schemas.ufc5.combat import (
     ArchetypeStyle,
     BodyRegion,
-    CutSeverity,
-    DamageState,
     FinishProtocol,
     GrapplePosition,
     GrapplePositionType,

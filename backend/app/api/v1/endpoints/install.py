@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 
 from app.schemas.install import (
     CallSheet,
     CallSheetRequest,
     InstallPackage,
     InstallRequest,
-    MasteryPhase,
     OverloadCheck,
     PhaseProgress,
     ProgressionStep,

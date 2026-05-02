@@ -8,8 +8,6 @@ base call -> if bagged -> if they adjust.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-from uuid import uuid4
 
 from app.schemas.install import (
     AntiBlitzScript,
@@ -341,7 +339,8 @@ class InstallAI:
 
             # Build an audible tree for this blitz type
             reads = [
-                {"condition": f"{blitz_type} detected pre-snap", "action": hot_routes[0] if hot_routes else "Hot route"},
+                {"condition": f"{blitz_type} detected pre-snap",
+                    "action": hot_routes[0] if hot_routes else "Hot route"},
                 {"condition": "Delayed blitz / disguised", "action": quick_passes[0] if quick_passes else "Quick pass"},
                 {"condition": "Blitz + coverage rotation", "action": "Attack vacated zone"},
             ]

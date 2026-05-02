@@ -18,7 +18,7 @@ from app.schemas.video_poker.pay_table import (
     WalkAwaySignal,
     WalkAwayReason,
 )
-from app.schemas.video_poker.strategy import HandRanking, VariantType
+from app.schemas.video_poker.strategy import VariantType
 
 logger = logging.getLogger(__name__)
 

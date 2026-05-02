@@ -7,7 +7,6 @@ delivery analysis, and penalty shootout psychology modeling.
 from __future__ import annotations
 
 import logging
-import random
 from typing import Any
 
 from app.schemas.eafc26.tactics import (

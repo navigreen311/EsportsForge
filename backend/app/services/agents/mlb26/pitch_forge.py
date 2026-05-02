@@ -12,7 +12,6 @@ from typing import Any
 
 from app.schemas.mlb26.pitching import (
     BatterTendency,
-    PitchLocation,
     PitchSequence,
     PitchType,
     SequenceStrategy,

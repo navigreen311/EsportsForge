@@ -16,11 +16,9 @@ import structlog
 from app.schemas.forgecore import (
     AgentOutput,
     AgentStatus,
-    ConflictResolution,
     DecisionContext,
     ForgeCoreDecision,
     ForgeCoreRequest,
-    GameMode,
     PressureState,
 )
 from app.services.backbone.agent_registry import AgentRegistry, AgentRegistryEntry

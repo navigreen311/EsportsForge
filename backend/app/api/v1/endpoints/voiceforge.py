@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException
 
 from app.schemas.voiceforge import (
     AvailableCommand,
@@ -17,7 +17,6 @@ from app.schemas.voiceforge import (
     VoiceCheckInRequest,
     VoiceCommand,
     VoiceCommandRequest,
-    VoiceConfig,
     VoiceSearchQuery,
     VoiceSearchResult,
 )

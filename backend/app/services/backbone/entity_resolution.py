@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BehavioralFingerprint:
     """Quantified play-pattern signature for an opponent."""

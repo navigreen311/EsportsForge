@@ -111,8 +111,10 @@ class CFBPlayerTwin:
                 if key in h:
                     discipline_scores[key].append(h[key])
 
-        best = max(option_results, key=lambda k: option_results[k]["stopped"] / max(option_results[k]["total"], 1)) if option_results else "zone_read"
-        worst = min(option_results, key=lambda k: option_results[k]["stopped"] / max(option_results[k]["total"], 1)) if option_results else "triple_option"
+        best = max(option_results, key=lambda k: option_results[k]["stopped"] /
+                   max(option_results[k]["total"], 1)) if option_results else "zone_read"
+        worst = min(option_results, key=lambda k: option_results[k]["stopped"] /
+                    max(option_results[k]["total"], 1)) if option_results else "triple_option"
 
         return OptionDefenseProfile(
             overall_rating=sum(sum(v) / max(len(v), 1) for v in discipline_scores.values()) / 3 * 100,

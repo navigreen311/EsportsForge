@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from sqlalchemy import Enum, Float, ForeignKey, Integer, String
 from sqlalchemy import JSON, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.models.base import UUIDPrimaryKeyMixin

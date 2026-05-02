@@ -9,13 +9,11 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from datetime import datetime, timezone
 from typing import Any
 
 from app.schemas.eafc26.squad import (
     EAFCPlaystyle,
     EAFCPlaystyleProfile,
-    EAFCTwinProfile,
     RageSubDetection,
     TiltIndicator,
 )

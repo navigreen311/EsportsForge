@@ -6,10 +6,8 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 from app.schemas.madden26.roster import (
-    Player,
     Position,
     RosterData,
-    PersonnelPackage,
     MismatchSeverity,
 )
 

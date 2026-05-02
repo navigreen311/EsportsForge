@@ -9,8 +9,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Optional
 
 from app.schemas.pga2k25.ranked import (
     CourseCondition,

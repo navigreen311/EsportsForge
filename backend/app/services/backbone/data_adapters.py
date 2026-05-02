@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 # Shared data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class NormalisedPlay:
     """One play in title-agnostic form."""

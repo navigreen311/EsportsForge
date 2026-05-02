@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 from collections import Counter
-from datetime import datetime
 from typing import Any
 
 from app.schemas.opponent import Prediction

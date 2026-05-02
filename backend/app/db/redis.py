@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from contextlib import asynccontextmanager
 from typing import Any
 
 import redis.asyncio as redis
@@ -127,8 +126,13 @@ class RedisClient:
     # -- Info ---------------------------------------------------------------
 
     async def memory_usage(self) -> dict[str, Any]:
-        """Return memory-related stats from INFO."""
-        info = await self._r.info("memory")
+        """Return memory-related stats from INFO. Falls back gracefully when
+        the underlying Redis (or test double, e.g. fakeredis) does not
+        implement INFO."""
+        try:
+            info = await self._r.info("memory")
+        except Exception:
+            info = {}
         return {
             "used_memory_human": info.get("used_memory_human", "N/A"),
             "used_memory_peak_human": info.get("used_memory_peak_human", "N/A"),

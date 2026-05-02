@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 from app.schemas.pga2k25.course import (
     CourseAnalysis,
@@ -20,7 +20,6 @@ from app.schemas.pga2k25.course import (
     LineEV,
     LineType,
     ShotPlan,
-    ShotShape,
 )
 
 logger = logging.getLogger(__name__)

@@ -12,7 +12,6 @@ from app.schemas.madden26.gameplan import (
     KillSheet,
     KillSheetRequest,
     MetaReport,
-    Play,
 )
 from app.services.agents.madden26.gameplan_ai import GameplanAI
 from app.services.agents.madden26.meta_bot import MetaBot

@@ -3,6 +3,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def validate_config(settings) -> None:
     """Check configuration and log warnings for production issues."""
     env = settings.environment

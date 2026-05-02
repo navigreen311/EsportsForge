@@ -13,7 +13,6 @@ from typing import Any
 
 from app.schemas.mlb26.hitting import (
     ClutchProfile,
-    MLBTwinProfile,
     PitchRecognition,
     ZoneProfile,
 )
@@ -106,9 +105,11 @@ class MLBPlayerTwin:
             notes.append(f"Excellent plate discipline — {chase_rate:.0%} chase rate.")
 
         # Find weakest pitch type
-        worst_pitch = min(pitch_recognition, key=pitch_recognition.get) if pitch_recognition else None  # type: ignore[arg-type]
+        # type: ignore[arg-type]
+        worst_pitch = min(pitch_recognition, key=pitch_recognition.get) if pitch_recognition else None
         if worst_pitch and pitch_recognition[worst_pitch] < 0.45:
-            notes.append(f"Weakest recognition: {worst_pitch} ({pitch_recognition[worst_pitch]:.0%}) — practice identifying this pitch.")
+            notes.append(
+                f"Weakest recognition: {worst_pitch} ({pitch_recognition[worst_pitch]:.0%}) — practice identifying this pitch.")
 
         return PitchRecognition(
             user_id=user_id,

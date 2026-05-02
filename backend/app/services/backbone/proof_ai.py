@@ -9,7 +9,6 @@ formatted for war room briefings — concise, data-driven, actionable.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from uuid import UUID, uuid4
 
 from app.schemas.drill import (

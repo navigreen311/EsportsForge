@@ -17,7 +17,6 @@ from app.schemas.fortnite.gameplay import (
     BuildType,
     EditConfidence,
     EditDrillResult,
-    EditShape,
     EditSpeedProfile,
     FortniteTwinProfile,
     MaterialManagement,

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
 from app.schemas.opponent import (
@@ -42,7 +42,6 @@ class PredictRequest(BaseModel):
 
 class SignalsRequest(BaseModel):
     """Query params are simpler but we expose as GET with defaults."""
-    pass
 
 
 # ---------------------------------------------------------------------------

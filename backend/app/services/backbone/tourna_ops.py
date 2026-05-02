@@ -7,8 +7,7 @@ tournament day operations.
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 import structlog
@@ -18,11 +17,9 @@ from app.schemas.tournament import (
     HydrationReminder,
     MemoryCard,
     OpponentQueue,
-    PrepStatus,
     QueueSheet,
     ResetScript,
     ResetType,
-    TournamentPrep,
     WarmupChecklist,
 )
 

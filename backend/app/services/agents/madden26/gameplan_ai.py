@@ -16,7 +16,7 @@ from app.schemas.madden26.gameplan import (
     PlayType,
     ValidatedGameplan,
 )
-from app.schemas.madden26.scheme import CoverageType, Situation
+from app.schemas.madden26.scheme import CoverageType
 from app.services.agents.madden26.scheme_ai import SchemeAI
 from app.services.agents.madden26.meta_bot import MetaBot
 

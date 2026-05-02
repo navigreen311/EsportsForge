@@ -12,7 +12,6 @@ from typing import Any
 
 from app.schemas.mlb26.hitting import (
     CountLeverage,
-    HitApproach,
     HitTrainingPlan,
     PCIPlacement,
     SwingFeedback,

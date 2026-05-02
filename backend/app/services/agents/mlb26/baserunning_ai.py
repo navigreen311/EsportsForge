@@ -7,7 +7,6 @@ decisions, and evaluates baserunning aggression settings.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from app.schemas.mlb26.hitting import (
     BaserunningDecision,

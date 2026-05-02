@@ -11,7 +11,6 @@ from typing import Any
 
 from app.schemas.fortnite.gameplay import (
     AugmentPriority,
-    AugmentRarity,
     MetaSnapshot,
     MobilityItem,
     WeaponMeta,
