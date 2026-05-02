@@ -456,11 +456,18 @@ class RosterIQ:
                 continue  # Not hidden if already top-rated
 
             weighted_score = 0.0
+            applicable_weight = 0.0
             for attr, weight in weights.items():
                 val = _get_rating_attr(player.ratings, attr)
-                weighted_score += val * weight
+                if val > 0:
+                    weighted_score += val * weight
+                    applicable_weight += weight
 
-            gem_score = weighted_score - player.ratings.overall
+            if applicable_weight == 0:
+                continue
+            normalized_score = weighted_score / applicable_weight
+
+            gem_score = normalized_score - player.ratings.overall
             if gem_score < 3.0:
                 continue
 

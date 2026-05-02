@@ -125,7 +125,7 @@ class ReadAI:
             if req.get("soft_coverage", None) is not None and req["soft_coverage"] == soft:
                 score += 1
             if req.get("asymmetric", None) is not None and req["asymmetric"] == asymmetric:
-                score += 1
+                score += 3
 
             if score > best_score:
                 best_score = score
