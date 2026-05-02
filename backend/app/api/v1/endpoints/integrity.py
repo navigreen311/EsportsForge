@@ -10,7 +10,7 @@ from app.schemas.integrity import (
 )
 from app.services.backbone.integrity_mode import IntegrityMode
 
-router = APIRouter(prefix="/integrity", tags=["integrity"])
+router = APIRouter(tags=["integrity"])
 
 
 @router.get("/mode", response_model=IntegritySettings)

@@ -13,7 +13,7 @@ from app.services.backbone.agent_registry import AgentRegistry, AgentRegistryEnt
 from app.services.backbone.conflict_resolver import ConflictResolver
 from app.services.backbone.forgecore import ForgeCore
 
-router = APIRouter(prefix="/forgecore", tags=["ForgeCore"])
+router = APIRouter(tags=["ForgeCore"])
 
 # ---------------------------------------------------------------------------
 # Singleton instances (replaced by DI in production)
