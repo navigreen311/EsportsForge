@@ -138,13 +138,20 @@ class AdaptAI:
             if success_count > fail_count and not strengths:
                 strengths.append("Positive play success rate")
 
-            # Detect repeated play types
-            play_types = [p.get("type", "unknown") for p in all_plays]
+        # Detect repeated play types from losing games only — plays in winning
+        # games are the player's own strengths, not opponent tendencies.
+        losing_plays = []
+        for game in games:
+            if game.get("result") == "loss":
+                losing_plays.extend(game.get("plays", []))
+
+        if losing_plays:
+            play_types = [p.get("type", "unknown") for p in losing_plays]
             type_counts: dict[str, int] = {}
             for pt in play_types:
                 type_counts[pt] = type_counts.get(pt, 0) + 1
 
-            total_plays = len(all_plays)
+            total_plays = len(losing_plays)
             for pt, count in type_counts.items():
                 if count / total_plays > _PATTERN_FREQUENCY_THRESHOLD:
                     opponent_patterns.append(
