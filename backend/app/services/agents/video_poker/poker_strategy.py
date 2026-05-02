@@ -248,9 +248,9 @@ class PokerStrategyAI:
                 explanation="Hand must contain exactly 5 cards.",
             )
 
-        # Check for made hands first
+        # Check for made hands first (pairs draw for improvement — don't hold all)
         ranking = self.evaluate_hand(cards, variant)
-        if ranking != HandRanking.NO_WIN:
+        if ranking not in (HandRanking.NO_WIN, HandRanking.JACKS_OR_BETTER_PAIR):
             ev = float(PAY_TABLES.get(variant, PAY_TABLES[VariantType.JACKS_OR_BETTER]).get(ranking, 0))
             return HoldDecision(
                 hold_indices=[0, 1, 2, 3, 4],
@@ -417,7 +417,7 @@ class PokerStrategyAI:
                 return HoldDecision(
                     hold_indices=indices,
                     hold_cards=[cards[i] for i in indices],
-                    strategy_name="High Pair (Jacks+)",
+                    strategy_name=HandRanking.JACKS_OR_BETTER_PAIR.value,
                     expected_value=1.54,
                     explanation=f"Hold high pair of {rank.value}s.",
                 )
