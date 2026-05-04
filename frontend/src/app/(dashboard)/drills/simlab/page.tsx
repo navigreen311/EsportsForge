@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useWeapon, useActiveArsenalTitle } from '@/hooks/useArsenal';
 import {
@@ -210,6 +210,16 @@ interface RepResult {
 }
 
 export default function SimLabPage() {
+  // useSearchParams() requires a Suspense boundary at build time. The body
+  // of the page lives in SimLabPageBody so we can wrap it cleanly.
+  return (
+    <Suspense>
+      <SimLabPageBody />
+    </Suspense>
+  );
+}
+
+function SimLabPageBody() {
   const searchParams = useSearchParams();
   const weaponId = searchParams?.get('weapon') ?? null;
   const { data: preloadedWeapon } = useWeapon(weaponId);

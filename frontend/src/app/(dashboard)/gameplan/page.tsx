@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Gamepad2, ChevronDown, Sparkles, Loader2, Volume2 } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -39,6 +39,16 @@ const tabs: { key: ViewTab; label: string; count?: (gp: ReturnType<typeof useGam
 ];
 
 export default function GameplanPage() {
+  // useSearchParams() requires a Suspense boundary at build time. The body
+  // of the page lives in GameplanPageBody so we can wrap it cleanly.
+  return (
+    <Suspense>
+      <GameplanPageBody />
+    </Suspense>
+  );
+}
+
+function GameplanPageBody() {
   const {
     opponents,
     selectedOpponentId,
