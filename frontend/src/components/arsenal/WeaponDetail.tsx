@@ -218,6 +218,23 @@ export function WeaponDetail({
     if (!cancelRef.current) {
       setActive(null);
       setMode('view');
+
+      // Brief follow-up listen — let the player ask for a repeat without
+      // having to click anything.
+      try {
+        const heard = (await VoiceForgeService.listen({ timeout: 5000 })).toLowerCase();
+        if (cancelRef.current) return;
+        if (heard.includes('repeat setup')) {
+          startReading('setup');
+        } else if (heard.includes('repeat execution')) {
+          startReading('execution');
+        } else if (heard.includes('repeat')) {
+          startReading(target);
+        }
+        // "got it" / silence / anything else — just exit.
+      } catch {
+        // Ignore — listening is best-effort.
+      }
     }
   };
 
@@ -686,7 +703,10 @@ function PracticeMode({
 }: PracticeModeProps) {
   const steps = buildPracticeSteps(weapon);
   const [idx, setIdx] = useState(0);
+  const [listening, setListening] = useState(false);
   const cancelRef = useRef(false);
+  const idxRef = useRef(0);
+  idxRef.current = idx;
 
   useEffect(() => {
     cancelRef.current = false;
@@ -696,7 +716,8 @@ function PracticeMode({
     };
   }, []);
 
-  // Speak whenever the active step changes.
+  // Speak whenever the active step changes, then listen briefly for a voice
+  // command so the player can advance hands-free.
   useEffect(() => {
     if (!voiceEnabled) return;
     const cur = steps[idx];
@@ -707,11 +728,55 @@ function PracticeMode({
     } else if (cur.phase === 'execution' && cur.index !== undefined) {
       prefix = `Execution step ${cur.index + 1} of ${cur.total}. `;
     }
-    VoiceForgeService.speakAsync(prefix + cur.text, {
-      speed,
-      interruptCurrent: true,
-    });
+
+    let cancelled = false;
+    (async () => {
+      await VoiceForgeService.speakAsync(prefix + cur.text, {
+        speed,
+        interruptCurrent: true,
+      });
+      if (cancelled || cancelRef.current) return;
+      if (cur.phase === 'done') return; // stay put on completion screen.
+
+      setListening(true);
+      try {
+        const heard = (await VoiceForgeService.listen({ timeout: 8000 }))
+          .toLowerCase()
+          .trim();
+        if (cancelled || cancelRef.current) return;
+        // Only react if the index hasn't already moved (button press wins).
+        if (idxRef.current !== idx) return;
+        if (
+          heard.includes('next') ||
+          heard.includes('got it') ||
+          heard.includes('ready') ||
+          heard.includes('done')
+        ) {
+          setIdx((i) => Math.min(i + 1, steps.length - 1));
+        } else if (heard.includes('back') || heard.includes('previous')) {
+          setIdx((i) => Math.max(i - 1, 0));
+        } else if (heard.includes('repeat') || heard.includes('say that again')) {
+          // Re-trigger by toggling — bumping a state we already own would
+          // be cleaner but this avoids an extra useState.
+          setIdx((i) => i);
+          // Force re-speak by quickly bouncing index; the speak effect re-runs
+          // only when idx changes, so call directly.
+          await VoiceForgeService.speakAsync(prefix + cur.text, {
+            speed,
+            interruptCurrent: true,
+          });
+        } else if (heard.includes('stop') || heard.includes('exit')) {
+          onExit();
+        }
+      } catch {
+        // Ignore — listening is best-effort.
+      } finally {
+        if (!cancelled) setListening(false);
+      }
+    })();
+
     return () => {
+      cancelled = true;
       VoiceForgeService.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -792,6 +857,12 @@ function PracticeMode({
           >
             <Volume2 className="h-3 w-3" /> Repeat
           </button>
+          {listening && (
+            <span className="inline-flex items-center gap-1 rounded-md border border-forge-500/30 bg-forge-500/10 px-2 py-1 text-[10px] font-medium text-forge-300">
+              <Mic className="h-3 w-3 animate-pulse" />
+              Say "next", "back", "repeat", or "stop"
+            </span>
+          )}
           <button
             type="button"
             onClick={onExit}

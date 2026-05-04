@@ -38,9 +38,20 @@ export default function DiscoverPage() {
       });
       setResults(data);
     } catch (e: unknown) {
-      const msg =
-        e instanceof Error ? e.message : 'Search failed — try again in a moment.';
-      setError(msg);
+      // Surface the 503 from the backend when ANTHROPIC_API_KEY is missing,
+      // so the operator knows why discovery isn't returning live results.
+      type AxiosErr = { response?: { status?: number; data?: { detail?: string } } };
+      const ax = e as AxiosErr;
+      if (ax?.response?.status === 503) {
+        setError(
+          ax.response?.data?.detail ??
+            'ArsenalAI is offline — set ANTHROPIC_API_KEY in backend/.env and restart.'
+        );
+      } else {
+        const msg =
+          e instanceof Error ? e.message : 'Search failed — try again in a moment.';
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -105,10 +116,25 @@ export default function DiscoverPage() {
 
       {/* Results */}
       {loading && (
-        <div className="rounded-xl border border-dark-700 bg-dark-900/60 p-10 text-center text-sm text-dark-400">
-          <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-forge-400" />
-          ArsenalAI is searching the web for {TITLE_DISPLAY_NAME[titleId]} secret weapons…
-        </div>
+        <>
+          <div className="rounded-xl border border-dark-700 bg-dark-900/60 px-4 py-3 text-center text-sm text-dark-400">
+            <Loader2 className="mr-2 inline h-4 w-4 animate-spin text-forge-400" />
+            ArsenalAI is searching the web for {TITLE_DISPLAY_NAME[titleId]} secret weapons…
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="animate-pulse rounded-xl border border-dark-700/50 bg-dark-900/40 p-4"
+              >
+                <div className="mb-2 h-4 w-24 rounded bg-dark-700/60" />
+                <div className="mb-2 h-5 w-3/4 rounded bg-dark-700/60" />
+                <div className="mb-1 h-3 w-full rounded bg-dark-700/40" />
+                <div className="h-3 w-5/6 rounded bg-dark-700/40" />
+              </div>
+            ))}
+          </div>
+        </>
       )}
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">

@@ -29,10 +29,10 @@ interface Props {
   onPracticeWeapon?: (id: string) => void;
 }
 
-const PILLS = [
-  '"Read my weapons"',
-  '"Find a trick play"',
-  '"What should I use right now"',
+const PILLS: { label: string; command: string }[] = [
+  { label: '"Read my weapons"', command: 'read my weapons' },
+  { label: '"Find a trick play"', command: 'find a trick play' },
+  { label: '"What should I use right now"', command: 'what should i use right now' },
 ];
 
 export function VoiceCommandBar({ onOpenWeapon, onPracticeWeapon }: Props) {
@@ -190,12 +190,17 @@ export function VoiceCommandBar({ onOpenWeapon, onPracticeWeapon }: Props) {
         )}
       </button>
       {PILLS.map((p) => (
-        <span
-          key={p}
-          className="rounded-full border border-dark-700 bg-dark-800/60 px-2 py-0.5 text-[10px] text-dark-400"
+        <button
+          key={p.command}
+          type="button"
+          onClick={() => {
+            setTranscript(p.command);
+            void dispatch(p.command);
+          }}
+          className="rounded-full border border-dark-700 bg-dark-800/60 px-2 py-0.5 text-[10px] text-dark-400 transition-colors hover:border-forge-500/40 hover:text-forge-300"
         >
-          {p}
-        </span>
+          {p.label}
+        </button>
       ))}
       {transcript && (
         <span className="text-[10px] text-dark-500">
