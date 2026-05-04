@@ -26,21 +26,26 @@ import {
 import SimulateModal from '@/components/gameplan/SimulateModal';
 import ScoutOpponentModal from '@/components/gameplan/ScoutOpponentModal';
 import ShareGameplanModal from '@/components/gameplan/ShareGameplanModal';
+import { getTitleGameplanConfig } from '@/lib/gameplan/titleConfig';
 import { GameplanSessionBar } from '@/components/session/GameplanSessionBar';
 import { ArsenalTabPanel } from '@/components/arsenal/ArsenalTabPanel';
 import type { PackageTab, Play } from '@/types/gameplan';
 
 type ViewTab = PackageTab | 'script' | 'arsenal';
 
-const tabs: { key: ViewTab; label: string; count?: (gp: ReturnType<typeof useGameplan>['gameplan']) => number }[] = [
-  { key: 'all', label: 'All Plays', count: (gp) => gp.plays.length },
-  { key: 'kill-sheet', label: 'Kill Sheet', count: (gp) => gp.killSheet.length },
-  { key: 'red-zone', label: 'Red Zone', count: (gp) => gp.redZonePackage.length },
-  { key: 'anti-blitz', label: 'Anti-Blitz', count: (gp) => gp.antiBlitzPackage.length },
-  { key: '2-min-drill', label: '2-Min Drill', count: (gp) => gp.twoMinDrillPackage.length },
-  { key: 'script', label: 'Script View' },
-  { key: 'arsenal', label: '⚡ Arsenal' },
-];
+function buildTabs(titleId: string) {
+  const cfg = getTitleGameplanConfig(titleId);
+  const lbl = (key: ViewTab, fallback: string) => cfg.tabLabels[key] ?? fallback;
+  return [
+    { key: 'all' as ViewTab, label: lbl('all', 'All Plays'), count: (gp: ReturnType<typeof useGameplan>['gameplan']) => gp.plays.length },
+    { key: 'kill-sheet' as ViewTab, label: lbl('kill-sheet', 'Kill Sheet'), count: (gp: ReturnType<typeof useGameplan>['gameplan']) => gp.killSheet.length },
+    { key: 'red-zone' as ViewTab, label: lbl('red-zone', 'Red Zone'), count: (gp: ReturnType<typeof useGameplan>['gameplan']) => gp.redZonePackage.length },
+    { key: 'anti-blitz' as ViewTab, label: lbl('anti-blitz', 'Anti-Blitz'), count: (gp: ReturnType<typeof useGameplan>['gameplan']) => gp.antiBlitzPackage.length },
+    { key: '2-min-drill' as ViewTab, label: lbl('2-min-drill', '2-Min Drill'), count: (gp: ReturnType<typeof useGameplan>['gameplan']) => gp.twoMinDrillPackage.length },
+    { key: 'script' as ViewTab, label: lbl('script', 'Script View') },
+    { key: 'arsenal' as ViewTab, label: lbl('arsenal', '⚡ Arsenal') },
+  ];
+}
 
 export default function GameplanPage() {
   const {
@@ -66,6 +71,7 @@ export default function GameplanPage() {
   const [scoutOpen, setScoutOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const titleId = useUIStore((s) => s.selectedTitle);
+  const tabs = buildTabs(titleId);
   const visiblePlays = activeFilter
     ? filteredPlays.filter((p) =>
         (p.tags ?? p.conceptTags).some((t) => t.toLowerCase().includes(activeFilter)),
