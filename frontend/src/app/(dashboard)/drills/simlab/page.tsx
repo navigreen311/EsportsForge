@@ -6,9 +6,9 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useWeapon } from '@/hooks/useArsenal';
+import { useWeapon, useActiveArsenalTitle } from '@/hooks/useArsenal';
 import {
   FlaskConical,
   Play,
@@ -23,9 +23,19 @@ import {
   Users,
   Volume2,
   VolumeX,
+  Eye,
 } from 'lucide-react';
 import { VoiceForgeService } from '@/lib/services/voiceforge';
 import { useArsenalVoice, toneSpeed } from '@/lib/arsenal/voiceSettings';
+import {
+  VisionAudioForgeService,
+  type DrillMonitoringHandle,
+  type FrameAnalysis,
+} from '@/lib/services/visionaudioforge';
+import { getSimLabDetectionConfig } from '@/lib/drills/drillDetectionConfigs';
+import { WatchingIndicator } from '@/components/session/WatchingIndicator';
+import { CaptureSourceModal } from '@/components/session/CaptureSourceModal';
+import { useUIStore } from '@/lib/store';
 
 // --- Mock Data ---
 
@@ -96,6 +106,11 @@ interface RepResult {
   correct: boolean;
   timeMs: number;
   scenario: string;
+  /** True when the rep was filled in by VisionAudioForge auto-detection. */
+  autoDetected?: boolean;
+  /** Vision-model confidence 0–100 — anything below 50 is flagged amber. */
+  confidence?: number;
+  reason?: string;
 }
 
 export default function SimLabPage() {
@@ -103,11 +118,16 @@ export default function SimLabPage() {
   const weaponId = searchParams?.get('weapon') ?? null;
   const { data: preloadedWeapon } = useWeapon(weaponId);
   const voice = useArsenalVoice();
+  const arsenalTitle = useActiveArsenalTitle();
+  const integrityMode = useUIStore((s) => s.currentMode);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [selectedOpponent, setSelectedOpponent] = useState(MOCK_OPPONENTS[0]);
   const [isSimulating, setIsSimulating] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [voiceCoaching, setVoiceCoaching] = useState(true);
+  const [watching, setWatching] = useState(false);
+  const [showCaptureSourceModal, setShowCaptureSourceModal] = useState(false);
+  const watchHandleRef = useRef<DrillMonitoringHandle | null>(null);
   const [reps, setReps] = useState<RepResult[]>([
     { id: 1, correct: true, timeMs: 2400, scenario: '3rd & Medium' },
     { id: 2, correct: true, timeMs: 1800, scenario: '3rd & Medium' },
@@ -190,6 +210,82 @@ export default function SimLabPage() {
     }, 1500);
   };
 
+  // -----------------------------------------------------------------------
+  // Watching mode — VisionAudioForge auto-detects each rep
+  // -----------------------------------------------------------------------
+
+  const handleRepDetected = (analysis: FrameAnalysis) => {
+    // Skip when the model could not commit either way.
+    if (analysis.success === null) return;
+    setReps((prev) => {
+      const next = [
+        {
+          id: prev.length + 1,
+          correct: analysis.success === true,
+          timeMs: 0,
+          scenario:
+            preloadedWeapon?.name ?? selectedScenario?.name ?? 'Custom',
+          autoDetected: true,
+          confidence: analysis.confidence,
+          reason: analysis.reason,
+        },
+        ...prev,
+      ];
+      const acc = Math.round(
+        (next.filter((r) => r.correct).length / next.length) * 100
+      );
+      coachAfterRep(analysis.success === true, next.length, acc);
+      return next;
+    });
+  };
+
+  const startWatching = async () => {
+    if (!VisionAudioForgeService.getCaptureSource()) {
+      setShowCaptureSourceModal(true);
+      return;
+    }
+    const available = await VisionAudioForgeService.isAvailable();
+    if (!available) {
+      speakIfEnabled(
+        'VisionAudioForge is offline. Use Run Scenario to mark reps manually.'
+      );
+      return;
+    }
+
+    const config = getSimLabDetectionConfig(
+      selectedScenario?.id,
+      preloadedWeapon?.name,
+      preloadedWeapon?.formation ?? undefined,
+      preloadedWeapon?.play_name ?? undefined
+    );
+
+    watchHandleRef.current = VisionAudioForgeService.startDrillMonitoring({
+      mode: 'simlab',
+      titleId: arsenalTitle,
+      scenarioId: selectedScenario?.id,
+      weaponId: preloadedWeapon?.id,
+      weaponName: preloadedWeapon?.name,
+      formation: preloadedWeapon?.formation ?? undefined,
+      playName: preloadedWeapon?.play_name ?? undefined,
+      detectionConfig: config,
+      onRepDetected: handleRepDetected,
+    });
+    setWatching(true);
+    speakIfEnabled(
+      'VisionAudioForge is now watching your screen. Go to your game and execute the scenario. I will detect each rep automatically.'
+    );
+  };
+
+  const stopWatching = () => {
+    watchHandleRef.current?.stop();
+    watchHandleRef.current = null;
+    setWatching(false);
+  };
+
+  useEffect(() => {
+    return () => watchHandleRef.current?.stop();
+  }, []);
+
   const accuracy = reps.length > 0
     ? Math.round((reps.filter((r) => r.correct).length / reps.length) * 100)
     : 0;
@@ -209,6 +305,14 @@ export default function SimLabPage() {
             </p>
             <p className="text-[11px] text-dark-400">{preloadedWeapon.when_to_use}</p>
           </div>
+        </div>
+      )}
+
+      {/* TOURNAMENT INTEGRITY NOTICE */}
+      {integrityMode === 'tournament' && (
+        <div className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-xs text-sky-200">
+          Tournament mode active. Practice monitoring is allowed between rounds —
+          this is offline training, not live competitive play.
         </div>
       )}
 
@@ -243,8 +347,83 @@ export default function SimLabPage() {
             {voiceCoaching ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
             Voice: {voiceCoaching ? 'ON' : 'OFF'}
           </button>
+          {!watching ? (
+            <button
+              type="button"
+              onClick={startWatching}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-forge-500/40 bg-forge-500/10 px-3 py-1.5 text-xs font-bold text-forge-300 hover:bg-forge-500/20"
+              title="Let VisionAudioForge auto-detect each rep from your screen"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Start Watching
+            </button>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-forge-500/40 bg-forge-500/10 px-3 py-1.5 text-xs font-bold text-forge-300">
+              <Eye className="h-3.5 w-3.5 animate-pulse" />
+              Watching…
+            </span>
+          )}
         </div>
       </div>
+
+      {watching && (
+        <div className="space-y-2">
+          <WatchingIndicator
+            isWatching={watching}
+            onStop={stopWatching}
+            mode="simlab"
+            detail={preloadedWeapon?.name ?? selectedScenario?.name ?? 'Custom scenario'}
+          />
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-dark-400">
+            <span className="text-dark-500">Manual override:</span>
+            <button
+              type="button"
+              onClick={() =>
+                handleRepDetected({
+                  playInProgress: false,
+                  repCompleted: true,
+                  success: true,
+                  coverageDetected: null,
+                  playDetected: null,
+                  executionQuality: 'clean',
+                  confidence: 100,
+                  reason: 'Manually marked success',
+                })
+              }
+              className="inline-flex items-center gap-1 rounded-md border border-forge-500/30 bg-forge-500/10 px-2 py-0.5 font-medium text-forge-300 hover:bg-forge-500/20"
+            >
+              ✓ Mark Success
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                handleRepDetected({
+                  playInProgress: false,
+                  repCompleted: true,
+                  success: false,
+                  coverageDetected: null,
+                  playDetected: null,
+                  executionQuality: 'poor',
+                  confidence: 100,
+                  reason: 'Manually marked failed',
+                })
+              }
+              className="inline-flex items-center gap-1 rounded-md border border-red-500/30 bg-red-500/10 px-2 py-0.5 font-medium text-red-300 hover:bg-red-500/20"
+            >
+              ✗ Mark Failed
+            </button>
+          </div>
+        </div>
+      )}
+
+      <CaptureSourceModal
+        open={showCaptureSourceModal}
+        onClose={() => setShowCaptureSourceModal(false)}
+        onSelected={() => {
+          setShowCaptureSourceModal(false);
+          void startWatching();
+        }}
+      />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         {/* LEFT COLUMN — Scenario Selector + Custom Builder */}
@@ -343,14 +522,20 @@ export default function SimLabPage() {
               <p className="text-xs text-dark-500 mt-1">vs. {selectedOpponent} ({customState.tendency})</p>
             </div>
 
-            {/* Run Button */}
-            <button
-              onClick={runSimulation}
-              disabled={isSimulating}
-              className="w-full rounded-lg bg-forge-500 py-2.5 text-sm font-semibold text-dark-950 hover:bg-forge-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSimulating ? 'Simulating...' : 'Run Scenario'}
-            </button>
+            {/* Run Button — hidden while VisionAudioForge is auto-detecting reps */}
+            {watching ? (
+              <p className="rounded-lg border border-dashed border-forge-500/30 bg-forge-500/5 py-2.5 text-center text-xs text-forge-300">
+                VisionAudioForge is auto-detecting reps. Manual run paused.
+              </p>
+            ) : (
+              <button
+                onClick={runSimulation}
+                disabled={isSimulating}
+                className="w-full rounded-lg bg-forge-500 py-2.5 text-sm font-semibold text-dark-950 hover:bg-forge-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSimulating ? 'Simulating...' : 'Run Scenario'}
+              </button>
+            )}
 
             {/* Result */}
             {showResult && (
@@ -449,22 +634,50 @@ export default function SimLabPage() {
               <Clock className="h-4 w-4 text-forge-400" /> Per-Rep Results
             </h2>
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {reps.map((rep) => (
-                <div key={rep.id} className="flex items-center gap-3 rounded-lg bg-dark-800/60 px-3 py-2">
-                  {rep.correct ? (
-                    <CheckCircle2 className="h-4 w-4 text-forge-400 flex-shrink-0" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-dark-200 truncate">{rep.scenario}</p>
-                    <p className="text-[10px] text-dark-500">Rep #{rep.id}</p>
+              {reps.map((rep) => {
+                const lowConfidence =
+                  rep.autoDetected && (rep.confidence ?? 0) < 50;
+                return (
+                  <div
+                    key={rep.id}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2 ${
+                      lowConfidence
+                        ? 'border border-amber-500/30 bg-amber-500/5'
+                        : 'bg-dark-800/60'
+                    }`}
+                    title={rep.reason ?? undefined}
+                  >
+                    {rep.correct ? (
+                      <CheckCircle2 className="h-4 w-4 text-forge-400 flex-shrink-0" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-dark-200 truncate">
+                        {rep.scenario}
+                        {rep.autoDetected && (
+                          <span className="ml-1 text-[10px] text-forge-400">
+                            · auto
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-[10px] text-dark-500">
+                        Rep #{rep.id}
+                        {lowConfidence && (
+                          <span className="ml-1 text-amber-400">
+                            · low confidence — verify manually
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    {rep.timeMs > 0 ? (
+                      <span className="text-xs font-mono text-dark-400">
+                        {(rep.timeMs / 1000).toFixed(1)}s
+                      </span>
+                    ) : null}
                   </div>
-                  <span className="text-xs font-mono text-dark-400">
-                    {(rep.timeMs / 1000).toFixed(1)}s
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

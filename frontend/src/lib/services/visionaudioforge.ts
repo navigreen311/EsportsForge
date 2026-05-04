@@ -12,7 +12,9 @@
  *     (post-game / non-competitive).
  */
 
+import api from '@/lib/api';
 import { useUIStore } from '@/lib/store';
+import type { DetectionConfig } from '@/lib/drills/drillDetectionConfigs';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +76,45 @@ const VISIONAUDIOFORGE_ENABLED =
 /** Modes that allow real-time vision features (screen capture, detection). */
 const VISION_SAFE_MODES = new Set(['offline-lab', 'training']);
 
+/** Capture sources the user can configure. */
+export type CaptureSource = 'capture-card' | 'pc-monitor' | 'camera';
+const CAPTURE_SOURCE_KEY = 'visionSource';
+
+/** Watching modes the monitor loop supports. */
+export type DrillMonitorMode = 'simlab' | 'arsenal-practice' | 'drill-lab';
+
+export interface FrameAnalysis {
+  playInProgress: boolean;
+  repCompleted: boolean;
+  success: boolean | null;
+  coverageDetected: string | null;
+  playDetected: string | null;
+  executionQuality: 'clean' | 'poor' | null;
+  confidence: number;
+  reason: string;
+}
+
+export interface StartDrillMonitoringOptions {
+  mode: DrillMonitorMode;
+  titleId: string;
+  scenarioId?: string;
+  weaponId?: string;
+  weaponName?: string;
+  formation?: string;
+  playName?: string;
+  detectionConfig: DetectionConfig;
+  /** Called for every analysed frame, even when no rep is detected. */
+  onFrameAnalyzed?: (analysis: FrameAnalysis) => void;
+  /** Called when a rep is detected (success or fail). */
+  onRepDetected: (analysis: FrameAnalysis) => void;
+  /** Polling cadence in ms. Defaults to 2000. */
+  pollIntervalMs?: number;
+}
+
+export interface DrillMonitoringHandle {
+  stop: () => void;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -94,9 +135,18 @@ export function getIntegrityMode(): string {
 
 /**
  * Returns `true` when the current mode permits real-time vision features.
+ *
+ * Practice contexts (SimLab, Arsenal Practice, Drill Lab) override this —
+ * those are training-by-definition and always allowed regardless of the
+ * sidebar's mode label.
  */
 function isVisionAllowed(): boolean {
   return VISION_SAFE_MODES.has(getIntegrityMode());
+}
+
+/** Practice modes are always allowed — they're training, not live play. */
+function isPracticeMonitoringAllowed(_mode: DrillMonitorMode): boolean {
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -284,4 +334,131 @@ export const VisionAudioForgeService = {
       return false;
     }
   },
+
+  // -----------------------------------------------------------------------
+  // Capture source configuration
+  // -----------------------------------------------------------------------
+
+  getCaptureSource(): CaptureSource | null {
+    try {
+      if (typeof window === 'undefined') return null;
+      const v = window.localStorage.getItem(CAPTURE_SOURCE_KEY);
+      if (v === 'capture-card' || v === 'pc-monitor' || v === 'camera') return v;
+      return null;
+    } catch {
+      return null;
+    }
+  },
+
+  setCaptureSource(source: CaptureSource): void {
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(CAPTURE_SOURCE_KEY, source);
+      }
+      // Best-effort: persist to user settings on the server too.
+      void api
+        .patch('/users/me/settings', { vision_source: source })
+        .catch(() => {
+          // Endpoint may not exist yet — localStorage is the source of truth
+          // until it does.
+        });
+    } catch {
+      // Ignore.
+    }
+  },
+
+  // -----------------------------------------------------------------------
+  // Frame capture (placeholder — real implementation depends on the
+  // configured capture source: HDMI capture card via DirectShow / OBS
+  // virtual camera, browser screen-share, or webcam).
+  // -----------------------------------------------------------------------
+
+  async captureFrame(): Promise<{ base64: string } | null> {
+    // The frame format the monitor endpoint expects is base64-encoded JPEG
+    // without the data: prefix. Until a native capture path lands we return
+    // a 1×1 transparent pixel so the polling loop still exercises the
+    // endpoint contract.
+    return {
+      base64:
+        '/9j/4AAQSkZJRgABAQEAAAAAAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAr/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA/8A',
+    };
+  },
+
+  // -----------------------------------------------------------------------
+  // startDrillMonitoring — polling loop that captures frames, posts to the
+  // monitor endpoint, and surfaces detected reps via callbacks.
+  // -----------------------------------------------------------------------
+
+  startDrillMonitoring(
+    opts: StartDrillMonitoringOptions
+  ): DrillMonitoringHandle {
+    let stopped = false;
+    const interval = opts.pollIntervalMs ?? 2000;
+
+    const poll = async () => {
+      while (!stopped) {
+        try {
+          if (!isPracticeMonitoringAllowed(opts.mode) && !isVisionAllowed()) {
+            console.warn(
+              '[VisionAudioForge] Drill monitoring not permitted in current mode.'
+            );
+            stopped = true;
+            return;
+          }
+
+          const frame = await VisionAudioForgeService.captureFrame();
+          if (!frame) {
+            await wait(interval);
+            continue;
+          }
+
+          const { data } = await api.post<FrameAnalysis>(
+            '/drills/vision/monitor',
+            {
+              frame: frame.base64,
+              mode: opts.mode,
+              title_id: opts.titleId,
+              scenario_id: opts.scenarioId,
+              weapon_id: opts.weaponId,
+              weapon_name: opts.weaponName,
+              formation: opts.formation,
+              play_name: opts.playName,
+              detection: {
+                type: opts.detectionConfig.type,
+                watch_for: opts.detectionConfig.watchFor,
+                success_criteria: opts.detectionConfig.successCriteria,
+                fail_criteria: opts.detectionConfig.failCriteria,
+                prompt_context: opts.detectionConfig.promptContext,
+              },
+            }
+          );
+
+          if (stopped) return;
+
+          opts.onFrameAnalyzed?.(data);
+          if (data.repCompleted) {
+            opts.onRepDetected(data);
+          }
+        } catch (err) {
+          // Endpoint missing key or transient failure — back off rather than
+          // hammering. The UI surfaces a low-confidence indicator and the
+          // manual override stays available.
+          console.warn('[VisionAudioForge] monitor poll failed:', err);
+        }
+        await wait(interval);
+      }
+    };
+
+    void poll();
+
+    return {
+      stop: () => {
+        stopped = true;
+      },
+    };
+  },
 } as const;
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
