@@ -117,6 +117,140 @@ async def create_opponent(
 
 
 # ---------------------------------------------------------------------------
+# Scout — populate tendencies via Claude (or deterministic mock)
+# ---------------------------------------------------------------------------
+
+
+import json as _json  # noqa: E402
+from app.services.ai.claude_client import ClaudeClient  # noqa: E402
+
+_scout_claude = ClaudeClient()
+
+_SCOUT_SYSTEM = (
+    "You are ScoutBot for EsportsForge. Given an opponent's gamertag, archetype, "
+    "and any prior tendency observations, build a structured tendency dossier "
+    "for use by GameplanAI. Respond with strict JSON only — no markdown."
+)
+
+
+class ScoutResponse(BaseModel):
+    opponent: OpponentSummary
+    tendencies: dict[str, Any]
+    source: str
+
+
+def _mock_tendencies(archetype: str | None) -> dict[str, Any]:
+    arche = (archetype or "").lower()
+    if "blitz" in arche or "aggressive" in arche:
+        return {
+            "topCoverage": "Cover 1 Robber",
+            "topCoveragePercent": 47,
+            "blitzRate": 58,
+            "tendency3": "Pressure 3rd & medium",
+            "tendency3Percent": 64,
+            "thirdDownPlayCallTrend": ["man-blitz", "double-A-gap", "fire-zone"],
+            "redZoneTendency": "Goal-line stand vs run-heavy looks",
+            "behavioralSignals": ["Telegraphs blitz with safety creep", "Predictable on 2nd-and-long"],
+            "_source": "mock-archetype-heuristic",
+        }
+    if "zone" in arche or "schemer" in arche:
+        return {
+            "topCoverage": "Cover 3",
+            "topCoveragePercent": 62,
+            "blitzRate": 24,
+            "tendency3": "Drop 8 on long downs",
+            "tendency3Percent": 71,
+            "thirdDownPlayCallTrend": ["cover-3-cloud", "tampa-2", "quarters"],
+            "redZoneTendency": "Zone shell, dare you to throw the fade",
+            "behavioralSignals": ["Rotates safeties late", "Disguises Tampa-2 as Cover-3"],
+            "_source": "mock-archetype-heuristic",
+        }
+    return {
+        "topCoverage": "Cover 2",
+        "topCoveragePercent": 50,
+        "blitzRate": 30,
+        "tendency3": "Mixed coverage on 3rd downs",
+        "tendency3Percent": 52,
+        "thirdDownPlayCallTrend": ["cover-2-zone", "man-free", "cover-3"],
+        "redZoneTendency": "Balanced — mixes zone and man",
+        "behavioralSignals": ["No strong tells yet — keep scouting"],
+        "_source": "mock-archetype-heuristic",
+    }
+
+
+@router.post("/{opponent_id}/scout", response_model=ScoutResponse)
+async def scout_opponent(
+    opponent_id: str,
+    _user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ScoutResponse:
+    """Build (or refresh) a tendency dossier for an opponent and persist it.
+
+    When ANTHROPIC_API_KEY is set, asks Claude to extrapolate from the
+    archetype + any prior tendency notes. Otherwise returns a deterministic
+    archetype-keyed dossier so the rest of the gameplan flow has something
+    to consume.
+    """
+    result = await db.execute(select(Opponent).where(Opponent.id == opponent_id))
+    opp = result.scalar_one_or_none()
+    if not opp:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Opponent not found.")
+
+    if _scout_claude.is_available:
+        prompt = _json.dumps({
+            "gamertag": opp.gamertag,
+            "title": opp.title,
+            "archetype": opp.archetype,
+            "prior_tendencies": opp.tendencies or {},
+            "schema": {
+                "topCoverage": "string",
+                "topCoveragePercent": "int 0-100",
+                "blitzRate": "int 0-100",
+                "tendency3": "string",
+                "tendency3Percent": "int 0-100",
+                "thirdDownPlayCallTrend": ["short strings"],
+                "redZoneTendency": "string",
+                "behavioralSignals": ["short strings"],
+            },
+            "instructions": "If you don't know something, write a sensible default and note it as inferred.",
+        })
+        try:
+            data = await _scout_claude.generate_json(
+                prompt,
+                system=_SCOUT_SYSTEM,
+                max_tokens=600,
+                temperature=0.4,
+            )
+            tendencies = {**data, "_source": "claude"}
+            source = "claude"
+        except Exception as exc:  # noqa: BLE001
+            logger.info("ScoutBot fell back to mock: %s", exc)
+            tendencies = _mock_tendencies(opp.archetype)
+            source = "mock"
+    else:
+        tendencies = _mock_tendencies(opp.archetype)
+        source = "mock"
+
+    opp.tendencies = tendencies
+    opp.last_seen_at = datetime.now(timezone.utc)
+    await db.flush()
+    await db.refresh(opp)
+
+    return ScoutResponse(
+        opponent=OpponentSummary(
+            id=str(opp.id),
+            gamertag=opp.gamertag,
+            title=opp.title,
+            archetype=opp.archetype,
+            encounter_count=opp.encounter_count,
+            has_dossier=True,
+        ),
+        tendencies=tendencies,
+        source=source,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Request bodies
 # ---------------------------------------------------------------------------
 

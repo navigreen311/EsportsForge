@@ -1,21 +1,22 @@
 'use client';
 
-import { Target, Lightbulb, Zap } from 'lucide-react';
+import { Activity, Target, Lightbulb, Volume2, Zap } from 'lucide-react';
 import { Badge } from '@/components/shared/Badge';
 import { ConfidenceBar } from '@/components/shared/ConfidenceBar';
 import { Card } from '@/components/shared/Card';
 import { ImpactScore } from '@/components/gameplan/ImpactScore';
-import SimLabButton from '@/components/gameplan/SimLabButton';
 import EvidencePanel from '@/components/gameplan/EvidencePanel';
 import ThreeLayerAudible from '@/components/gameplan/ThreeLayerAudible';
 import PlayerTwinBadge, { PLAY_EXECUTION_PCT } from '@/components/gameplan/PlayerTwinBadge';
 import ProofAIEvidence from '@/components/gameplan/ProofAIEvidence';
 import MetaExpiryWarning from '@/components/gameplan/MetaExpiryWarning';
+import { VoiceForgeService } from '@/lib/services/voiceforge';
 import type { Play } from '@/types/gameplan';
 
 interface PlayDetailProps {
   play: Play | null;
   opponentName?: string;
+  onSimulate?: (play: Play) => void;
 }
 
 const situationLabels: Record<string, string> = {
@@ -29,7 +30,21 @@ const situationLabels: Record<string, string> = {
   'hurry-up': 'No-huddle tempo',
 };
 
-export default function PlayDetail({ play, opponentName = 'Opponent' }: PlayDetailProps) {
+function speakPlay(play: Play) {
+  const layer1 = play.callStructure?.layer1;
+  const audible = play.callStructure?.layer2?.[0];
+  const parts = [
+    `${play.name} from ${play.formation}.`,
+    play.whenToCall ? `Call when ${play.whenToCall}.` : '',
+    layer1 ? `Layer 1: ${layer1.name}.` : '',
+    audible ? `If bagged: ${audible.audible} when ${audible.trigger}.` : '',
+    play.confidenceScore !== undefined ? `Confidence ${play.confidenceScore} percent.` : '',
+    play.impactScore !== undefined ? `Win impact ${play.impactScore} out of 10.` : '',
+  ].filter(Boolean).join(' ');
+  VoiceForgeService.speak(parts, { interruptCurrent: true });
+}
+
+export default function PlayDetail({ play, opponentName = 'Opponent', onSimulate }: PlayDetailProps) {
   if (!play) {
     return (
       <Card className="flex h-full items-center justify-center min-h-[400px]">
@@ -46,24 +61,37 @@ export default function PlayDetail({ play, opponentName = 'Opponent' }: PlayDeta
 
   return (
     <Card padding="lg" className="space-y-5">
-      {/* Header + 3. SimLab Button */}
+      {/* Header */}
       <div>
         <p className="text-xs font-medium uppercase tracking-wider text-dark-500">
           {play.formation}
         </p>
-        <div className="mt-1 flex items-center gap-3">
+        <div className="mt-1 flex flex-wrap items-center gap-2">
           <h2 className="text-2xl font-bold text-dark-50">{play.name}</h2>
-          <SimLabButton
-            playId={play.id}
-            playName={play.name}
-            opponentName={opponentName}
-          />
+          {onSimulate && (
+            <button
+              type="button"
+              onClick={() => onSimulate(play)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-dark-600 bg-dark-800/50 px-3 py-1.5 text-xs font-medium text-dark-200 transition-colors hover:border-forge-500/50 hover:bg-dark-800 hover:text-forge-400"
+              title={`Ask AdaptAI what to do vs ${opponentName}'s tendency`}
+            >
+              <Activity className="h-3.5 w-3.5" /> Simulate
+            </button>
+          )}
           <a
-            href={`/drills/simlab?play=${encodeURIComponent(play.name)}`}
+            href={`/drills/simlab?play=${encodeURIComponent(play.id)}&opponent=${encodeURIComponent(opponentName)}`}
             className="inline-flex items-center gap-1.5 rounded-lg border border-forge-500/30 bg-forge-500/10 px-3 py-1.5 text-xs font-medium text-forge-400 transition-colors hover:bg-forge-500/20 hover:border-forge-500/50"
           >
             Test in SimLab
           </a>
+          <button
+            type="button"
+            onClick={() => speakPlay(play)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-dark-600 bg-dark-800/50 px-3 py-1.5 text-xs font-medium text-dark-200 transition-colors hover:border-forge-500/50 hover:bg-dark-800 hover:text-forge-400"
+            title="Read play details aloud via VoiceForge"
+          >
+            <Volume2 className="h-3.5 w-3.5" /> Read Play
+          </button>
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {play.isKillSheetPlay && (

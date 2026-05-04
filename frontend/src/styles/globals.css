@@ -27,3 +27,34 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Print stylesheet — used by the gameplan Call Sheet button (window.print).
+   Hides the dark-themed app shell and renders the gameplan in print-friendly
+   black-on-white form. Anything not part of the gameplan should be marked
+   .print:hidden by Tailwind. */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  /* Strip the dashboard shell — sidebar, top bar, mobile nav, chat, footer. */
+  aside, nav, header, footer,
+  [data-print-hide], .print\:hidden {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  /* Reset dark-theme card backgrounds for print. */
+  [class*="bg-dark-"] {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border-color: #cccccc !important;
+  }
+  [class*="text-dark-"], [class*="text-forge-"], [class*="text-amber-"], [class*="text-red-"] {
+    color: #000000 !important;
+  }
+  [class*="border-dark-"], [class*="border-forge-"] {
+    border-color: #cccccc !important;
+  }
+}

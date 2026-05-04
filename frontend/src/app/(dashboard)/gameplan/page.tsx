@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Gamepad2, ChevronDown, Sparkles, Loader2, Volume2 } from 'lucide-react';
+import { Eye, Gamepad2, ChevronDown, Sparkles, Loader2, Volume2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useGameplan } from '@/hooks/useGameplan';
+import { useUIStore } from '@/lib/store';
 import { useSessionStore } from '@/lib/sessionStore';
 import { VoiceForgeService } from '@/lib/services/voiceforge';
 import GameplanList from '@/components/gameplan/GameplanList';
@@ -22,6 +23,9 @@ import {
   ScriptViewPanel,
   TwoMinDrillTable,
 } from '@/components/gameplan/StructuredPackagePanel';
+import SimulateModal from '@/components/gameplan/SimulateModal';
+import ScoutOpponentModal from '@/components/gameplan/ScoutOpponentModal';
+import ShareGameplanModal from '@/components/gameplan/ShareGameplanModal';
 import { GameplanSessionBar } from '@/components/session/GameplanSessionBar';
 import { ArsenalTabPanel } from '@/components/arsenal/ArsenalTabPanel';
 import type { PackageTab, Play } from '@/types/gameplan';
@@ -58,6 +62,10 @@ export default function GameplanPage() {
 
   const [viewTab, setViewTab] = useState<ViewTab>('all');
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [simulatePlay, setSimulatePlay] = useState<Play | null>(null);
+  const [scoutOpen, setScoutOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const titleId = useUIStore((s) => s.selectedTitle);
   const visiblePlays = activeFilter
     ? filteredPlays.filter((p) =>
         (p.tags ?? p.conceptTags).some((t) => t.toLowerCase().includes(activeFilter)),
@@ -149,6 +157,17 @@ export default function GameplanPage() {
             </select>
             <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-dark-400" />
           </div>
+
+          {selectedOpponentId && (
+            <button
+              onClick={() => setScoutOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-500/10 px-3 py-2 text-xs font-medium text-purple-300 hover:bg-purple-500/20"
+              title="Run ScoutBot to populate this opponent's tendency dossier"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Scout
+            </button>
+          )}
 
           <button
             onClick={() => generateGameplan({ bypassCache: !!gameplan.generatedId })}
@@ -340,7 +359,11 @@ export default function GameplanPage() {
               />
             </div>
             <div className="lg:col-span-7 xl:col-span-8">
-              <PlayDetail play={selectedPlay} opponentName={opponent.name} />
+              <PlayDetail
+                play={selectedPlay}
+                opponentName={opponent.name}
+                onSimulate={(p) => setSimulatePlay(p)}
+              />
             </div>
           </div>
         </>
@@ -348,11 +371,37 @@ export default function GameplanPage() {
 
       {/* Export Controls */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <ExportControls gameplanName={gameplan.name} />
+        <ExportControls
+          gameplanName={gameplan.name}
+          gameplan={gameplan}
+          onShare={() => setShareOpen(true)}
+        />
       </div>
 
       {/* Meta Status Bar */}
       <MetaStatusBar metaStatus={gameplan.metaStatus} />
+
+      {/* Modals */}
+      <SimulateModal
+        open={simulatePlay !== null}
+        play={simulatePlay}
+        opponentTendency={gameplan.opponentSummary?.topCoverage ?? 'their top coverage'}
+        opponentArchetype={opponent.archetype}
+        titleId={titleId}
+        onClose={() => setSimulatePlay(null)}
+      />
+      <ScoutOpponentModal
+        open={scoutOpen}
+        opponentId={selectedOpponentId}
+        opponentName={opponent.name}
+        onClose={() => setScoutOpen(false)}
+        onScouted={() => generateGameplan({ bypassCache: true })}
+      />
+      <ShareGameplanModal
+        open={shareOpen}
+        gameplanId={gameplan.generatedId ?? null}
+        onClose={() => setShareOpen(false)}
+      />
     </div>
   );
 }

@@ -64,3 +64,44 @@ export async function shareGameplan(gameplanId: string): Promise<ShareLinkRespon
   const { data } = await api.post<ShareLinkResponse>(`/gameplans/${gameplanId}/share`);
   return data;
 }
+
+// ----- AdaptAI -------------------------------------------------------------
+
+export interface AdaptResponse {
+  adjustment: string;
+  audible_to: string | null;
+  confidence: number;
+  reasoning: string;
+  source: 'claude' | 'mock';
+}
+
+export async function adaptPlay(args: {
+  play: Record<string, unknown>;
+  opponentTendency: string;
+  titleId: string;
+  opponentArchetype?: string | null;
+}): Promise<AdaptResponse> {
+  // The /adapt router carries an internal prefix of /adapt on top of its
+  // mount prefix /adapt — historical layout. Path here matches the
+  // resulting /api/v1/adapt/adapt/play.
+  const { data } = await api.post<AdaptResponse>('/adapt/adapt/play', {
+    play: args.play,
+    opponent_tendency: args.opponentTendency,
+    title_id: args.titleId,
+    opponent_archetype: args.opponentArchetype ?? null,
+  });
+  return data;
+}
+
+// ----- Scout ---------------------------------------------------------------
+
+export interface ScoutResponse {
+  opponent: OpponentSummaryDTO;
+  tendencies: Record<string, unknown>;
+  source: 'claude' | 'mock';
+}
+
+export async function scoutOpponent(opponentId: string): Promise<ScoutResponse> {
+  const { data } = await api.post<ScoutResponse>(`/opponents/${opponentId}/scout`);
+  return data;
+}
