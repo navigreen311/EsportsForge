@@ -2,7 +2,12 @@
 node_modules/
 vendor/
 .venv/
+venv/
+backend/venv/
 __pycache__/
+
+# TS build artifacts
+*.tsbuildinfo
 
 # Environment
 .env
