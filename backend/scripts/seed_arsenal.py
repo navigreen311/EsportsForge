@@ -633,7 +633,722 @@ WEAPONS: list[dict[str, Any]] = [
         "source_type": "platform",
         "success_rate": 0.70,
     },
-    # ═══ VIDEO POKER ═══
+    # ═══ MADDEN 26 — additional ═══
+    # (already covered above)
+
+    # ═══ CFB 26 — additional ═══
+    {
+        "title_id": "cfb-26",
+        "name": "Air Raid Mesh — Tempo No-Huddle",
+        "category": "Unstoppable Concept",
+        "formation": "Air Raid Empty",
+        "play_name": "Mesh Sit",
+        "description": (
+            "Air Raid mesh concept run no-huddle. Two shallow crossers underneath "
+            "with sit routes against zone, plus a vertical stretch up the seam. "
+            "Tempo prevents the defense from substituting and wears LBs out by "
+            "the second quarter."
+        ),
+        "setup_steps": [
+            "Score or pick up a first down to access no-huddle",
+            "Stay in Air Raid Empty — do not personnel-swap",
+            "Read coverage shell as the play clock starts",
+        ],
+        "instructions": [
+            "Snap fast — within 5 seconds of the previous whistle",
+            "Read MLB drop: if he sinks, hit the sit route in front",
+            "If he widens, throw the deep crosser behind him",
+            "Versus man, let the mesh pick free a slot receiver",
+            "Repeat the call on the next snap — they cannot adjust in tempo",
+        ],
+        "when_to_use": (
+            "Trailing or controlling tempo, no-huddle drives, opponent in base "
+            "personnel, 1st & 10 or 2nd & medium"
+        ),
+        "trigger_conditions": {
+            "down": [1, 2],
+            "tempo": "no-huddle",
+            "opponentPersonnel": ["base", "nickel"],
+        },
+        "difficulty": "easy",
+        "tags": ["unstoppable", "tempo", "air-raid", "mesh", "zone-beater"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.84,
+    },
+    {
+        "title_id": "cfb-26",
+        "name": "Reverse Pass — Wildcat Gadget",
+        "category": "Trick Play",
+        "formation": "Wildcat",
+        "play_name": "WR Reverse Pass",
+        "description": (
+            "Wildcat snap to the HB who hands off on a reverse to a WR with a "
+            "throwing rating. WR pulls up and throws deep to the QB on a wheel "
+            "route. Defense flows hard to the reverse and the QB is wide open."
+        ),
+        "setup_steps": [
+            "Run the standard Wildcat HB Sweep at least once first",
+            "Confirm your slot WR has a passing rating above 60",
+            "Pick a clean pocket side of the field",
+        ],
+        "instructions": [
+            "Snap to HB and hand off on the reverse",
+            "WR takes the pitch and reads the defense flow",
+            "Pull up at the line and throw to the QB on the wheel",
+            "If QB covered, throw it away — never force into traffic",
+        ],
+        "when_to_use": (
+            "Once per game, after at least one Wildcat run, opponent overflowing "
+            "to the run side"
+        ),
+        "trigger_conditions": {
+            "wildcatRunsPrior": {"min": 1},
+            "down": [1, 2],
+            "timesUsedThisGame": {"max": 1},
+        },
+        "difficulty": "hard",
+        "tags": ["trick-play", "wildcat", "reverse-pass", "deep-shot", "gadget"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.55,
+    },
+
+    # ═══ NBA 2K26 — additional ═══
+    {
+        "title_id": "nba-2k26",
+        "name": "Dream Shake — Post Spin Counter",
+        "category": "Cheese Dribble",
+        "formation": "Post Up",
+        "play_name": "Olajuwon Dream Shake",
+        "description": (
+            "Classic post move sequence: jab one direction, spin the opposite, "
+            "fake the shot, and finish with a baby hook. Defender bites on every "
+            "fake and the finish is uncontested. Requires a high post-rated big."
+        ),
+        "setup_steps": [
+            "Get your center the ball in the low post",
+            "Back down once with L2/LT to claim position",
+            "Read the defender's hands and stance",
+        ],
+        "instructions": [
+            "Jab left with right stick to make defender lean",
+            "Spin right immediately — quarter rotation on RS",
+            "Pump fake the shot — RS up tap",
+            "Step through to the rim with the dominant hand",
+            "Finish with a soft floater for highest %",
+        ],
+        "when_to_use": (
+            "Center has size advantage on switch, half-court set, paint touch "
+            "needed, defender playing flat-footed"
+        ),
+        "trigger_conditions": {
+            "defenderRating": {"max": 85},
+            "ownPostRating": {"min": 88},
+            "shotClock": {"min": 8},
+        },
+        "difficulty": "medium",
+        "tags": ["cheese-dribble", "post-move", "dream-shake", "isolation", "low-post"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.79,
+    },
+    {
+        "title_id": "nba-2k26",
+        "name": "Hammer Action — Corner 3 Set",
+        "category": "Unstoppable Concept",
+        "formation": "Motion Offense",
+        "play_name": "Hammer Cross-Court",
+        "description": (
+            "Initiate a baseline drive on the strong side. Weak-side shooter "
+            "loops along the baseline and a corner screen frees them for an "
+            "open three. The skip pass from the help-side defender's blind "
+            "spot is unblockable when timed right."
+        ),
+        "setup_steps": [
+            "Call Hammer set from playbook menu",
+            "Position your best 3-point shooter weak side",
+            "Drive baseline with a wing slasher",
+        ],
+        "instructions": [
+            "Drive hard baseline — collapse the help defense",
+            "Wait for help-side defender to rotate down",
+            "Skip pass cross-court to the corner shooter",
+            "Receiver fires immediately off the catch",
+            "Time it before help recovers — release inside 1.2s",
+        ],
+        "when_to_use": (
+            "Defense collapsing on drives, weak-side shooter > 85 3PT rating, "
+            "shot clock 8+, half-court set"
+        ),
+        "trigger_conditions": {
+            "shooter3PT": {"min": 85},
+            "shotClock": {"min": 8},
+            "opponentDefense": ["help-heavy", "collapsing"],
+        },
+        "difficulty": "medium",
+        "tags": ["unstoppable", "set-play", "corner-3", "hammer", "skip-pass"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.77,
+    },
+
+    # ═══ EA FC 26 — additional ═══
+    {
+        "title_id": "eafc-26",
+        "name": "Through Ball Curve — Striker Run",
+        "category": "Unstoppable Concept",
+        "formation": "Open Play",
+        "play_name": "Curved Through Ball",
+        "description": (
+            "Lofted through ball with curve that bends behind the defensive line "
+            "into the path of a sprinting striker. Defeats high lines and "
+            "off-side traps. The curl makes the pass impossible to intercept "
+            "with a flat last-line."
+        ),
+        "setup_steps": [
+            "Patient build-up to the half-way line",
+            "Identify a striker with 88+ pace",
+            "Wait for defenders to step up to the half-way line",
+        ],
+        "instructions": [
+            "Trigger the run with L1+R1 (PS) — striker accelerates",
+            "Hold L1 and tap triangle for the curved through ball",
+            "Lead the receiver into the channel — past the last man",
+            "Take the touch with R2 first time to escape",
+            "Finish low across goalkeeper",
+        ],
+        "when_to_use": (
+            "Opponent playing a high line, fast striker available, build-up "
+            "phase, opponent pressing up"
+        ),
+        "trigger_conditions": {
+            "opponentLine": "high",
+            "strikerPace": {"min": 88},
+            "phase": ["build-up", "counter"],
+        },
+        "difficulty": "medium",
+        "tags": ["unstoppable", "through-ball", "high-line-beater", "pace", "finishing"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.78,
+    },
+    {
+        "title_id": "eafc-26",
+        "name": "Drag-Back Cutback — Edge of Box",
+        "category": "Skill Move Combo",
+        "formation": "Final Third",
+        "play_name": "Drag-Back to Inside Cut",
+        "description": (
+            "Drive to the byline, drag the ball back with a 180° touch, then "
+            "cut inside onto your strong foot for a finesse shot. The drag-back "
+            "freezes the recovering defender and the cut creates a clean "
+            "shooting lane near post."
+        ),
+        "setup_steps": [
+            "Run a winger to the edge of the 18-yard box",
+            "Get the byline defender flat-footed",
+            "Make sure your shot foot matches the cut direction",
+        ],
+        "instructions": [
+            "Hold L2/LT and pull RS away from goal — drag-back triggers",
+            "Cut inside with LS toward your strong foot",
+            "Take a touch into the half-space",
+            "Finesse shot far post with R1+square (PS)",
+            "Aim across the goalkeeper to the back-post side netting",
+        ],
+        "when_to_use": (
+            "Final third with possession, defender on the byline, shot from "
+            "the half-space available, opponent low-block"
+        ),
+        "trigger_conditions": {
+            "fieldZone": "final-third",
+            "defenderPosition": "byline",
+            "opponentDefense": ["low-block", "deep"],
+        },
+        "difficulty": "hard",
+        "tags": ["skill-move", "drag-back", "cutback", "finesse-shot", "edge-of-box"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.62,
+    },
+
+    # ═══ MLB 26 — additional ═══
+    {
+        "title_id": "mlb-26",
+        "name": "Backdoor Slider — Backfoot Lefty",
+        "category": "Pitch Sequence",
+        "formation": "Standard Pitching",
+        "play_name": "Slider Back Foot",
+        "description": (
+            "Slider that starts at the right-handed batter's hands and breaks "
+            "down to the back foot of a lefty (or vice versa). Freezes the "
+            "batter looking and grabs the called strike on the outside corner "
+            "from the wrong angle."
+        ),
+        "setup_steps": [
+            "Establish fastball inside in prior at-bat",
+            "Get to a 1-2 or 2-2 count",
+            "Confirm catcher is set up off-plate outside",
+        ],
+        "instructions": [
+            "Select slider — your sharpest breaking pitch",
+            "Aim 4-6 inches off the inside edge to opposite-handed batter",
+            "Release timing: green zone, do not pull",
+            "Pitch starts at the hands and breaks back over the plate",
+            "Batter freezes — strike called",
+        ],
+        "when_to_use": (
+            "Two-strike count, opposite-handed batter, prior fastball inside "
+            "established"
+        ),
+        "trigger_conditions": {
+            "strikes": {"min": 2},
+            "batterHand": "opposite",
+            "priorPitch": ["fastball-inside"],
+        },
+        "difficulty": "medium",
+        "tags": ["pitch-sequence", "slider", "back-foot", "called-strike", "outside-corner"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.71,
+    },
+    {
+        "title_id": "mlb-26",
+        "name": "Hit and Run — 1st & 3rd Bunt Threat",
+        "category": "Tactical",
+        "formation": "Bases on Corners",
+        "play_name": "Hit and Run with Bunt Show",
+        "description": (
+            "Show bunt with the runner on first taking off. Defense crashes the "
+            "corners and the batter pulls back to slap a grounder through the "
+            "vacated middle. Almost guaranteed to score the runner from third "
+            "and put runners on the corners again."
+        ),
+        "setup_steps": [
+            "Runners on first and third, less than 2 outs",
+            "Right-handed batter at the plate with contact rating 75+",
+            "Bottom of the order or pitcher's spot ideal — defense expects bunt",
+        ],
+        "instructions": [
+            "Send the runner from first on the pitch — L2+square (PS)",
+            "Show bunt with the batter at the same time",
+            "Pull back into hitting stance as the pitch is released",
+            "Slap a grounder to the right side",
+            "Runner from 3rd scores — others advance to 1st & 3rd",
+        ],
+        "when_to_use": (
+            "Runners on 1st & 3rd, less than 2 outs, contact-hitting batter, "
+            "opponent expecting bunt"
+        ),
+        "trigger_conditions": {
+            "runners": ["1st", "3rd"],
+            "outs": {"max": 1},
+            "batterContact": {"min": 75},
+        },
+        "difficulty": "medium",
+        "tags": ["tactical", "hit-and-run", "bunt-show", "small-ball", "RBI"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.69,
+    },
+
+    # ═══ WARZONE — additional ═══
+    {
+        "title_id": "warzone",
+        "name": "Pre-Aim Common Angles — Sniper Hold",
+        "category": "Loadout Setup",
+        "formation": "Sniper Setup",
+        "play_name": "Crosshair Pre-Placement",
+        "description": (
+            "Hold a sniper position with the crosshair pre-aimed at the most "
+            "common enemy angle — door frame, head-glitch wall, doorway corner. "
+            "Reaction time becomes irrelevant; the first shot is already lined "
+            "up to head height."
+        ),
+        "setup_steps": [
+            "Get to a known sniper hold for the current circle",
+            "Identify the choke point enemies must rotate through",
+            "ADS with the crosshair on head-height of that choke",
+        ],
+        "instructions": [
+            "Hold ADS — do not unscope between checks",
+            "Crosshair on the doorway / head-glitch / corner",
+            "Tap fire on the first head silhouette that appears",
+            "After the kill, swap angle — do not stay in the same scope",
+            "Reset to the next-most-common rotation angle",
+        ],
+        "when_to_use": (
+            "Mid-game holds, choke point near circle edge, sniper-class "
+            "loadout, teammates clearing flank"
+        ),
+        "trigger_conditions": {
+            "circlePhase": [3, 4, 5],
+            "loadout": "sniper",
+            "chokePointKnown": True,
+        },
+        "difficulty": "medium",
+        "tags": ["loadout", "sniper", "pre-aim", "positioning", "head-glitch"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.74,
+    },
+    {
+        "title_id": "warzone",
+        "name": "Plate Cancel — Fast Re-Plate",
+        "category": "Movement Tech",
+        "formation": "Close Quarters",
+        "play_name": "Plate Cancel Slide",
+        "description": (
+            "Cancel the armor-plate animation with a slide or weapon-swap to "
+            "reduce re-plate time by ~40%. Massive advantage in 1v1 trades — "
+            "you are back to full plates while opponent is still animating."
+        ),
+        "setup_steps": [
+            "Equip dual primary weapons or a plate-cancel preset",
+            "Practice the swap timing in a private match",
+            "Bind slide to a comfortable button",
+        ],
+        "instructions": [
+            "Take damage / drop to 1-2 plates",
+            "Hit plate button — animation starts",
+            "Within 0.3s, slide-cancel or swap weapons",
+            "Each cancel completes one plate but skips the lock animation",
+            "Spam-repeat until full plates restored",
+        ],
+        "when_to_use": (
+            "Active gunfight, low plates, momentary cover, need to re-engage "
+            "fast — every gunfight scenario"
+        ),
+        "trigger_conditions": {
+            "platesRemaining": {"max": 2},
+            "inCover": True,
+            "weaponSwapAvailable": True,
+        },
+        "difficulty": "hard",
+        "tags": ["movement-tech", "plate-cancel", "slide-cancel", "trade-winning", "mechanical"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.66,
+    },
+
+    # ═══ FORTNITE — additional ═══
+    {
+        "title_id": "fortnite",
+        "name": "Tunnel Build — Safe Open-Field Rotation",
+        "category": "Rotation",
+        "formation": "Open Ground",
+        "play_name": "Wall-Floor-Roof Tunnel",
+        "description": (
+            "Build a moving tunnel of wall, floor, and roof tiles to rotate "
+            "across open ground without taking damage. Sniper bullets are "
+            "stopped by the walls and the roof prevents top-down damage from "
+            "high-ground squads."
+        ),
+        "setup_steps": [
+            "Have at least 200 wood materials",
+            "Identify the rotation start and end points",
+            "Confirm no enemy is already inside the tunnel path",
+        ],
+        "instructions": [
+            "Place wall in front, then floor, then roof — repeat",
+            "Sprint forward placing pieces just before each step",
+            "Replace any wall that gets shot — keep the seal",
+            "Exit by editing a wall once you reach cover",
+        ],
+        "when_to_use": (
+            "Mid-game open-ground rotation, sniper threat from multiple angles, "
+            "200+ wood, no immediate fight"
+        ),
+        "trigger_conditions": {
+            "openGround": True,
+            "materials": {"min": 200},
+            "sniperThreat": True,
+        },
+        "difficulty": "medium",
+        "tags": ["rotation", "tunnel", "build", "open-ground", "anti-sniper"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.81,
+    },
+    {
+        "title_id": "fortnite",
+        "name": "Launch Pad High Ground Take",
+        "category": "High Ground",
+        "formation": "End Zone",
+        "play_name": "Launch + Build Take",
+        "description": (
+            "Place a launch pad to gain instant vertical re-entry to the high "
+            "ground from below. While airborne, build ramps and walls to "
+            "secure the spot before landing. Standard end-game pro technique."
+        ),
+        "setup_steps": [
+            "Carry a launch pad in inventory through end-game",
+            "Identify the high-ground holder's position",
+            "Have at least 150 brick or metal for the take",
+        ],
+        "instructions": [
+            "Place launch pad on a flat surface",
+            "Jump on it — launch into the air",
+            "Mid-air, place ramps stacked toward the high ground",
+            "Land on top of opponent's build",
+            "Wall up immediately — claim the high ground",
+        ],
+        "when_to_use": (
+            "End-game, opponent holds high ground, you are below, launch pad "
+            "available, 150+ materials"
+        ),
+        "trigger_conditions": {
+            "circlePhase": {"min": 7},
+            "ownHeight": "below-opponent",
+            "materials": {"min": 150},
+            "launchPadAvailable": True,
+        },
+        "difficulty": "hard",
+        "tags": ["high-ground", "launch-pad", "endgame", "vertical-take", "build"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.64,
+    },
+
+    # ═══ UFC 5 — additional ═══
+    {
+        "title_id": "ufc-5",
+        "name": "Calf Kick Spam — Stance Disruption",
+        "category": "Strike Combo",
+        "formation": "Orthodox Stance",
+        "play_name": "Lead Calf Kick",
+        "description": (
+            "Spam the lead-leg calf kick to compromise the opponent's base. "
+            "Each one drops their movement speed and adds to a knockdown "
+            "chance. Especially brutal against high stance fighters who plant "
+            "their lead foot."
+        ),
+        "setup_steps": [
+            "Stay at outside kicking range",
+            "Watch their stance — work the planted foot",
+            "Confirm your kick rating is 80+",
+        ],
+        "instructions": [
+            "Throw the lead calf kick: RT+X (Xbox) outside range",
+            "Reset to range immediately after each kick",
+            "Mix in a jab once every 3 kicks to keep them honest",
+            "After 6-8 successful calf kicks, follow up with a head kick",
+            "Watch for the limp animation — confirms damage",
+        ],
+        "when_to_use": (
+            "Round 1-2 to set up later rounds, opponent flat-footed, kick "
+            "specialist, outside range"
+        ),
+        "trigger_conditions": {
+            "round": [1, 2, 3],
+            "ownKickRating": {"min": 80},
+            "distance": "outside-kicking",
+        },
+        "difficulty": "easy",
+        "tags": ["strike-combo", "calf-kick", "leg-damage", "stance-break", "low-kick"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.75,
+    },
+    {
+        "title_id": "ufc-5",
+        "name": "Body Lock to Cage Walk — Wear-Down",
+        "category": "Clinch Work",
+        "formation": "Clinch",
+        "play_name": "Body Lock + Knee",
+        "description": (
+            "Secure a body-lock clinch and walk the opponent to the cage. Drain "
+            "their stamina with body knees while they are pressed against the "
+            "cage. Sets up a takedown later or scores points in clinch-heavy "
+            "scoring systems."
+        ),
+        "setup_steps": [
+            "Close distance with a strike or feint",
+            "Tie up with body lock — both hands around waist",
+            "Begin walking them toward the cage",
+        ],
+        "instructions": [
+            "Use LS to drive opponent backward to the cage",
+            "Once cage-pressed, knee the body — RB tap repeatedly",
+            "Switch to head-knees if they hand-fight your hooks",
+            "Watch their stamina — drop below 50% for takedown follow-up",
+            "If referee separates, immediately re-clinch",
+        ],
+        "when_to_use": (
+            "Round 2-3, opponent stamina above 60%, ground-game advantage, "
+            "scoring rounds"
+        ),
+        "trigger_conditions": {
+            "round": [2, 3],
+            "opponentStamina": {"min": 60},
+            "ownGrappling": {"min": 80},
+        },
+        "difficulty": "medium",
+        "tags": ["clinch-work", "body-lock", "cage-walk", "stamina-drain", "control"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.72,
+    },
+
+    # ═══ PGA 2K25 — additional ═══
+    {
+        "title_id": "pga-2k25",
+        "name": "Punch Out — Tree Trouble",
+        "category": "Recovery",
+        "formation": "Rough / Trees",
+        "play_name": "Low Punch Recovery",
+        "description": (
+            "Low-trajectory punch shot with a 5-iron under tree canopy back to "
+            "the fairway. Sacrifices distance for stroke recovery. Avoids the "
+            "doubled-bogey blowup hole when in trouble off the tee."
+        ),
+        "setup_steps": [
+            "Confirm the lie allows clean contact",
+            "Pick a 5 or 6 iron — never a wedge from rough trouble",
+            "Aim at the widest point of the fairway, not the pin",
+        ],
+        "instructions": [
+            "Set shot type to punch / low",
+            "Reduce swing power to 60-70%",
+            "Aim 10-15 yards short of the wide fairway target",
+            "Smooth swing tempo — this is a position shot",
+            "Take the bogey — avoid the double",
+        ],
+        "when_to_use": (
+            "Off-fairway in trees, low canopy, no clear line to the green, "
+            "stroke management mode"
+        ),
+        "trigger_conditions": {
+            "lie": ["trees", "rough", "trouble"],
+            "ceilingHeight": "low",
+            "scoreVsPar": {"min": 0},
+        },
+        "difficulty": "easy",
+        "tags": ["recovery", "punch-shot", "low-iron", "trees", "stroke-management"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.86,
+    },
+    {
+        "title_id": "pga-2k25",
+        "name": "Bump and Run — Tight Lie Greenside",
+        "category": "Short Game",
+        "formation": "Greenside",
+        "play_name": "Hybrid Bump",
+        "description": (
+            "Use a hybrid or 7-iron from a tight greenside lie to bump the ball "
+            "and run it like a putt. Eliminates chunked-chip risk on hard "
+            "fairways and sets up a tap-in for par."
+        ),
+        "setup_steps": [
+            "Identify the lie is tight — fairway-cut or hardpan",
+            "Pick a hybrid or 7-iron, not a wedge",
+            "Read the green from ball to hole as if putting",
+        ],
+        "instructions": [
+            "Set up with putting-style stance — narrow feet",
+            "Use putting-style swing tempo — short backswing",
+            "Strike the ball with a slight descending blow",
+            "Ball releases like a long putt across the green",
+            "Aim for a 3-foot circle around the hole",
+        ],
+        "when_to_use": (
+            "Tight lie around the green, hardpan or fairway cut, low risk "
+            "tolerance, par save"
+        ),
+        "trigger_conditions": {
+            "lie": ["fairway-tight", "hardpan"],
+            "distanceFromHole": {"max": 25},
+            "greenFirmness": ["medium", "firm"],
+        },
+        "difficulty": "easy",
+        "tags": ["short-game", "bump-and-run", "hybrid", "tight-lie", "par-save"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.83,
+    },
+
+    # ═══ UNDISPUTED — additional ═══
+    {
+        "title_id": "undisputed",
+        "name": "Liver Shot Setup — Body Then Head",
+        "category": "Punch Exploit",
+        "formation": "Orthodox",
+        "play_name": "Body-Body-Head Combo",
+        "description": (
+            "Two body shots to draw the guard down, then a left hook upstairs "
+            "to the temple. Classic body-then-head sequence — when timed right "
+            "the head shot lands clean because the guard dropped to protect "
+            "the body."
+        ),
+        "setup_steps": [
+            "Establish jab range to keep them respectful",
+            "Confirm opponent has been blocking high",
+            "Work in close enough for hooks but not the clinch",
+        ],
+        "instructions": [
+            "Throw left to the body — square",
+            "Right to the body immediately — triangle",
+            "Watch the guard drop to protect the body",
+            "Left hook to the head — square + RS up",
+            "Step out of range immediately — they may counter",
+        ],
+        "when_to_use": (
+            "Opponent guard high, mid-distance, round 2 or later, stamina 60%+"
+        ),
+        "trigger_conditions": {
+            "opponentGuard": "high",
+            "round": [2, 3, 4, 5, 6],
+            "ownStamina": {"min": 60},
+        },
+        "difficulty": "medium",
+        "tags": ["punch-exploit", "body-work", "liver-shot", "combo", "boxing"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.71,
+    },
+
+    # ═══ VIDEO POKER — additional ═══
+    {
+        "title_id": "video-poker",
+        "name": "Two Pair vs Three to a Royal — Hold Two Pair",
+        "category": "Optimal Hold",
+        "formation": "Jacks or Better",
+        "play_name": "Two Pair Strategy Choice",
+        "description": (
+            "When dealt two pair AND three cards to a royal flush, hold the "
+            "two pair every time. The expected value of the made two pair "
+            "(plus full-house draw) exceeds the speculative royal draw. Common "
+            "mistake punished by paytables."
+        ),
+        "setup_steps": [
+            "Identify both pairs in your hand",
+            "Confirm three of the unpaired cards are royal-flush candidates",
+            "Decide based on EV chart: two pair holds",
+        ],
+        "instructions": [
+            "Hold the two pairs",
+            "Discard the fifth (royal-candidate) card",
+            "Draw one card hoping to fill the boat",
+            "Even missing pays 2x — the made two pair beats the draw EV",
+        ],
+        "when_to_use": (
+            "Any time dealt two pair plus three royal-flush candidates on "
+            "Jacks or Better and bonus paytables"
+        ),
+        "trigger_conditions": {
+            "handType": "two-pair-plus-3-to-royal",
+            "paytable": ["jacks-or-better", "double-bonus"],
+        },
+        "difficulty": "easy",
+        "tags": ["optimal-hold", "two-pair", "EV-decision", "made-hand", "strategy"],
+        "verified": True,
+        "source_type": "platform",
+        "success_rate": 0.96,
+    },
+
+    # ═══ VIDEO POKER (final original entry) ═══
     {
         "title_id": "video-poker",
         "name": "Four to Royal Flush — Always Hold",
