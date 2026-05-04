@@ -6,11 +6,18 @@ rival intelligence, and behavioral signal reading.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import get_current_user
+from app.db.base import get_db
+from app.models.opponent import Opponent
+from app.models.user import User
 from app.schemas.opponent import (
     Archetype,
     BehavioralSignal,
@@ -28,6 +35,85 @@ from app.services.backbone import (
 )
 
 router = APIRouter(tags=["opponents"])
+
+
+# ---------------------------------------------------------------------------
+# Schemas — list / create
+# ---------------------------------------------------------------------------
+
+
+class OpponentSummary(BaseModel):
+    id: str
+    gamertag: str
+    title: str
+    archetype: str | None
+    encounter_count: int
+    has_dossier: bool
+
+    model_config = {"from_attributes": False}
+
+
+class OpponentCreate(BaseModel):
+    gamertag: str
+    title: str
+    archetype: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# List / Create — current user's opponents
+# ---------------------------------------------------------------------------
+
+
+@router.get("/list", response_model=list[OpponentSummary])
+async def list_opponents(
+    title: str | None = Query(default=None),
+    _user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[OpponentSummary]:
+    """List opponents the user has scouted, optionally filtered by title."""
+    stmt = select(Opponent)
+    if title:
+        stmt = stmt.where(Opponent.title == title)
+    stmt = stmt.order_by(Opponent.last_seen_at.desc().nullslast(), Opponent.gamertag.asc())
+    rows = list((await db.execute(stmt)).scalars().all())
+    return [
+        OpponentSummary(
+            id=str(r.id),
+            gamertag=r.gamertag,
+            title=r.title,
+            archetype=r.archetype,
+            encounter_count=r.encounter_count,
+            has_dossier=bool(r.tendencies),
+        )
+        for r in rows
+    ]
+
+
+@router.post("", response_model=OpponentSummary, status_code=status.HTTP_201_CREATED)
+async def create_opponent(
+    payload: OpponentCreate,
+    _user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> OpponentSummary:
+    """Create a new opponent record. Tendencies start empty until scouted."""
+    opp = Opponent(
+        gamertag=payload.gamertag,
+        title=payload.title,
+        archetype=payload.archetype,
+        encounter_count=0,
+        last_seen_at=datetime.now(timezone.utc),
+    )
+    db.add(opp)
+    await db.flush()
+    await db.refresh(opp)
+    return OpponentSummary(
+        id=str(opp.id),
+        gamertag=opp.gamertag,
+        title=opp.title,
+        archetype=opp.archetype,
+        encounter_count=opp.encounter_count,
+        has_dossier=False,
+    )
 
 
 # ---------------------------------------------------------------------------

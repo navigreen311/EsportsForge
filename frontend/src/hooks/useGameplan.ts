@@ -1,233 +1,244 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
-import type { Play, Gameplan, PackageTab, MetaStatus } from '@/types/gameplan';
+/**
+ * useGameplan — owns opponent list, selection, generation lifecycle, and the
+ * structured gameplan returned by GameplanAI.
+ *
+ * Generated state shape comes from the backend /gameplans/generate response.
+ * Mock fallbacks remain so the UI renders before the first generate, and so
+ * the page survives backend outages without crashing.
+ */
 
-const mockPlays: Play[] = [
-  {
-    id: 'play-1',
-    name: 'PA Crossers',
-    formation: 'Gun Trips TE',
-    conceptTags: ['play-action', 'zone-beater'],
-    situationTags: ['opening-drive'],
-    confidenceScore: 92,
-    isKillSheetPlay: true,
-    description:
-      'Play-action with dual crossing routes underneath. The TE leaks out to the flat as a safety valve. High-percentage throw against zone coverage.',
-    beats: 'Cover 3',
-    audibleOptions: [
-      {
-        id: 'aud-1a',
-        label: 'Check to Inside Zone',
-        trigger: 'Light box detected (6 or fewer)',
-        targetPlay: 'Inside Zone',
-      },
-      {
-        id: 'aud-1b',
-        label: 'Hot Route Slant',
-        trigger: 'Blitz look from WILL',
-        targetPlay: 'Quick Slant',
-      },
-    ],
-  },
-  {
-    id: 'play-2',
-    name: 'HB Dive',
-    formation: 'Singleback Ace',
-    conceptTags: ['run'],
-    situationTags: ['red-zone', 'goal-line'],
-    confidenceScore: 88,
-    isKillSheetPlay: true,
-    description:
-      'Power run between the tackles. Both guards pull to create a running lane. Reliable short-yardage and goal-line option.',
-    beats: 'Nickel/Dime Packages',
-    audibleOptions: [
-      {
-        id: 'aud-2a',
-        label: 'Check to PA Boot',
-        trigger: 'Stacked box (8+)',
-        targetPlay: 'PA Boot Over',
-      },
-    ],
-  },
-  {
-    id: 'play-3',
-    name: 'Mesh Concept',
-    formation: 'Shotgun Bunch',
-    conceptTags: ['man-beater', 'quick-pass'],
-    situationTags: ['3rd-down', 'anti-blitz'],
-    confidenceScore: 85,
-    isKillSheetPlay: true,
-    description:
-      'Two receivers run shallow crossing routes in opposite directions, creating natural picks against man coverage. Quick release beats pressure.',
-    beats: 'Man Coverage',
-    audibleOptions: [
-      {
-        id: 'aud-3a',
-        label: 'Fade to X',
-        trigger: 'Single-high safety',
-        targetPlay: 'Corner Strike',
-      },
-    ],
-  },
-  {
-    id: 'play-4',
-    name: 'Corner Strike',
-    formation: 'Gun Trips TE',
-    conceptTags: ['zone-beater', 'deep-shot'],
-    situationTags: ['red-zone'],
-    confidenceScore: 78,
-    isKillSheetPlay: false,
-    description:
-      'Flood concept with a corner route as the primary read. Attacks the void between the corner and safety in Cover 2.',
-    beats: 'Cover 2',
-    audibleOptions: [],
-  },
-  {
-    id: 'play-5',
-    name: 'RPO Bubble',
-    formation: 'Shotgun Trips',
-    conceptTags: ['rpo', 'quick-pass'],
-    situationTags: ['anti-blitz', '2-minute'],
-    confidenceScore: 81,
-    isKillSheetPlay: true,
-    description:
-      'Run-pass option with a bubble screen to the trips side. Read the OLB — if he crashes, throw the bubble; if he drops, hand off.',
-    beats: 'Aggressive LB Play',
-    audibleOptions: [
-      {
-        id: 'aud-5a',
-        label: 'Keep Run',
-        trigger: 'OLB drops into coverage',
-        targetPlay: 'Inside Zone Read',
-      },
-    ],
-  },
-  {
-    id: 'play-6',
-    name: 'Four Verticals',
-    formation: 'Gun Empty',
-    conceptTags: ['deep-shot', 'zone-beater'],
-    situationTags: ['2-minute'],
-    confidenceScore: 72,
-    isKillSheetPlay: false,
-    description:
-      'All four receivers run vertical routes. Read the safeties — throw to the void between Cover 2 safeties or the seam against Cover 3.',
-    beats: 'Cover 3',
-    audibleOptions: [
-      {
-        id: 'aud-6a',
-        label: 'Hot Slant',
-        trigger: 'All-out blitz',
-        targetPlay: 'Quick Slant',
-      },
-    ],
-  },
-  {
-    id: 'play-7',
-    name: 'HB Screen',
-    formation: 'Singleback Deuce Close',
-    conceptTags: ['screen', 'misdirection'],
-    situationTags: ['anti-blitz'],
-    confidenceScore: 76,
-    isKillSheetPlay: false,
-    description:
-      'Let the pass rushers upfield, then dump it to the RB behind a wall of pulling linemen. Deadly against aggressive blitz packages.',
-    beats: 'Man Blitz',
-    audibleOptions: [],
-  },
-  {
-    id: 'play-8',
-    name: 'Levels Sail',
-    formation: 'Gun Trey Open',
-    conceptTags: ['zone-beater', 'quick-pass'],
-    situationTags: ['3rd-down', '2-minute'],
-    confidenceScore: 83,
-    isKillSheetPlay: true,
-    description:
-      'Three-level passing concept stretching the defense vertically. Read high-to-low: sail route, dig, flat. Consistently beats zone coverages.',
-    beats: 'Cover 3 / Cover 4',
-    audibleOptions: [
-      {
-        id: 'aud-8a',
-        label: 'Switch to Man Beater',
-        trigger: 'Press man detected',
-        targetPlay: 'Mesh Concept',
-      },
-    ],
-  },
-  {
-    id: 'play-9',
-    name: 'Power Run',
-    formation: 'Pistol Strong',
-    conceptTags: ['run'],
-    situationTags: ['red-zone'],
-    confidenceScore: 69,
-    isKillSheetPlay: false,
-    description:
-      'Gap-scheme run with a pulling guard and lead fullback. Attacks the C-gap with overwhelming force. Best when defense is in base personnel.',
-    beats: 'Light Boxes',
-    audibleOptions: [],
-  },
-  {
-    id: 'play-10',
-    name: 'Spot Concept',
-    formation: 'Shotgun Bunch',
-    conceptTags: ['zone-beater', 'quick-pass'],
-    situationTags: ['3rd-down'],
-    confidenceScore: 74,
-    isKillSheetPlay: false,
-    description:
-      'Triangle read concept from bunch — flat, curl, corner. Creates a high-low read on the flat defender. Quick, reliable 3rd-down conversion play.',
-    beats: 'Cover 2 Zone',
-    audibleOptions: [
-      {
-        id: 'aud-10a',
-        label: 'Check to Mesh',
-        trigger: 'Man coverage detected',
-        targetPlay: 'Mesh Concept',
-      },
-    ],
-  },
-];
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useUIStore } from '@/lib/store';
+import {
+  generateGameplan as generateGameplanApi,
+  listOpponents,
+  type OpponentSummaryDTO,
+} from '@/lib/api/gameplan';
+import type {
+  Gameplan,
+  KillSheetEntry,
+  MetaStatus,
+  OpponentSummary,
+  PackageHealth,
+  PackageTab,
+  Play,
+  ScriptViewEntry,
+  TwoMinDrillEntry,
+} from '@/types/gameplan';
 
-const mockMetaStatus: MetaStatus = {
-  rating: 'Strong',
-  patchVersion: 'Title Update 4.2',
-  lastUpdated: '2026-03-21T18:30:00Z',
+// ---------------------------------------------------------------------------
+// Helpers — map AI plays → frontend Play type so existing components work
+// ---------------------------------------------------------------------------
+
+interface AIPlay {
+  id: string;
+  rank: number;
+  name: string;
+  formation: string;
+  tags?: string[];
+  confidence: number;
+  impactScore?: number;
+  masteryLevel?: string;
+  executionRate?: number;
+  isTrendingCountered?: boolean;
+  isKillSheetPlay?: boolean;
+  whenToCall?: string;
+  conceptBreakdown?: string;
+  evidence?: Play['evidence'];
+  proofAIConfidence?: number;
+  callStructure?: Play['callStructure'];
+  metaStatus?: string;
+  patchVersion?: string;
+}
+
+function mapPlay(p: AIPlay): Play {
+  const tags = p.tags ?? [];
+  return {
+    id: p.id,
+    name: p.name,
+    formation: p.formation,
+    conceptTags: tags,
+    situationTags: tags.filter((t) =>
+      ['red-zone', 'goal-line', '3rd-down', '2-minute', 'opening-drive', 'anti-blitz', 'prevent', 'hurry-up'].includes(t),
+    ) as Play['situationTags'],
+    confidenceScore: p.confidence,
+    isKillSheetPlay: !!p.isKillSheetPlay,
+    description: p.conceptBreakdown ?? '',
+    rank: p.rank,
+    tags,
+    impactScore: p.impactScore,
+    masteryLevel: p.masteryLevel,
+    executionRate: p.executionRate,
+    isTrendingCountered: p.isTrendingCountered,
+    whenToCall: p.whenToCall,
+    conceptBreakdown: p.conceptBreakdown,
+    evidence: p.evidence,
+    proofAIConfidence: p.proofAIConfidence,
+    callStructure: p.callStructure,
+    metaStatus: p.metaStatus,
+    patchVersion: p.patchVersion,
+  };
+}
+
+const fallbackMetaStatus: MetaStatus = {
+  rating: 'Neutral',
+  patchVersion: 'unknown',
+  lastUpdated: new Date().toISOString(),
 };
 
-const mockOpponents = [
-  { id: 'opp-1', name: 'xXDragonSlayerXx' },
-  { id: 'opp-2', name: 'GridironGhost' },
-  { id: 'opp-3', name: 'BlitzKing_99' },
-  { id: 'opp-4', name: 'PocketPresser' },
+function emptyGameplan(opponentName: string): Gameplan {
+  return {
+    id: 'pending',
+    name: opponentName ? `Gameplan vs ${opponentName}` : 'New gameplan',
+    opponentId: '',
+    opponentName,
+    plays: [],
+    killSheet: [],
+    redZonePackage: [],
+    antiBlitzPackage: [],
+    twoMinDrillPackage: [],
+    metaStatus: fallbackMetaStatus,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function buildGameplan(args: {
+  generatedId: string;
+  source: 'claude' | 'mock' | 'cache';
+  cached: boolean;
+  opponentId: string;
+  opponentName: string;
+  raw: Record<string, unknown>;
+}): Gameplan {
+  const raw = args.raw;
+  const aiPlays = (raw.plays as AIPlay[]) ?? [];
+  const plays = aiPlays.map(mapPlay);
+  const killSheetStructured = (raw.killSheet as KillSheetEntry[]) ?? [];
+  const scriptView = (raw.scriptView as ScriptViewEntry[]) ?? [];
+  const antiBlitzPackageHealth = raw.antiBlitzPackage as PackageHealth | undefined;
+  const redZonePackageHealth = raw.redZonePackage as PackageHealth | undefined;
+  const twoMinDrill = (raw.twoMinDrill as TwoMinDrillEntry[]) ?? [];
+  const opponentSummary = raw.opponentSummary as OpponentSummary | undefined;
+  const metaVersion = (raw.metaVersion as string | undefined) ?? 'unknown';
+
+  // Fan plays out into the legacy package buckets so existing tab UI keeps
+  // working without further changes.
+  const tagged = (tag: string) =>
+    plays.filter((p) =>
+      (p.tags ?? []).some((t) => t === tag) || p.situationTags.includes(tag as Play['situationTags'][number]),
+    );
+
+  return {
+    id: args.generatedId,
+    generatedId: args.generatedId,
+    source: args.source,
+    cached: args.cached,
+    name: args.opponentName ? `Gameplan vs ${args.opponentName}` : 'Generated gameplan',
+    opponentId: args.opponentId,
+    opponentName: args.opponentName,
+    plays,
+    killSheet: plays.filter((p) => p.isKillSheetPlay),
+    redZonePackage: tagged('red-zone'),
+    antiBlitzPackage: tagged('anti-blitz'),
+    twoMinDrillPackage: tagged('2-minute').concat(tagged('2-min-drill')),
+    metaStatus: {
+      rating:
+        ((raw.opponentSummary as OpponentSummary | undefined)?.winRate ?? 50) >= 55 ? 'Countered' : 'Strong',
+      patchVersion: metaVersion,
+      lastUpdated: new Date().toISOString(),
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    killSheetStructured,
+    scriptView,
+    antiBlitzPackageHealth,
+    redZonePackageHealth,
+    twoMinDrill,
+    opponentSummary,
+    metaVersion,
+    overallStrategy: raw.overallStrategy as string | undefined,
+    patchVersion: metaVersion,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
+
+export const LOADING_MESSAGES = [
+  "Analyzing opponent tendencies…",
+  "Selecting plays for their coverage shell…",
+  "Building your kill sheet…",
+  "Calculating confidence scores…",
+  "Stress-testing the script vs their adjustments…",
 ];
 
 export function useGameplan() {
-  const [selectedOpponentId, setSelectedOpponentId] = useState('opp-1');
+  const titleId = useUIStore((s) => s.selectedTitle);
+
+  const [opponents, setOpponents] = useState<OpponentSummaryDTO[]>([]);
+  const [opponentsLoaded, setOpponentsLoaded] = useState(false);
+  const [selectedOpponentId, setSelectedOpponentId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<PackageTab>('all');
-  const [selectedPlayId, setSelectedPlayId] = useState<string | null>('play-1');
+  const [selectedPlayId, setSelectedPlayId] = useState<string | null>(null);
+
+  const [generatedGameplan, setGeneratedGameplan] = useState<Gameplan | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
 
-  const opponent = mockOpponents.find((o) => o.id === selectedOpponentId) ?? mockOpponents[0];
+  // ----- opponent loading ----------------------------------------------------
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await listOpponents(titleId);
+        if (cancelled) return;
+        setOpponents(list);
+        if (list.length > 0 && !selectedOpponentId) {
+          setSelectedOpponentId(list[0].id);
+        }
+      } catch (err) {
+        console.warn('[useGameplan] opponent list failed', err);
+      } finally {
+        if (!cancelled) setOpponentsLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [titleId]);
 
-  const gameplan: Gameplan = useMemo(
-    () => ({
-      id: 'gp-1',
-      name: `Gameplan vs ${opponent.name}`,
-      opponentId: opponent.id,
-      opponentName: opponent.name,
-      plays: mockPlays,
-      killSheet: mockPlays.filter((p) => p.isKillSheetPlay),
-      redZonePackage: mockPlays.filter((p) => p.situationTags.includes('red-zone')),
-      antiBlitzPackage: mockPlays.filter((p) => p.situationTags.includes('anti-blitz')),
-      twoMinDrillPackage: mockPlays.filter((p) => p.situationTags.includes('2-minute')),
-      metaStatus: mockMetaStatus,
-      createdAt: '2026-03-20T10:00:00Z',
-      updatedAt: '2026-03-21T18:30:00Z',
-    }),
-    [opponent]
+  // ----- rotating loading message -------------------------------------------
+  useEffect(() => {
+    if (!isGenerating) return undefined;
+    setLoadingMessageIndex(0);
+    const id = window.setInterval(() => {
+      setLoadingMessageIndex((i) => (i + 1) % LOADING_MESSAGES.length);
+    }, 2000);
+    return () => window.clearInterval(id);
+  }, [isGenerating]);
+
+  const opponent = useMemo(
+    () =>
+      opponents.find((o) => o.id === selectedOpponentId) ?? {
+        id: '',
+        gamertag: 'No opponent selected',
+        title: titleId,
+        archetype: null,
+        encounter_count: 0,
+        has_dossier: false,
+      },
+    [opponents, selectedOpponentId, titleId],
+  );
+
+  const gameplan = useMemo<Gameplan>(
+    () => generatedGameplan ?? emptyGameplan(opponent.gamertag),
+    [generatedGameplan, opponent.gamertag],
   );
 
   const filteredPlays = useMemo(() => {
@@ -245,25 +256,52 @@ export function useGameplan() {
     }
   }, [activeTab, gameplan]);
 
-  const selectedPlay = mockPlays.find((p) => p.id === selectedPlayId) ?? null;
+  const selectedPlay = useMemo(
+    () => gameplan.plays.find((p) => p.id === selectedPlayId) ?? gameplan.plays[0] ?? null,
+    [gameplan.plays, selectedPlayId],
+  );
 
-  const generateGameplan = useCallback(() => {
-    setIsGenerating(true);
-    // Simulate generation delay
-    setTimeout(() => {
-      setIsGenerating(false);
-    }, 1500);
-  }, []);
+  const generateGameplan = useCallback(
+    async (opts?: { bypassCache?: boolean }) => {
+      setIsGenerating(true);
+      setGenerateError(null);
+      try {
+        const res = await generateGameplanApi({
+          titleId,
+          opponentId: selectedOpponentId || undefined,
+          mode: 'ranked',
+          bypassCache: opts?.bypassCache,
+        });
+        const built = buildGameplan({
+          generatedId: res.gameplan_id,
+          source: res.cached ? 'cache' : res.source,
+          cached: res.cached,
+          opponentId: selectedOpponentId,
+          opponentName: opponent.gamertag,
+          raw: res.gameplan,
+        });
+        setGeneratedGameplan(built);
+        if (built.plays.length > 0) {
+          setSelectedPlayId(built.plays[0].id);
+        }
+      } catch (err) {
+        console.error('[useGameplan] generate failed', err);
+        setGenerateError('GameplanAI hit a snag — try again.');
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [titleId, selectedOpponentId, opponent.gamertag],
+  );
 
-  const selectPlay = useCallback((play: Play) => {
-    setSelectedPlayId(play.id);
-  }, []);
+  const selectPlay = useCallback((play: Play) => setSelectedPlayId(play.id), []);
 
   return {
-    opponents: mockOpponents,
+    opponents,
+    opponentsLoaded,
     selectedOpponentId,
     setSelectedOpponentId,
-    opponent,
+    opponent: { id: opponent.id, name: opponent.gamertag, archetype: opponent.archetype },
     gameplan,
     activeTab,
     setActiveTab,
@@ -271,6 +309,8 @@ export function useGameplan() {
     selectedPlay,
     selectPlay,
     isGenerating,
+    generateError,
+    loadingMessage: LOADING_MESSAGES[loadingMessageIndex],
     generateGameplan,
   };
 }

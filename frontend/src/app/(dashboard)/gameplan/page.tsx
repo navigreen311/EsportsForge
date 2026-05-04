@@ -35,6 +35,7 @@ const tabs: { key: ViewTab; label: string; count?: (gp: ReturnType<typeof useGam
 export default function GameplanPage() {
   const {
     opponents,
+    opponentsLoaded,
     selectedOpponentId,
     setSelectedOpponentId,
     opponent,
@@ -44,6 +45,8 @@ export default function GameplanPage() {
     selectedPlay,
     selectPlay,
     isGenerating,
+    generateError,
+    loadingMessage,
     generateGameplan,
   } = useGameplan();
 
@@ -122,11 +125,13 @@ export default function GameplanPage() {
             <select
               value={selectedOpponentId}
               onChange={(e) => setSelectedOpponentId(e.target.value)}
-              className="appearance-none rounded-lg border border-dark-700 bg-dark-800 py-2 pl-3 pr-9 text-sm font-medium text-dark-200 transition-colors hover:border-dark-500 focus:border-forge-500 focus:outline-none focus:ring-1 focus:ring-forge-500/30"
+              disabled={opponents.length === 0}
+              className="appearance-none rounded-lg border border-dark-700 bg-dark-800 py-2 pl-3 pr-9 text-sm font-medium text-dark-200 transition-colors hover:border-dark-500 focus:border-forge-500 focus:outline-none focus:ring-1 focus:ring-forge-500/30 disabled:opacity-50"
             >
+              {opponents.length === 0 && <option value="">No opponents scouted</option>}
               {opponents.map((opp) => (
                 <option key={opp.id} value={opp.id}>
-                  {opp.name}
+                  {opp.gamertag}{opp.archetype ? ` · ${opp.archetype}` : ''}
                 </option>
               ))}
             </select>
@@ -134,8 +139,9 @@ export default function GameplanPage() {
           </div>
 
           <button
-            onClick={generateGameplan}
+            onClick={() => generateGameplan({ bypassCache: !!gameplan.generatedId })}
             disabled={isGenerating}
+            title={opponents.length === 0 ? 'Generates a general plan — scout an opponent for tendency-specific picks' : ''}
             className="inline-flex items-center gap-2 rounded-lg bg-forge-500 px-4 py-2 text-sm font-semibold text-dark-950 transition-colors hover:bg-forge-400 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isGenerating ? (
@@ -143,10 +149,50 @@ export default function GameplanPage() {
             ) : (
               <Sparkles className="h-4 w-4" />
             )}
-            {isGenerating ? 'Generating...' : 'Generate Gameplan'}
+            {isGenerating
+              ? 'GameplanAI is building your plan…'
+              : gameplan.generatedId
+                ? 'Regenerate Gameplan'
+                : 'Generate Gameplan'}
           </button>
         </div>
       </div>
+
+      {/* Loading / error / source banner */}
+      {isGenerating && (
+        <div className="flex items-center gap-3 rounded-lg border border-forge-500/30 bg-forge-500/10 px-4 py-3 text-sm text-forge-300">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>{loadingMessage}</span>
+        </div>
+      )}
+      {generateError && !isGenerating && (
+        <div className="flex items-center justify-between rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          <span>{generateError}</span>
+          <button
+            type="button"
+            onClick={() => generateGameplan({ bypassCache: true })}
+            className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-200 hover:bg-red-500/20"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+      {gameplan.source && !isGenerating && (
+        <p className="text-[11px] text-dark-500">
+          {gameplan.source === 'mock' && 'GameplanAI ran in mock mode — set ANTHROPIC_API_KEY for opponent-specific picks. '}
+          {gameplan.source === 'cache' && 'Loaded from cache (1h TTL). Regenerate to bypass. '}
+          {gameplan.source === 'claude' && 'Live GameplanAI output. '}
+          Patch {gameplan.metaVersion ?? 'unknown'} · {gameplan.plays.length} plays.
+        </p>
+      )}
+      {opponentsLoaded && opponents.length === 0 && !gameplan.generatedId && !isGenerating && (
+        <div className="rounded-xl border border-dark-700 bg-dark-900/50 p-6 text-center">
+          <p className="text-sm font-semibold text-dark-200">No opponents scouted yet</p>
+          <p className="mt-1 text-xs text-dark-400">
+            You can still generate a general plan now, or scout an opponent for tendency-specific picks.
+          </p>
+        </div>
+      )}
 
       {/* Opponent Tendency Header — pills, archetype, win rate */}
       <OpponentTendencyHeader opponentName={opponent.name} />
