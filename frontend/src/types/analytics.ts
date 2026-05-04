@@ -61,6 +61,10 @@ export interface DrillRecord {
   difficulty: 'beginner' | 'intermediate' | 'advanced' | 'elite';
   skillTargets: SkillTarget[];
   isDynamicCalibration: boolean;
+  drillType?: string;
+  objective?: string;
+  successDef?: string;
+  failDef?: string;
 }
 
 export interface SkillTarget {

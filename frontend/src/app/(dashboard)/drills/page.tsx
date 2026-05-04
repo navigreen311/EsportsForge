@@ -2,8 +2,16 @@
 
 import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Swords, Target } from 'lucide-react';
+import { Eye, Play, Swords, Target } from 'lucide-react';
 import { useDrills } from '@/hooks/useDrills';
+import { useUIStore } from '@/lib/store';
+import PreDrillBriefModal from '@/components/drills/PreDrillBriefModal';
+import ActiveDrillMode, {
+  type ActiveDrillResult,
+} from '@/components/drills/ActiveDrillMode';
+import DrillDebrief from '@/components/drills/DrillDebrief';
+import type { RepDot } from '@/components/drills/RepTracker';
+import type { DrillDebriefDTO } from '@/lib/api/drillSessions';
 import DrillRunner from '@/components/drills/DrillRunner';
 import DrillQueue from '@/components/drills/DrillQueue';
 import SkillProgress from '@/components/drills/SkillProgress';
@@ -54,9 +62,42 @@ function DrillsPageInner() {
     clearLastCompleted,
   } = useDrills();
 
+  const titleId = useUIStore((s) => s.selectedTitle);
+
   const [sessionStart] = useState<Date | null>(() => new Date());
   const [showDebrief, setShowDebrief] = useState(false);
   const [showPostDebrief, setShowPostDebrief] = useState(false);
+
+  // Active-drill flow (PreBrief → ActiveDrillMode → Debrief)
+  const [briefOpen, setBriefOpen] = useState(false);
+  const [activeDrill, setActiveDrill] = useState<typeof currentDrill | null>(null);
+  const [debriefData, setDebriefData] = useState<{
+    drill: NonNullable<typeof currentDrill>;
+    debrief: DrillDebriefDTO;
+    reps: RepDot[];
+  } | null>(null);
+
+  const handleBeginActiveDrill = () => {
+    if (currentDrill) setBriefOpen(true);
+  };
+  const handleStartActiveDrill = () => {
+    setBriefOpen(false);
+    setActiveDrill(currentDrill);
+  };
+  const handleActiveComplete = (result: ActiveDrillResult) => {
+    setActiveDrill(null);
+    setDebriefData({ drill: result.drill, debrief: result.debrief, reps: result.reps });
+  };
+  const handleActiveAbort = () => {
+    setActiveDrill(null);
+  };
+  const handleDebriefNext = () => {
+    setDebriefData(null);
+    nextDrill();
+  };
+  const handleDebriefEnd = () => {
+    setDebriefData(null);
+  };
 
   const completedDrillCount = session.completedDrills.length;
 
@@ -115,6 +156,41 @@ function DrillsPageInner() {
       </div>
 
       <PriorityBanner />
+
+      {/* Active drill replaces the queue/runner while a session is in flight */}
+      {activeDrill ? (
+        <ActiveDrillMode
+          drill={activeDrill}
+          titleId={titleId}
+          onComplete={handleActiveComplete}
+          onAbort={handleActiveAbort}
+        />
+      ) : (
+        currentDrill && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-forge-500/30 bg-dark-900/60 p-4">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-forge-400">
+                Ready to run
+              </p>
+              <p className="mt-0.5 text-sm font-bold text-dark-50">{currentDrill.name}</p>
+              <p className="text-xs text-dark-400">
+                {currentDrill.reps} reps · IR {currentDrill.impactRank}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleBeginActiveDrill}
+              className="inline-flex items-center gap-2 rounded-lg bg-forge-500 px-4 py-2.5 text-sm font-bold text-dark-950 shadow-lg shadow-forge-500/20 transition-colors hover:bg-forge-400"
+            >
+              <Play className="h-4 w-4 fill-current" />
+              Begin active drill
+              <span className="ml-1 hidden items-center gap-1 text-[10px] font-normal text-dark-950/70 sm:inline-flex">
+                <Eye className="h-3 w-3" /> VisionAudioForge
+              </span>
+            </button>
+          </div>
+        )
+      )}
 
       {/* Drill Streak Widget */}
       <DrillStreakWidget />
@@ -204,6 +280,23 @@ function DrillsPageInner() {
         ]}
         twinUpdate="PlayerTwin updated: coverage read baseline raised from 62 to 65"
         nextDrillName={queue[0]?.name ?? null}
+      />
+
+      <PreDrillBriefModal
+        open={briefOpen}
+        drill={currentDrill}
+        onStart={handleStartActiveDrill}
+        onCancel={() => setBriefOpen(false)}
+      />
+
+      <DrillDebrief
+        open={debriefData !== null}
+        drill={debriefData?.drill ?? null}
+        debrief={debriefData?.debrief ?? null}
+        reps={debriefData?.reps ?? []}
+        nextDrill={queue[0] ?? null}
+        onNext={handleDebriefNext}
+        onEnd={handleDebriefEnd}
       />
     </div>
   );

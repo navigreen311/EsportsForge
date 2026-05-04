@@ -28,6 +28,11 @@ const mockDrills: DrillRecord[] = [
       { name: 'Game Knowledge', current: 71, target: 90 },
     ],
     isDynamicCalibration: true,
+    drillType: 'pre-snap-reads',
+    objective:
+      'Identify the coverage shell before the snap. Read the safeties first, then the linebackers.',
+    successDef: 'Identifying coverage pre-snap correctly',
+    failDef: 'Snapping without reading or wrong read',
   },
   {
     id: 'drill-2',
@@ -44,6 +49,10 @@ const mockDrills: DrillRecord[] = [
       { name: 'Execution', current: 65, target: 82 },
     ],
     isDynamicCalibration: true,
+    drillType: 'clutch-drive',
+    objective: 'Score a touchdown with no timeouts. Manage the clock — sideline throws only.',
+    successDef: 'Touchdown reached before time expires',
+    failDef: 'Clock runs out, turnover, or settle for FG',
   },
   {
     id: 'drill-3',
@@ -60,6 +69,10 @@ const mockDrills: DrillRecord[] = [
       { name: 'Game Knowledge', current: 71, target: 90 },
     ],
     isDynamicCalibration: false,
+    drillType: 'anti-meta-coverage',
+    objective: 'Exploit Cover 3 / Cover 2 Man / Tampa 2 with route combos that beat each look.',
+    successDef: 'Completion against the targeted coverage',
+    failDef: 'Sack, incompletion, or interception',
   },
   {
     id: 'drill-4',
@@ -76,6 +89,10 @@ const mockDrills: DrillRecord[] = [
       { name: 'Mental', current: 60, target: 75 },
     ],
     isDynamicCalibration: false,
+    drillType: 'pocket-pressure',
+    objective: 'Identify the rush lane, step up or roll out, deliver an accurate throw or scramble.',
+    successDef: 'Positive yards (throw or scramble)',
+    failDef: 'Sack, fumble, or thrown away under no pressure',
   },
   {
     id: 'drill-5',
@@ -92,6 +109,10 @@ const mockDrills: DrillRecord[] = [
       { name: 'Read Speed', current: 62, target: 85 },
     ],
     isDynamicCalibration: false,
+    drillType: 'red-zone-efficiency',
+    objective: 'Score a TD from inside the 20. Mix pass and run concepts.',
+    successDef: 'Touchdown',
+    failDef: 'Turnover, FG attempt, or punt',
   },
 ];
 

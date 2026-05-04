@@ -73,6 +73,7 @@ _mount("app.api.v1.endpoints.cross_title",     prefix="/cross-title",     tags=[
 # ═══════════════════════════════════════════════════════════════════════════
 _mount("app.api.v1.endpoints.data",            prefix="/data",            tags=["Data"])
 _mount("app.api.v1.endpoints.drills",          prefix="/drills",          tags=["Drills"])
+_mount("app.api.v1.endpoints.drill_sessions",  prefix="/drill-sessions",  tags=["DrillSessions"])
 _mount("app.api.v1.endpoints.film",            prefix="/film",            tags=["Film"])
 _mount("app.api.v1.endpoints.input_lab",       prefix="/input-lab",       tags=["InputLab"])
 _mount("app.api.v1.endpoints.mental",          prefix="/mental",          tags=["Mental"])
