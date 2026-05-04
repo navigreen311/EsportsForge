@@ -21,7 +21,11 @@ import {
   CheckCircle2,
   XCircle,
   Users,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
+import { VoiceForgeService } from '@/lib/services/voiceforge';
+import { useArsenalVoice, toneSpeed } from '@/lib/arsenal/voiceSettings';
 
 // --- Mock Data ---
 
@@ -98,10 +102,12 @@ export default function SimLabPage() {
   const searchParams = useSearchParams();
   const weaponId = searchParams?.get('weapon') ?? null;
   const { data: preloadedWeapon } = useWeapon(weaponId);
+  const voice = useArsenalVoice();
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [selectedOpponent, setSelectedOpponent] = useState(MOCK_OPPONENTS[0]);
   const [isSimulating, setIsSimulating] = useState(false);
   const [showResult, setShowResult] = useState(false);
+  const [voiceCoaching, setVoiceCoaching] = useState(true);
   const [reps, setReps] = useState<RepResult[]>([
     { id: 1, correct: true, timeMs: 2400, scenario: '3rd & Medium' },
     { id: 2, correct: true, timeMs: 1800, scenario: '3rd & Medium' },
@@ -120,6 +126,43 @@ export default function SimLabPage() {
     tendency: 'Zone Heavy',
   });
 
+  const speakIfEnabled = (line: string) => {
+    if (!voiceCoaching) return;
+    if (!voice.enabled || !VoiceForgeService.isAvailable()) return;
+    VoiceForgeService.speak(line, {
+      interruptCurrent: true,
+      speed: toneSpeed(voice.tone),
+    });
+  };
+
+  const coachAfterRep = (correct: boolean, totalReps: number, accuracyPct: number) => {
+    if (totalReps === 1) {
+      speakIfEnabled(
+        `Rep 1 complete. ${correct ? 'Clean read.' : 'Missed it — focus on the pre-snap look.'}`
+      );
+      return;
+    }
+    if (totalReps === 5) {
+      speakIfEnabled(
+        accuracyPct >= 80
+          ? `5 reps in. ${accuracyPct} percent accuracy. Strong reads — stay consistent.`
+          : `5 reps in. ${accuracyPct} percent accuracy. Focus on the pre-snap look — read safeties first.`
+      );
+      return;
+    }
+    if (totalReps === 10) {
+      speakIfEnabled(
+        `Session complete. ${accuracyPct} percent accuracy across 10 reps. LoopAI has updated your profile.`
+      );
+      return;
+    }
+    speakIfEnabled(
+      correct
+        ? `Rep ${totalReps}. Good execution.`
+        : `Rep ${totalReps}. Review the read.`
+    );
+  };
+
   const runSimulation = () => {
     setIsSimulating(true);
     setShowResult(false);
@@ -128,15 +171,22 @@ export default function SimLabPage() {
       setShowResult(true);
       const correct = Math.random() > 0.35;
       const timeMs = 1500 + Math.random() * 3000;
-      setReps((prev) => [
-        {
-          id: prev.length + 1,
-          correct,
-          timeMs: Math.round(timeMs),
-          scenario: selectedScenario?.name ?? 'Custom',
-        },
-        ...prev,
-      ]);
+      setReps((prev) => {
+        const updated = [
+          {
+            id: prev.length + 1,
+            correct,
+            timeMs: Math.round(timeMs),
+            scenario: selectedScenario?.name ?? 'Custom',
+          },
+          ...prev,
+        ];
+        const acc = Math.round(
+          (updated.filter((r) => r.correct).length / updated.length) * 100
+        );
+        coachAfterRep(correct, updated.length, acc);
+        return updated;
+      });
     }, 1500);
   };
 
@@ -180,6 +230,19 @@ export default function SimLabPage() {
           <div className="rounded-lg bg-dark-800 px-3 py-1.5 text-xs text-dark-300">
             <span className="text-dark-500">Accuracy:</span> <span className="font-semibold text-forge-400">{accuracy}%</span>
           </div>
+          <button
+            type="button"
+            onClick={() => setVoiceCoaching((v) => !v)}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              voiceCoaching
+                ? 'border-forge-500/40 bg-forge-500/10 text-forge-300 hover:bg-forge-500/20'
+                : 'border-dark-700 bg-dark-800 text-dark-300 hover:bg-dark-700'
+            }`}
+            title={voiceCoaching ? 'Disable rep-by-rep voice coaching' : 'Enable rep-by-rep voice coaching'}
+          >
+            {voiceCoaching ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+            Voice: {voiceCoaching ? 'ON' : 'OFF'}
+          </button>
         </div>
       </div>
 
