@@ -6,9 +6,8 @@ import { Eye, Play, Swords, Target } from 'lucide-react';
 import { useDrills } from '@/hooks/useDrills';
 import { useUIStore } from '@/lib/store';
 import PreDrillBriefModal from '@/components/drills/PreDrillBriefModal';
-import ActiveDrillMode, {
-  type ActiveDrillResult,
-} from '@/components/drills/ActiveDrillMode';
+import type { ActiveDrillResult } from '@/components/drills/ActiveDrillMode';
+import ActiveDrillPiPHost from '@/components/drills/ActiveDrillPiPHost';
 import DrillDebrief from '@/components/drills/DrillDebrief';
 import type { RepDot } from '@/components/drills/RepTracker';
 import type { DrillDebriefDTO } from '@/lib/api/drillSessions';
@@ -180,7 +179,7 @@ function DrillsPageInner() {
 
       {/* Active drill replaces the queue/runner while a session is in flight */}
       {activeDrill ? (
-        <ActiveDrillMode
+        <ActiveDrillPiPHost
           drill={activeDrill}
           titleId={titleId}
           monitor={visionMonitor}
