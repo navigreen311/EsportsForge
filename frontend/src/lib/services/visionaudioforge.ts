@@ -13,6 +13,9 @@
  */
 
 import { useUIStore } from '@/lib/store';
+import api from '@/lib/api';
+import { getDetectionConfig } from '@/lib/drills/drillDetectionConfigs';
+import type { DrillRecord } from '@/types/analytics';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -284,4 +287,129 @@ export const VisionAudioForgeService = {
       return false;
     }
   },
+
+  // -----------------------------------------------------------------------
+  // startDrillMonitoring / stopDrillMonitoring
+  // -----------------------------------------------------------------------
+
+  /**
+   * Begin live screen-capture monitoring for an active drill. Captures one
+   * frame every `intervalMs` (default 2000ms), posts it to the backend
+   * vision endpoint along with the per-drill detection criteria, and calls
+   * `onRep` when the backend reports a completed rep.
+   *
+   * Returns a status object describing whether vision is actually running
+   * (e.g. blocked by integrity mode, denied by the user, or no detection
+   * config for this drill+title — all cases gracefully degrade to manual).
+   */
+  async startDrillMonitoring(args: {
+    drill: DrillRecord;
+    titleId: string;
+    onRep: (success: boolean, confidence?: number, reason?: string) => void;
+    intervalMs?: number;
+  }): Promise<{ label: string; active: boolean }> {
+    if (!isVisionAllowed()) {
+      return {
+        label: `VisionAudioForge blocked in "${getIntegrityMode()}" mode — manual logging only.`,
+        active: false,
+      };
+    }
+
+    const config = getDetectionConfig(args.drill.drillType, args.titleId);
+    if (!config) {
+      return {
+        label: 'No detection config for this drill — manual logging only.',
+        active: false,
+      };
+    }
+
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getDisplayMedia) {
+      return {
+        label: 'Browser does not support screen capture — manual logging only.',
+        active: false,
+      };
+    }
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 4, max: 10 } },
+        audio: false,
+      });
+    } catch (err) {
+      console.warn('[VisionAudioForge] screen-share denied:', err);
+      return {
+        label: 'Screen capture denied — manual logging only.',
+        active: false,
+      };
+    }
+
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.muted = true;
+    await video.play().catch(() => {});
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 360;
+    const ctx = canvas.getContext('2d');
+
+    let stopped = false;
+    let inFlight = false;
+    const interval = window.setInterval(async () => {
+      if (stopped || inFlight || !ctx || video.readyState < 2) return;
+      inFlight = true;
+      try {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+        const base64 = dataUrl.split(',')[1] ?? '';
+        const { data } = await api.post<{
+          rep_in_progress: boolean;
+          rep_completed: boolean;
+          success: boolean;
+          confidence: number;
+          reason: string | null;
+          mode: 'vision' | 'unavailable';
+        }>('/drill-sessions/vision/monitor', {
+          drill_type: args.drill.drillType,
+          title_id: args.titleId,
+          image_base64: base64,
+          watch_for: config.watchFor,
+          success_criteria: config.successCriteria,
+          fail_criteria: config.failCriteria,
+        });
+        if (!stopped && data.rep_completed && data.mode === 'vision') {
+          args.onRep(data.success, data.confidence, data.reason ?? undefined);
+        }
+      } catch (err) {
+        console.warn('[VisionAudioForge] monitor frame failed:', err);
+      } finally {
+        inFlight = false;
+      }
+    }, args.intervalMs ?? 2000);
+
+    _activeMonitor = {
+      interval,
+      stop: () => {
+        stopped = true;
+        window.clearInterval(interval);
+        stream.getTracks().forEach((t) => t.stop());
+      },
+    };
+
+    return {
+      label: 'Watching your screen — auto-detecting reps every 2s',
+      active: true,
+    };
+  },
+
+  /** Stop the active monitor (no-op when none is running). */
+  async stopDrillMonitoring(): Promise<void> {
+    _activeMonitor?.stop();
+    _activeMonitor = null;
+  },
 } as const;
+
+// Module-level handle so a fresh stop() always wins, even if startDrillMonitoring
+// is called multiple times in succession.
+let _activeMonitor: { interval: number; stop: () => void } | null = null;

@@ -12,6 +12,20 @@ import ActiveDrillMode, {
 import DrillDebrief from '@/components/drills/DrillDebrief';
 import type { RepDot } from '@/components/drills/RepTracker';
 import type { DrillDebriefDTO } from '@/lib/api/drillSessions';
+import { VisionAudioForgeService } from '@/lib/services/visionaudioforge';
+
+const visionMonitor = {
+  start: ({
+    drill,
+    titleId,
+    onRep,
+  }: {
+    drill: import('@/types/analytics').DrillRecord;
+    titleId: string;
+    onRep: (success: boolean, confidence?: number, reason?: string) => void;
+  }) => VisionAudioForgeService.startDrillMonitoring({ drill, titleId, onRep }),
+  stop: () => VisionAudioForgeService.stopDrillMonitoring(),
+};
 import DrillRunner from '@/components/drills/DrillRunner';
 import DrillQueue from '@/components/drills/DrillQueue';
 import SkillProgress from '@/components/drills/SkillProgress';
@@ -162,6 +176,7 @@ function DrillsPageInner() {
         <ActiveDrillMode
           drill={activeDrill}
           titleId={titleId}
+          monitor={visionMonitor}
           onComplete={handleActiveComplete}
           onAbort={handleActiveAbort}
         />

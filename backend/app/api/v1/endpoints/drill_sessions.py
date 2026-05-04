@@ -5,6 +5,8 @@ The vision/monitor sub-route lives here too (added in a later commit).
 
 from __future__ import annotations
 
+import json
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -17,6 +19,10 @@ from app.core.security import get_current_user
 from app.db.base import get_db
 from app.models.drill_session import DrillRep, DrillSession
 from app.models.user import User
+from app.services.ai.claude_client import ClaudeClient
+
+logger = logging.getLogger(__name__)
+_claude = ClaudeClient()
 
 router = APIRouter(tags=["DrillSessions"])
 
@@ -288,3 +294,108 @@ async def get_drill_session(
     db: AsyncSession = Depends(get_db),
 ) -> DrillSession:
     return await _load_session(session_id, current_user, db)
+
+
+# ---------------------------------------------------------------------------
+# Vision monitor — Claude vision per frame
+# ---------------------------------------------------------------------------
+
+
+class VisionFrameRequest(BaseModel):
+    drill_type: str
+    title_id: str
+    image_base64: str = Field(min_length=100)
+    watch_for: list[str]
+    success_criteria: str
+    fail_criteria: str
+
+
+class VisionFrameResponse(BaseModel):
+    rep_in_progress: bool = False
+    rep_completed: bool = False
+    success: bool = False
+    confidence: float = 0.0
+    reason: str | None = None
+    mode: str = "vision"
+
+
+_VISION_SYSTEM = (
+    "You are an esports drill coach watching a single video frame from a "
+    "player's game. Decide whether a drill rep just completed in this frame, "
+    "and if so whether it was a success or a fail. "
+    "Respond with strict JSON only — no markdown, no commentary."
+)
+
+
+def _build_vision_prompt(req: VisionFrameRequest) -> str:
+    return json.dumps(
+        {
+            "title": req.title_id,
+            "drill_type": req.drill_type,
+            "watch_for": req.watch_for,
+            "success_criteria": req.success_criteria,
+            "fail_criteria": req.fail_criteria,
+            "instructions": (
+                "Inspect the attached frame. "
+                "Return: rep_in_progress (bool), rep_completed (bool), "
+                "success (bool — only meaningful when rep_completed), "
+                "confidence (0..1), reason (short string)."
+            ),
+        }
+    )
+
+
+@router.post("/vision/monitor", response_model=VisionFrameResponse)
+async def vision_monitor(
+    payload: VisionFrameRequest,
+    _user: User = Depends(get_current_user),
+) -> VisionFrameResponse:
+    if not _claude.is_available:
+        return VisionFrameResponse(mode="unavailable", reason="no_anthropic_key")
+
+    try:
+        response = await _claude._client.messages.create(  # noqa: SLF001
+            model=_claude._model,  # noqa: SLF001
+            max_tokens=200,
+            temperature=0.1,
+            system=_VISION_SYSTEM,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": payload.image_base64,
+                            },
+                        },
+                        {"type": "text", "text": _build_vision_prompt(payload)},
+                    ],
+                }
+            ],
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("vision_monitor: claude call failed: %s", exc)
+        return VisionFrameResponse(mode="unavailable", reason="claude_error")
+
+    text = response.content[0].text.strip()
+    if text.startswith("```"):
+        text = "\n".join(
+            ln for ln in text.split("\n") if not ln.strip().startswith("```")
+        )
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        logger.info("vision_monitor: non-JSON response: %s", text[:200])
+        return VisionFrameResponse(mode="vision", reason="parse_error")
+
+    return VisionFrameResponse(
+        rep_in_progress=bool(data.get("rep_in_progress", False)),
+        rep_completed=bool(data.get("rep_completed", False)),
+        success=bool(data.get("success", False)),
+        confidence=float(data.get("confidence", 0.0) or 0.0),
+        reason=data.get("reason"),
+        mode="vision",
+    )
