@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Zap, Search, X } from 'lucide-react';
@@ -35,6 +35,16 @@ const TAB_LABEL: Record<Tab, string> = {
 };
 
 export default function ArsenalPage() {
+  // useSearchParams() requires a Suspense boundary at build time. The body
+  // of the page lives in ArsenalPageBody so we can wrap it cleanly.
+  return (
+    <Suspense>
+      <ArsenalPageBody />
+    </Suspense>
+  );
+}
+
+function ArsenalPageBody() {
   const router = useRouter();
   const titleId = useActiveArsenalTitle();
   const [tab, setTab] = useState<Tab>('all');
