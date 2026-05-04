@@ -19,7 +19,7 @@ from app.models.user import User
 from app.services.ai.claude_client import ClaudeClient
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/adapt", tags=["Adaptation"])
+router = APIRouter(tags=["Adaptation"])
 
 _claude = ClaudeClient()
 

@@ -81,10 +81,7 @@ export async function adaptPlay(args: {
   titleId: string;
   opponentArchetype?: string | null;
 }): Promise<AdaptResponse> {
-  // The /adapt router carries an internal prefix of /adapt on top of its
-  // mount prefix /adapt — historical layout. Path here matches the
-  // resulting /api/v1/adapt/adapt/play.
-  const { data } = await api.post<AdaptResponse>('/adapt/adapt/play', {
+  const { data } = await api.post<AdaptResponse>('/adapt/play', {
     play: args.play,
     opponent_tendency: args.opponentTendency,
     title_id: args.titleId,
