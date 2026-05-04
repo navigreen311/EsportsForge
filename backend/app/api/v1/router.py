@@ -93,6 +93,7 @@ _mount("app.api.v1.endpoints.recommendations", prefix="/recommendations", tags=[
 _mount("app.api.v1.endpoints.arsenal",         prefix="/arsenal",         tags=["Arsenal"])
 _mount("app.api.v1.endpoints.arsenal_ai",      prefix="/arsenal",         tags=["Arsenal"])
 _mount("app.api.v1.endpoints.arsenal_upload",  prefix="/arsenal",         tags=["Arsenal"])
+_mount("app.api.v1.endpoints.defensive",       prefix="/arsenal",         tags=["Arsenal", "Defense"])
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Title Modules — Madden 26

@@ -36,6 +36,11 @@ import { getSimLabDetectionConfig } from '@/lib/drills/drillDetectionConfigs';
 import { WatchingIndicator } from '@/components/session/WatchingIndicator';
 import { CaptureSourceModal } from '@/components/session/CaptureSourceModal';
 import { useUIStore } from '@/lib/store';
+import {
+  SideToggle,
+  DEFENSE_LABEL_BY_TITLE,
+} from '@/components/shared/SideToggle';
+import type { WeaponSide } from '@/hooks/useArsenal';
 
 // --- Mock Data ---
 
@@ -57,6 +62,97 @@ const SCENARIOS: Scenario[] = [
   { id: 'down-7-late', name: 'Down 7 Late', description: 'Down 7, own 35, 1:20 left', icon: '🚨', difficulty: 'hard' },
   { id: 'bunch-trips', name: 'Defending Bunch/Trips', description: 'Opponent in 3x1, pick best coverage', icon: '👁️', difficulty: 'medium' },
 ];
+
+// Defensive SimLab scenarios — keyed by title because the situations the
+// player is *defending* differ enormously per genre. Where a title doesn't
+// have a structured defensive sandbox (Golf course management is itself
+// defensive — it's covered on the offense side), the entry is omitted and
+// the side toggle disables 'defense' for that title.
+const DEFENSIVE_SCENARIOS: Record<string, Scenario[]> = {
+  'madden-26': [
+    { id: '3rd-and-long-stop', name: '3rd & Long Stop', description: '3rd & 10+, opponent in shotgun', icon: '🛑', difficulty: 'hard' },
+    { id: 'red-zone-defense', name: 'Red Zone Defense', description: 'Defend goal-line stand from the 5', icon: '🥅', difficulty: 'hard' },
+    { id: '2-min-defense', name: '2-Minute Defense', description: 'Up 3, opponent ball, 2:00 left', icon: '⏱️', difficulty: 'medium' },
+    { id: 'protecting-lead', name: 'Protecting a Lead', description: 'Up 7, opponent driving, 4:00 Q4', icon: '🛡️', difficulty: 'medium' },
+    { id: 'turnover-needed', name: 'Turnover Needed', description: 'Down 10, must get the ball back', icon: '🎯', difficulty: 'hard' },
+  ],
+  'cfb-26': [
+    { id: 'option-defense', name: 'Option Defense', description: 'Triple option from under center', icon: '🛡️', difficulty: 'hard' },
+    { id: 'rpo-defense', name: 'RPO Defense', description: 'Quick-game RPO concept', icon: '🛡️', difficulty: 'medium' },
+    { id: 'red-zone-d-cfb', name: 'Red Zone Defense', description: '1st & Goal from the 8', icon: '🥅', difficulty: 'medium' },
+    { id: 'two-min-d-cfb', name: '2-Minute Defense', description: 'Up 3, opponent at midfield', icon: '⏱️', difficulty: 'medium' },
+  ],
+  'nba-2k26': [
+    { id: 'pnr-defense', name: 'PNR Defense', description: 'Pull-up shooter coming off ball-screen', icon: '🛡️', difficulty: 'medium' },
+    { id: 'isolation-defense', name: 'Isolation Defense', description: 'Top-of-key iso, no help', icon: '🥅', difficulty: 'medium' },
+    { id: 'end-clock-defense', name: 'End of Clock Defense', description: 'Shot clock under 8s, contest only', icon: '⏱️', difficulty: 'hard' },
+    { id: 'inbound-defense', name: 'Inbound Defense', description: 'Sideline out with 5s left', icon: '🚫', difficulty: 'easy' },
+    { id: 'fast-break-defense', name: 'Fast Break Defense', description: '3-on-2 transition', icon: '🏃', difficulty: 'medium' },
+  ],
+  'eafc-26': [
+    { id: 'counter-defense', name: 'Counter Attack Defense', description: '2-on-2 break against you', icon: '🛡️', difficulty: 'hard' },
+    { id: 'set-piece-defense', name: 'Set Piece Defense', description: 'Corner to far post', icon: '🥅', difficulty: 'medium' },
+    { id: '1v1-defense', name: '1v1 Defending', description: 'Solo defender vs. dribbler at top of box', icon: '🥊', difficulty: 'medium' },
+    { id: 'high-press-trigger', name: 'High Press Trigger', description: 'Press when their CB has it', icon: '⚡', difficulty: 'easy' },
+    { id: 'cross-defense', name: 'Cross Defense', description: 'Wide cross from the byline', icon: '↗️', difficulty: 'medium' },
+  ],
+  'mlb-26': [
+    { id: 'two-strike-pitch', name: 'Two-Strike Sequence', description: 'Pull-hitter, 0-2 count', icon: '⚾', difficulty: 'medium' },
+    { id: 'shift-defense', name: 'Shift Setup', description: 'Defend pull-heavy lefty', icon: '🛡️', difficulty: 'easy' },
+    { id: 'first-and-third', name: '1st & 3rd Defense', description: 'Runner steal + tag situation', icon: '🥎', difficulty: 'hard' },
+    { id: 'bases-loaded', name: 'Bases Loaded', description: '0 outs, slugger up', icon: '🥅', difficulty: 'hard' },
+  ],
+  'warzone': [
+    { id: 'hold-position', name: 'Hold Position', description: 'High ground, 2 squads incoming', icon: '🛡️', difficulty: 'medium' },
+    { id: 'rotation-defense', name: 'Defensive Rotation', description: 'Rotate to next zone under fire', icon: '🏃', difficulty: 'hard' },
+    { id: '1v3-defense', name: '1v3 Defense', description: 'Last man, must reset and trade', icon: '🥊', difficulty: 'hard' },
+    { id: 'building-defense', name: 'Building Defense', description: 'Hold top floor, stairwell only entry', icon: '🏢', difficulty: 'medium' },
+    { id: 'anti-rush', name: 'Anti-Rush', description: 'Squad pushing your position', icon: '⚡', difficulty: 'easy' },
+  ],
+  'fortnite': [
+    { id: 'box-defense', name: 'Box Defense', description: 'Opponent edit-pushing your box', icon: '📦', difficulty: 'medium' },
+    { id: 'high-ground-retake', name: 'High Ground Retake', description: 'Retake high without dying', icon: '⛰️', difficulty: 'hard' },
+    { id: 'anti-rush-fn', name: 'Anti-Rush', description: 'Opponent rotating through your build', icon: '⚡', difficulty: 'easy' },
+    { id: 'storm-defense', name: 'Storm Defense', description: 'Last 30s rotation through gas', icon: '🌪️', difficulty: 'medium' },
+  ],
+  'ufc-5': [
+    { id: 'takedown-defense', name: 'Takedown Defense', description: 'Wrestler shooting at you', icon: '🛡️', difficulty: 'hard' },
+    { id: 'submission-defense', name: 'Submission Defense', description: 'Caught in a guillotine', icon: '🥋', difficulty: 'hard' },
+    { id: 'counter-strike-setup', name: 'Counter Strike Setup', description: 'Slip the jab, fire the cross', icon: '🥊', difficulty: 'medium' },
+    { id: 'clinch-defense', name: 'Clinch Defense', description: 'Pinned to the cage', icon: '🤼', difficulty: 'medium' },
+    { id: 'wall-defense', name: 'Wall Defense', description: 'Back to the cage, must exit', icon: '🧱', difficulty: 'easy' },
+  ],
+  'pga-2k25': [
+    { id: 'lay-up-decision', name: 'Lay Up Decision', description: 'Hazard 240 out, par 5', icon: '🛡️', difficulty: 'easy' },
+    { id: 'wind-defense', name: 'Wind Defense', description: '15mph crosswind, narrow fairway', icon: '💨', difficulty: 'medium' },
+    { id: 'bogey-recovery', name: 'Bogey Recovery', description: 'In trees, 180 to green', icon: '🌳', difficulty: 'medium' },
+    { id: 'pressure-putt', name: 'Pressure Putt', description: '6ft for par, downhill', icon: '⛳', difficulty: 'medium' },
+  ],
+  'undisputed': [
+    { id: 'shoulder-roll-counter', name: 'Shoulder Roll Counter', description: 'Right-hand-heavy opponent', icon: '🛡️', difficulty: 'hard' },
+    { id: 'parry-counter', name: 'Parry Counter', description: 'Time the parry, fire the cross', icon: '🥊', difficulty: 'medium' },
+    { id: 'guard-management', name: 'Guard Management', description: 'Opponent body-shot heavy', icon: '🛡️', difficulty: 'medium' },
+    { id: 'corner-escape', name: 'Corner Escape', description: 'Cornered, taking shots', icon: '🚪', difficulty: 'easy' },
+  ],
+  'video-poker': [
+    { id: 'loss-limit', name: 'Loss Limit Discipline', description: 'Down 30%, 5 hands losing in a row', icon: '🛡️', difficulty: 'easy' },
+    { id: 'variance-tolerance', name: 'Variance Tolerance', description: 'Cold streak, EV says continue', icon: '📉', difficulty: 'medium' },
+    { id: 'optimal-hold', name: 'Optimal Hold Test', description: 'Tricky 4-to-flush-vs-pair decision', icon: '🃏', difficulty: 'medium' },
+  ],
+};
+
+const TITLE_ALIAS: Record<string, string> = {
+  // The frontend store uses condensed IDs; defensive scenarios index by
+  // canonical hyphenated IDs.
+  madden26: 'madden-26',
+  cfb26: 'cfb-26',
+  nba2k26: 'nba-2k26',
+  fc26: 'eafc-26',
+  mlbtheshow26: 'mlb-26',
+  ufc5: 'ufc-5',
+  pga2k25: 'pga-2k25',
+  videopoker: 'video-poker',
+};
 
 const MOCK_OPPONENTS = [
   'xViper_Elite',
@@ -120,6 +216,12 @@ export default function SimLabPage() {
   const voice = useArsenalVoice();
   const arsenalTitle = useActiveArsenalTitle();
   const integrityMode = useUIStore((s) => s.currentMode);
+  const [side, setSide] = useState<WeaponSide>('offense');
+  const titleKey = TITLE_ALIAS[arsenalTitle] ?? arsenalTitle;
+  const defensiveScenarios = DEFENSIVE_SCENARIOS[titleKey] ?? [];
+  const scenarioList: Scenario[] =
+    side === 'defense' ? defensiveScenarios : SCENARIOS;
+  const defenseAvailable = defensiveScenarios.length > 0;
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [selectedOpponent, setSelectedOpponent] = useState(MOCK_OPPONENTS[0]);
   const [isSimulating, setIsSimulating] = useState(false);
@@ -327,6 +429,16 @@ export default function SimLabPage() {
             <p className="text-sm text-dark-400">Scenario Sandbox &mdash; drill specific situations</p>
           </div>
         </div>
+        <SideToggle
+          side={side}
+          onChange={(s) => {
+            setSide(s);
+            setSelectedScenario(null);
+            setShowResult(false);
+          }}
+          defenseLabel={DEFENSE_LABEL_BY_TITLE[titleKey] ?? 'Defense'}
+          disabledSide={defenseAvailable ? undefined : 'defense'}
+        />
         <div className="flex items-center gap-3">
           <div className="rounded-lg bg-dark-800 px-3 py-1.5 text-xs text-dark-300">
             <span className="text-dark-500">Reps today:</span> <span className="font-semibold text-dark-100">{reps.length}</span>
@@ -434,7 +546,12 @@ export default function SimLabPage() {
               <Target className="h-4 w-4 text-forge-400" /> Scenarios
             </h2>
             <div className="grid grid-cols-2 gap-2">
-              {SCENARIOS.map((s) => (
+              {scenarioList.length === 0 && (
+                <p className="col-span-2 rounded-md border border-dashed border-dark-700 bg-dark-800/40 px-3 py-3 text-center text-[11px] text-dark-500">
+                  No defensive scenarios for this title yet.
+                </p>
+              )}
+              {scenarioList.map((s) => (
                 <button
                   key={s.id}
                   onClick={() => { setSelectedScenario(s); setShowResult(false); }}

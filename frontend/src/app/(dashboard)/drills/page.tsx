@@ -1,8 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Swords } from 'lucide-react';
+import { Swords, Shield } from 'lucide-react';
 import { useDrills } from '@/hooks/useDrills';
+import { useActiveArsenalTitle, type WeaponSide } from '@/hooks/useArsenal';
+import {
+  SideToggle,
+  DEFENSE_LABEL_BY_TITLE,
+} from '@/components/shared/SideToggle';
+import { DEFENSIVE_DRILLS_BY_TITLE } from '@/lib/drills/defensiveDrills';
 import DrillRunner from '@/components/drills/DrillRunner';
 import DrillQueue from '@/components/drills/DrillQueue';
 import SkillProgress from '@/components/drills/SkillProgress';
@@ -41,6 +47,9 @@ export default function DrillsPage() {
   const [sessionStart] = useState<Date | null>(() => new Date());
   const [showDebrief, setShowDebrief] = useState(false);
   const [showPostDebrief, setShowPostDebrief] = useState(false);
+  const [side, setSide] = useState<WeaponSide>('offense');
+  const titleId = useActiveArsenalTitle();
+  const defensiveDrills = DEFENSIVE_DRILLS_BY_TITLE[titleId] ?? [];
 
   const completedDrillCount = session.completedDrills.length;
 
@@ -97,6 +106,75 @@ export default function DrillsPage() {
           <DrillStreak />
         </div>
       </div>
+
+      {/* Offense / Defense toggle */}
+      <div className="flex items-center justify-between">
+        <SideToggle
+          side={side}
+          onChange={setSide}
+          offenseLabel="Offense Drills"
+          defenseLabel={
+            DEFENSE_LABEL_BY_TITLE[titleId]
+              ? `${DEFENSE_LABEL_BY_TITLE[titleId]} Drills`
+              : 'Defense Drills'
+          }
+          disabledSide={defensiveDrills.length === 0 ? 'defense' : undefined}
+        />
+        <p className="text-[11px] text-dark-500">
+          {side === 'defense'
+            ? 'Coverage, pressure, jockeying, parrying — defensive execution reps'
+            : 'Reads, throws, dribble moves — offensive execution reps'}
+        </p>
+      </div>
+
+      {side === 'defense' && (
+        <div className="rounded-xl border border-sky-500/30 bg-sky-500/5 p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <Shield className="h-4 w-4 text-sky-300" />
+            <h3 className="text-sm font-bold text-sky-200">
+              Defensive Drill Queue
+            </h3>
+            <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] text-sky-300">
+              {defensiveDrills.length} drills
+            </span>
+          </div>
+          {defensiveDrills.length === 0 ? (
+            <p className="rounded-md border border-dashed border-dark-700 bg-dark-800/40 p-4 text-center text-xs text-dark-500">
+              No defensive drills for this title yet.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {defensiveDrills.map((d) => (
+                <li
+                  key={d.id}
+                  className="flex items-center gap-3 rounded-lg bg-dark-900/60 p-3"
+                >
+                  <div className="flex h-8 w-12 flex-shrink-0 items-center justify-center rounded-md border border-sky-500/30 bg-sky-500/10 font-mono text-xs font-bold text-sky-300">
+                    {d.impactRank.toFixed(1)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-dark-100">
+                      {d.name}
+                    </p>
+                    <p className="truncate text-[11px] text-dark-400">
+                      {d.description}
+                    </p>
+                  </div>
+                  <div className="flex flex-shrink-0 items-center gap-3 text-[11px] text-dark-500">
+                    <span>{d.reps} reps</span>
+                    <span>{d.durationMinutes}m</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 text-[11px] text-dark-500">
+            Defensive ImpactRank scoring runs on the same engine as offense
+            once the DefensivePriority pipeline lands. These IRs are
+            illustrative.
+          </p>
+        </div>
+      )}
 
       {/* Drill Streak Widget */}
       <DrillStreakWidget />

@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   Globe,
   Upload,
+  Shield,
+  Swords,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import {
@@ -120,6 +122,17 @@ export function WeaponCard({ weapon, onView, onAddToGameplan }: WeaponCardProps)
     >
       {/* Top row: badges + bookmark */}
       <div className="mb-2 flex items-start gap-2">
+        {weapon.side === 'defense' ? (
+          <span className="inline-flex items-center gap-1 rounded-md border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-300">
+            <Shield className="h-3 w-3" />
+            Defense
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-md border border-forge-500/30 bg-forge-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-forge-300">
+            <Swords className="h-3 w-3" />
+            Offense
+          </span>
+        )}
         <span
           className={clsx(
             'rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider',

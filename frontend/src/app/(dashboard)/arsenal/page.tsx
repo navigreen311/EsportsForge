@@ -15,12 +15,17 @@ import {
   useMyArsenal,
   useActiveArsenalTitle,
   type WeaponFilters as WF,
+  type WeaponSide,
 } from '@/hooks/useArsenal';
 import { WeaponCard } from '@/components/arsenal/WeaponCard';
 import { WeaponFilters } from '@/components/arsenal/WeaponFilters';
 import { WeaponDetail } from '@/components/arsenal/WeaponDetail';
 import { VoiceCommandBar } from '@/components/arsenal/VoiceCommandBar';
 import { TITLE_DISPLAY_NAME } from '@/lib/arsenal/titleMeta';
+import {
+  SideToggle,
+  DEFENSE_LABEL_BY_TITLE,
+} from '@/components/shared/SideToggle';
 
 type Tab = 'my' | 'all';
 
@@ -33,6 +38,7 @@ export default function ArsenalPage() {
   const router = useRouter();
   const titleId = useActiveArsenalTitle();
   const [tab, setTab] = useState<Tab>('all');
+  const [side, setSide] = useState<WeaponSide>('offense');
   const [filters, setFilters] = useState<WF>({ sort: 'most-recent' });
   const [search, setSearch] = useState('');
   const [openWeaponId, setOpenWeaponId] = useState<string | null>(null);
@@ -48,10 +54,13 @@ export default function ArsenalPage() {
     }
   }, [searchParams]);
 
-  const allQuery = useWeapons({ ...filters, q: search.trim() || undefined });
+  const allQuery = useWeapons({ ...filters, side, q: search.trim() || undefined });
   const myQuery = useMyArsenal();
 
-  const list = tab === 'my' ? myQuery.data ?? [] : allQuery.data ?? [];
+  const rawList = tab === 'my' ? myQuery.data ?? [] : allQuery.data ?? [];
+  // Filter "My Arsenal" by current side too — the endpoint doesn't accept
+  // a side filter so do it client-side.
+  const list = tab === 'my' ? rawList.filter((w) => w.side === side) : rawList;
   const isLoading = tab === 'my' ? myQuery.isLoading : allQuery.isLoading;
 
   return (
@@ -74,6 +83,20 @@ export default function ArsenalPage() {
             {TITLE_DISPLAY_NAME[titleId]}
           </span>
         </div>
+      </div>
+
+      {/* Side toggle (Offense / Defense) */}
+      <div className="flex items-center justify-between gap-3">
+        <SideToggle
+          side={side}
+          onChange={setSide}
+          defenseLabel={DEFENSE_LABEL_BY_TITLE[titleId] ?? 'Defense'}
+        />
+        <p className="text-[11px] text-dark-500">
+          {side === 'defense'
+            ? 'Counter-plays, schemes, traps, and risk management'
+            : 'Trick plays, unstoppable concepts, and exploits'}
+        </p>
       </div>
 
       {/* Voice command bar */}

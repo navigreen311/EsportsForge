@@ -2,6 +2,10 @@ export interface PriorityItem {
   id: string;
   weakness: string;
   category: 'offense' | 'defense' | 'situational' | 'mental';
+  /** Which side of play this priority belongs to. A 'mental' or
+   *  'situational' priority can be either offensive or defensive — this
+   *  axis is independent of category. */
+  side?: 'offense' | 'defense';
   winRateDamage: number; // percentage points lost
   expectedLift: number; // percentage points gained if fixed
   timeToMaster: string; // e.g., "2-3 weeks"
