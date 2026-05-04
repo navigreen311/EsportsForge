@@ -7,10 +7,12 @@
 
 'use client';
 
+import { useEffect } from 'react';
 import { ArrowRight, Brain, CheckCircle2, Sparkles, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { DrillRecord } from '@/types/analytics';
 import type { DrillDebriefDTO } from '@/lib/api/drillSessions';
+import { speakDebrief } from '@/lib/drills/voice';
 import RepTracker, { type RepDot } from './RepTracker';
 
 interface DrillDebriefProps {
@@ -38,6 +40,16 @@ export default function DrillDebrief({
   onNext,
   onEnd,
 }: DrillDebriefProps) {
+  useEffect(() => {
+    if (!open || !drill || !debrief) return;
+    speakDebrief({
+      drillName: drill.name,
+      successReps: debrief.success_reps,
+      totalReps: debrief.total_reps,
+      insight: debrief.loop_ai_insight,
+    });
+  }, [open, drill, debrief]);
+
   if (!open || !drill || !debrief) return null;
 
   const difficultyInfo = difficultyCopy[debrief.difficulty_recommendation];

@@ -13,6 +13,7 @@ import DrillDebrief from '@/components/drills/DrillDebrief';
 import type { RepDot } from '@/components/drills/RepTracker';
 import type { DrillDebriefDTO } from '@/lib/api/drillSessions';
 import { VisionAudioForgeService } from '@/lib/services/visionaudioforge';
+import { speakBrief } from '@/lib/drills/voice';
 
 const visionMonitor = {
   start: ({
@@ -95,6 +96,12 @@ function DrillsPageInner() {
     if (currentDrill) setBriefOpen(true);
   };
   const handleStartActiveDrill = () => {
+    if (currentDrill) {
+      speakBrief(
+        currentDrill.name,
+        currentDrill.objective ?? currentDrill.instructions,
+      );
+    }
     setBriefOpen(false);
     setActiveDrill(currentDrill);
   };

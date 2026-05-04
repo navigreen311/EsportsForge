@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import get_current_user
 from app.db.base import get_db
 from app.models.drill_session import DrillRep, DrillSession
+from app.models.player_twin import PlayerTwin
 from app.models.user import User
 from app.services.ai.claude_client import ClaudeClient
 
@@ -144,8 +145,9 @@ def _recalc(sess: DrillSession) -> None:
     )
 
 
-def _build_debrief(sess: DrillSession) -> DrillDebrief:
-    """Deterministic post-session insight — replaces a real LoopAI call."""
+def _formula_debrief(sess: DrillSession) -> DrillDebrief:
+    """Deterministic post-session insight — used as fallback when Claude is
+    unavailable or returns an unparseable response."""
     rate = sess.success_rate
     auto_count = sum(1 for r in sess.reps if r.auto_detected)
     auto_pct = (auto_count / sess.completed_reps) if sess.completed_reps else 0.0
@@ -191,6 +193,140 @@ def _build_debrief(sess: DrillSession) -> DrillDebrief:
         difficulty_recommendation=difficulty,
         next_drill_hint=None,
     )
+
+
+_LOOPAI_SYSTEM = (
+    "You are LoopAI, the post-session debrief coach for an esports player. "
+    "Given a completed drill session, produce a short, actionable JSON debrief. "
+    "Respond with strict JSON only — no markdown, no commentary."
+)
+
+
+async def _claude_debrief(sess: DrillSession) -> DrillDebrief | None:
+    """Optional Claude-powered debrief. Returns None on any failure so the
+    caller can fall back to the deterministic formula."""
+    if not _claude.is_available:
+        return None
+    try:
+        rep_summary = [
+            {"n": r.rep_number, "ok": r.success, "auto": r.auto_detected}
+            for r in sess.reps
+        ]
+        prompt = json.dumps(
+            {
+                "title_id": sess.title_id,
+                "drill_id": sess.drill_id,
+                "drill_type": sess.drill_type,
+                "total_reps": sess.total_reps,
+                "success_reps": sess.success_reps,
+                "fail_reps": sess.fail_reps,
+                "success_rate": round(sess.success_rate, 3),
+                "reps": rep_summary,
+                "schema": {
+                    "skill_update": "one short sentence on what changed",
+                    "loop_ai_insight": "one short, specific coaching note",
+                    "player_twin_note": "one sentence on PlayerTwin baseline",
+                    "mastery_change": "integer in [-2, 3]",
+                    "difficulty_recommendation": "one of: increase, hold, decrease",
+                },
+            }
+        )
+        data = await _claude.generate_json(
+            prompt,
+            system=_LOOPAI_SYSTEM,
+            max_tokens=400,
+            temperature=0.3,
+        )
+        diff = data.get("difficulty_recommendation", "hold")
+        if diff not in {"increase", "hold", "decrease"}:
+            diff = "hold"
+        try:
+            mastery = int(data.get("mastery_change", 0))
+        except (TypeError, ValueError):
+            mastery = 0
+        mastery = max(-2, min(3, mastery))
+
+        auto_count = sum(1 for r in sess.reps if r.auto_detected)
+        auto_pct = (auto_count / sess.completed_reps) if sess.completed_reps else 0.0
+
+        return DrillDebrief(
+            success_rate=round(sess.success_rate, 3),
+            success_reps=sess.success_reps,
+            fail_reps=sess.fail_reps,
+            total_reps=sess.total_reps,
+            auto_detected_pct=round(auto_pct, 3),
+            skill_update=str(data.get("skill_update", "")).strip()[:300]
+            or "Mastery noted.",
+            player_twin_note=str(data.get("player_twin_note", "")).strip()[:300]
+            or f"PlayerTwin updated for {sess.title_id}.",
+            loop_ai_insight=str(data.get("loop_ai_insight", "")).strip()[:600]
+            or "Solid session — keep stacking reps.",
+            mastery_change=mastery,
+            difficulty_recommendation=diff,
+            next_drill_hint=None,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.info("LoopAI debrief fell back to formula: %s", exc)
+        return None
+
+
+async def _build_debrief(sess: DrillSession) -> DrillDebrief:
+    """Returns a Claude-generated debrief when available, otherwise the
+    deterministic formula."""
+    via_claude = await _claude_debrief(sess)
+    return via_claude if via_claude is not None else _formula_debrief(sess)
+
+
+async def _update_player_twin(
+    sess: DrillSession,
+    debrief: DrillDebrief,
+    db: AsyncSession,
+) -> None:
+    """Append a small drill-history entry to the user's PlayerTwin row.
+
+    Best-effort — any failure is swallowed so PlayerTwin issues never break
+    the /complete response.
+    """
+    try:
+        result = await db.execute(
+            select(PlayerTwin).where(
+                PlayerTwin.user_id == sess.user_id,
+                PlayerTwin.title_id == sess.title_id,
+            )
+        )
+        twin = result.scalar_one_or_none()
+        entry = {
+            "drill_session_id": sess.id,
+            "drill_id": sess.drill_id,
+            "drill_type": sess.drill_type,
+            "completed_at": (
+                sess.completed_at.isoformat() if sess.completed_at else None
+            ),
+            "success_rate": round(sess.success_rate, 3),
+            "success_reps": sess.success_reps,
+            "total_reps": sess.total_reps,
+            "mastery_change": debrief.mastery_change,
+            "difficulty_recommendation": debrief.difficulty_recommendation,
+        }
+        if twin is None:
+            twin = PlayerTwin(
+                user_id=sess.user_id,
+                title_id=sess.title_id,
+                tendencies={"drill_history": [entry]},
+                last_updated=datetime.now(timezone.utc),
+            )
+            db.add(twin)
+        else:
+            tendencies = dict(twin.tendencies or {})
+            history = list(tendencies.get("drill_history") or [])
+            history.append(entry)
+            # Cap at the last 50 entries so the JSON blob stays small.
+            tendencies["drill_history"] = history[-50:]
+            twin.tendencies = tendencies
+            twin.last_updated = datetime.now(timezone.utc)
+        await db.flush()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("PlayerTwin update skipped: %s", exc)
 
 
 # ---------------------------------------------------------------------------
@@ -269,10 +405,11 @@ async def complete_drill_session(
 ) -> DrillSessionCompleteOut:
     sess = await _load_session(session_id, current_user, db)
     if sess.status == "complete":
-        # Idempotent — return current state.
+        # Idempotent — return current state with formula-only debrief
+        # (avoid spending tokens on every refresh / retry).
         return DrillSessionCompleteOut(
             session=DrillSessionOut.model_validate(sess),
-            debrief=_build_debrief(sess),
+            debrief=_formula_debrief(sess),
         )
 
     sess.status = "complete"
@@ -281,9 +418,13 @@ async def complete_drill_session(
     await db.flush()
     await db.refresh(sess)
 
+    debrief = await _build_debrief(sess)
+    await _update_player_twin(sess, debrief, db)
+    await db.flush()
+
     return DrillSessionCompleteOut(
         session=DrillSessionOut.model_validate(sess),
-        debrief=_build_debrief(sess),
+        debrief=debrief,
     )
 
 

@@ -22,6 +22,7 @@ import {
   startDrillSession,
   type DrillDebriefDTO,
 } from '@/lib/api/drillSessions';
+import { speakProgressCue, speakRepResult, stopSpeech } from '@/lib/drills/voice';
 import RepTracker, { type RepDot } from './RepTracker';
 
 export interface ActiveDrillResult {
@@ -155,6 +156,11 @@ export default function ActiveDrillMode({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monitor, sessionId]);
 
+  // Stop any in-progress speech when the active drill unmounts.
+  useEffect(() => {
+    return () => stopSpeech();
+  }, []);
+
   // ----- core rep + completion logic -------------------------------------
   const logRep = useCallback(
     async (args: {
@@ -180,6 +186,14 @@ export default function ActiveDrillMode({
         });
         return next.sort((a, b) => a.index - b.index);
       });
+
+      // VoiceForge coaching — per-rep result + mid-session and near-end cues.
+      speakRepResult({
+        success: args.success,
+        repNumber,
+        totalReps: drill.reps,
+      });
+      speakProgressCue({ repNumber, totalReps: drill.reps });
 
       try {
         await recordDrillRep({
