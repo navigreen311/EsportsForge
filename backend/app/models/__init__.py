@@ -10,6 +10,7 @@ from app.models.gameplan import Gameplan
 from app.models.agent_performance import AgentPerformance
 from app.models.impact_ranking import ImpactRanking, ImpactStatus
 from app.models.drill import Drill
+from app.models.drill_session import DrillSession, DrillRep
 from app.models.integrity_mode import IntegrityMode, GameEnvironment, AntiCheatStatus
 from app.models.madden26 import MaddenScheme, MaddenPlay, SchemeType
 from app.models.cfb26 import (
@@ -45,6 +46,8 @@ __all__ = [
     "AgentPerformance",
     "ImpactRanking",
     "Drill",
+    "DrillSession",
+    "DrillRep",
     "IntegrityMode",
     # Madden 26
     "MaddenScheme",
