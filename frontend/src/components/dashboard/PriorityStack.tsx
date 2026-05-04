@@ -57,6 +57,23 @@ export default function PriorityStack({ priorities }: PriorityStackProps) {
                 #{rank}
               </span>
               <Icon className={clsx('h-4 w-4', color)} />
+              {item.side && (
+                <span
+                  className={clsx(
+                    'inline-flex flex-shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider',
+                    item.side === 'defense'
+                      ? 'border-sky-500/30 bg-sky-500/10 text-sky-300'
+                      : 'border-forge-500/30 bg-forge-500/10 text-forge-300'
+                  )}
+                  aria-label={`Side: ${item.side}`}
+                >
+                  {item.side === 'defense' ? (
+                    <Shield className="h-2.5 w-2.5" />
+                  ) : (
+                    <Swords className="h-2.5 w-2.5" />
+                  )}
+                </span>
+              )}
               <span className="min-w-0 flex-1 truncate text-sm font-medium text-dark-200">
                 {item.weakness}
               </span>

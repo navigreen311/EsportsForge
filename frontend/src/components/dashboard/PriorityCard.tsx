@@ -49,6 +49,23 @@ export default function PriorityCard({ priority }: PriorityCardProps) {
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-dark-400">
                 #1 Priority — {cat.label}
+                {priority.side && (
+                  <span
+                    className={clsx(
+                      'ml-2 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider',
+                      priority.side === 'defense'
+                        ? 'border-sky-500/30 bg-sky-500/10 text-sky-300'
+                        : 'border-forge-500/30 bg-forge-500/10 text-forge-300'
+                    )}
+                  >
+                    {priority.side === 'defense' ? (
+                      <Shield className="h-2.5 w-2.5" />
+                    ) : (
+                      <Swords className="h-2.5 w-2.5" />
+                    )}
+                    {priority.side}
+                  </span>
+                )}
               </p>
               <h3 className="text-lg font-bold text-dark-50">
                 {priority.weakness}

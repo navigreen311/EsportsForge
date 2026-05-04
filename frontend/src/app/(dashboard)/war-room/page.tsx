@@ -8,6 +8,7 @@
 import { Shield } from 'lucide-react';
 import PreGameWarRoom from '@/components/warroom/PreGameWarRoom';
 import { WeaponSummaryCard } from '@/components/arsenal/WeaponSummaryCard';
+import DefensiveSchemePanel from '@/components/warroom/DefensiveSchemePanel';
 
 export default function WarRoomPage() {
   return (
@@ -25,6 +26,9 @@ export default function WarRoomPage() {
 
       {/* Saved Arsenal weapons for this matchup */}
       <WeaponSummaryCard />
+
+      {/* Defensive scheme — counters opponent's offensive tendencies */}
+      <DefensiveSchemePanel />
 
       {/* War Room Content */}
       <PreGameWarRoom />

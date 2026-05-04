@@ -17,10 +17,13 @@ import {
 // Types (mirror backend WeaponResponse)
 // ---------------------------------------------------------------------------
 
+export type WeaponSide = 'offense' | 'defense';
+
 export interface Weapon {
   id: string;
   user_id: string | null;
   title_id: ArsenalTitleId;
+  side: WeaponSide;
   name: string;
   category: string;
   sub_category: string | null;
@@ -51,6 +54,7 @@ export interface Weapon {
 
 export interface WeaponFilters {
   title_id?: ArsenalTitleId;
+  side?: WeaponSide;
   category?: string;
   difficulty?: 'easy' | 'medium' | 'hard';
   source?: 'platform' | 'community' | 'my-uploads';

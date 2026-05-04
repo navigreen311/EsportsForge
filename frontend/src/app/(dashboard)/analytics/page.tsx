@@ -24,6 +24,12 @@ import SessionLoopAIDetails from '@/components/analytics/SessionLoopAIDetails';
 import AnalyticsFilters from '@/components/analytics/AnalyticsFilters';
 import ExportDropdown from '@/components/analytics/ExportDropdown';
 import FilmRoom from '@/components/analytics/FilmRoom';
+import DefensiveAnalyticsPanel from '@/components/analytics/DefensiveAnalyticsPanel';
+import {
+  SideToggle,
+  DEFENSE_LABEL_BY_TITLE,
+} from '@/components/shared/SideToggle';
+import { useActiveArsenalTitle, type WeaponSide } from '@/hooks/useArsenal';
 import {
   BarChart3,
   Trophy,
@@ -132,6 +138,8 @@ export default function AnalyticsPage() {
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [analyticsTab, setAnalyticsTab] = useState<'performance' | 'film-room'>('performance');
   const [situationalFilter, setSituationalFilter] = useState<string | null>(null);
+  const [side, setSide] = useState<WeaponSide>('offense');
+  const titleId = useActiveArsenalTitle();
 
   const filteredSessions = situationalFilter
     ? mockSessions.filter((s) => s.situationalTags.includes(situationalFilter))
@@ -151,6 +159,25 @@ export default function AnalyticsPage() {
         {/* 9. Export Dropdown */}
         <ExportDropdown />
       </div>
+
+      {/* Side toggle: offensive vs defensive analytics */}
+      <div className="flex items-center justify-between gap-3">
+        <SideToggle
+          side={side}
+          onChange={setSide}
+          offenseLabel="Offensive Analytics"
+          defenseLabel={
+            DEFENSE_LABEL_BY_TITLE[titleId]
+              ? `${DEFENSE_LABEL_BY_TITLE[titleId]} Analytics`
+              : 'Defensive Analytics'
+          }
+        />
+      </div>
+
+      {side === 'defense' ? (
+        <DefensiveAnalyticsPanel titleId={titleId} />
+      ) : (
+        <>
 
       {/* Tab Bar: Performance | Film Room */}
       <div className="flex gap-1 p-1 rounded-lg bg-dark-900/50 border border-dark-700 w-fit">
@@ -406,6 +433,9 @@ export default function AnalyticsPage() {
       </div>
 
       </div>
+      )}
+
+        </>
       )}
     </div>
   );

@@ -18,6 +18,12 @@ import OpponentTendencyHeader from '@/components/gameplan/OpponentTendencyHeader
 import FirstFifteenScript from '@/components/gameplan/FirstFifteenScript';
 import { GameplanSessionBar } from '@/components/session/GameplanSessionBar';
 import { ArsenalTabPanel } from '@/components/arsenal/ArsenalTabPanel';
+import DefensiveGameplanView from '@/components/gameplan/DefensiveGameplanView';
+import {
+  SideToggle,
+  DEFENSE_LABEL_BY_TITLE,
+} from '@/components/shared/SideToggle';
+import { useActiveArsenalTitle, type WeaponSide } from '@/hooks/useArsenal';
 import type { PackageTab, Play } from '@/types/gameplan';
 
 type ViewTab = PackageTab | 'script' | 'arsenal';
@@ -48,8 +54,10 @@ export default function GameplanPage() {
   } = useGameplan();
 
   const [viewTab, setViewTab] = useState<ViewTab>('all');
+  const [side, setSide] = useState<WeaponSide>('offense');
   const session = useSessionStore((s) => s.session);
   const isSessionActive = !!session;
+  const titleId = useActiveArsenalTitle();
   const searchParams = useSearchParams();
   const requestedTab = searchParams?.get('tab') as ViewTab | null;
   const autoSwitchedRef = useRef(false);
@@ -148,12 +156,35 @@ export default function GameplanPage() {
         </div>
       </div>
 
+      {/* Side toggle — switches between offensive gameplan and defensive plan */}
+      <div className="flex items-center justify-between gap-3">
+        <SideToggle
+          side={side}
+          onChange={setSide}
+          defenseLabel={DEFENSE_LABEL_BY_TITLE[titleId] ?? 'Defense'}
+        />
+        <p className="text-[11px] text-dark-500">
+          {side === 'defense'
+            ? 'Counter their offense — schemes, blitz packages, traps'
+            : 'Attack their defense — kill plays, scripts, anti-blitz'}
+        </p>
+      </div>
+
       {/* Opponent Tendency Header — pills, archetype, win rate */}
       <OpponentTendencyHeader opponentName={opponent.name} />
 
       {/* 7. Opponent Tendency Panel */}
       <OpponentTendencyPanel opponentName={opponent.name} />
 
+      {side === 'defense' && (
+        <DefensiveGameplanView
+          opponentId={selectedOpponentId}
+          opponentName={opponent.name}
+        />
+      )}
+
+      {side === 'offense' && (
+        <>
       {/* Tab Bar with 8. Anti-Blitz Health Badge */}
       <div className="flex gap-1 overflow-x-auto rounded-lg border border-dark-700/50 bg-dark-900/60 p-1">
         {tabs.map((tab) => {
@@ -266,6 +297,8 @@ export default function GameplanPage() {
 
       {/* Meta Status Bar */}
       <MetaStatusBar metaStatus={gameplan.metaStatus} />
+        </>
+      )}
     </div>
   );
 }
