@@ -16,6 +16,12 @@ import First15ScriptView from '@/components/gameplan/First15ScriptView';
 import { AntiBlitzHealthBadge, AntiBlitzHealthBanner } from '@/components/gameplan/AntiBlitzHealth';
 import OpponentTendencyHeader from '@/components/gameplan/OpponentTendencyHeader';
 import FirstFifteenScript from '@/components/gameplan/FirstFifteenScript';
+import {
+  KillSheetSummary,
+  PackageHealthCard,
+  ScriptViewPanel,
+  TwoMinDrillTable,
+} from '@/components/gameplan/StructuredPackagePanel';
 import { GameplanSessionBar } from '@/components/session/GameplanSessionBar';
 import { ArsenalTabPanel } from '@/components/arsenal/ArsenalTabPanel';
 import type { PackageTab, Play } from '@/types/gameplan';
@@ -51,6 +57,12 @@ export default function GameplanPage() {
   } = useGameplan();
 
   const [viewTab, setViewTab] = useState<ViewTab>('all');
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const visiblePlays = activeFilter
+    ? filteredPlays.filter((p) =>
+        (p.tags ?? p.conceptTags).some((t) => t.toLowerCase().includes(activeFilter)),
+      )
+    : filteredPlays;
   const session = useSessionStore((s) => s.session);
   const isSessionActive = !!session;
   const searchParams = useSearchParams();
@@ -194,8 +206,19 @@ export default function GameplanPage() {
         </div>
       )}
 
-      {/* Opponent Tendency Header — pills, archetype, win rate */}
-      <OpponentTendencyHeader opponentName={opponent.name} />
+      {/* Opponent Tendency Header — pills, archetype, win rate (now clickable) */}
+      <OpponentTendencyHeader
+        opponentName={opponent.name}
+        summary={gameplan.opponentSummary}
+        archetype={opponent.archetype}
+        activeFilter={activeFilter}
+        onTagFilter={setActiveFilter}
+      />
+      {activeFilter && (
+        <p className="text-[11px] text-forge-400">
+          Showing {visiblePlays.length} of {filteredPlays.length} plays that beat {activeFilter}
+        </p>
+      )}
 
       {/* 7. Opponent Tendency Panel */}
       <OpponentTendencyPanel opponentName={opponent.name} />
@@ -276,28 +299,46 @@ export default function GameplanPage() {
         <ArsenalTabPanel />
       ) : viewTab === 'script' ? (
         <div className="space-y-5">
+          {gameplan.scriptView && gameplan.scriptView.length > 0 && (
+            <ScriptViewPanel entries={gameplan.scriptView} />
+          )}
           <First15ScriptView opponentName={opponent.name} />
           <FirstFifteenScript />
         </div>
       ) : (
         <>
-          {/* Anti-Blitz Health Banner */}
+          {/* Structured AI summary on relevant tabs */}
+          {viewTab === 'kill-sheet' && gameplan.killSheetStructured && (
+            <KillSheetSummary entries={gameplan.killSheetStructured} />
+          )}
           {viewTab === 'anti-blitz' && (
-            <AntiBlitzHealthBanner plays={gameplan.antiBlitzPackage} />
+            <>
+              <PackageHealthCard
+                title="Anti-Blitz"
+                health={gameplan.antiBlitzPackageHealth}
+              />
+              <AntiBlitzHealthBanner plays={gameplan.antiBlitzPackage} />
+            </>
+          )}
+          {viewTab === 'red-zone' && (
+            <PackageHealthCard
+              title="Red Zone"
+              health={gameplan.redZonePackageHealth}
+            />
+          )}
+          {viewTab === '2-min-drill' && gameplan.twoMinDrill && (
+            <TwoMinDrillTable entries={gameplan.twoMinDrill} />
           )}
 
           {/* Two-Column Layout */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-            {/* Left: Play List */}
             <div className="lg:col-span-5 xl:col-span-4">
               <GameplanList
-                plays={filteredPlays}
+                plays={visiblePlays}
                 selectedPlayId={selectedPlay?.id ?? null}
                 onSelectPlay={selectPlay}
               />
             </div>
-
-            {/* Right: Detail Panel */}
             <div className="lg:col-span-7 xl:col-span-8">
               <PlayDetail play={selectedPlay} opponentName={opponent.name} />
             </div>
