@@ -41,6 +41,14 @@ import {
 import { TITLE_TRIGGER_KEYS } from '@/lib/arsenal/titleMeta';
 import { VoiceForgeService } from '@/lib/services/voiceforge';
 import {
+  VisionAudioForgeService,
+  type DrillMonitoringHandle,
+  type FrameAnalysis,
+} from '@/lib/services/visionaudioforge';
+import { getSimLabDetectionConfig } from '@/lib/drills/drillDetectionConfigs';
+import { WatchingIndicator } from '@/components/session/WatchingIndicator';
+import { CaptureSourceModal } from '@/components/session/CaptureSourceModal';
+import {
   useArsenalVoice,
   toneSpeed,
 } from '@/lib/arsenal/voiceSettings';
@@ -694,6 +702,14 @@ function buildPracticeSteps(weapon: Weapon): PracticeStep[] {
   return steps;
 }
 
+interface PracticeRep {
+  id: number;
+  success: boolean;
+  confidence: number;
+  reason: string;
+  autoDetected: boolean;
+}
+
 function PracticeMode({
   weapon,
   voiceEnabled,
@@ -704,9 +720,115 @@ function PracticeMode({
   const steps = buildPracticeSteps(weapon);
   const [idx, setIdx] = useState(0);
   const [listening, setListening] = useState(false);
+  const [watching, setWatching] = useState(false);
+  const [practiceReps, setPracticeReps] = useState<PracticeRep[]>([]);
+  const [showCaptureSourceModal, setShowCaptureSourceModal] = useState(false);
   const cancelRef = useRef(false);
   const idxRef = useRef(0);
+  const watchHandleRef = useRef<DrillMonitoringHandle | null>(null);
   idxRef.current = idx;
+
+  const cur = steps[idx];
+  const inExecutionPhase = cur?.phase === 'execution';
+  const successfulReps = practiceReps.filter((r) => r.success).length;
+  const TARGET_SUCCESS_REPS = 3;
+
+  // Auto-start watching when entering the execution phase, auto-stop when
+  // leaving it (or on completion).
+  useEffect(() => {
+    if (!inExecutionPhase) {
+      if (watching) {
+        watchHandleRef.current?.stop();
+        watchHandleRef.current = null;
+        setWatching(false);
+      }
+      return;
+    }
+    if (watching) return;
+
+    let cancelled = false;
+    (async () => {
+      if (!VisionAudioForgeService.getCaptureSource()) {
+        setShowCaptureSourceModal(true);
+        return;
+      }
+      const ok = await VisionAudioForgeService.isAvailable();
+      if (cancelled || !ok) return;
+
+      const config = getSimLabDetectionConfig(
+        undefined,
+        weapon.name,
+        weapon.formation ?? undefined,
+        weapon.play_name ?? undefined
+      );
+      watchHandleRef.current = VisionAudioForgeService.startDrillMonitoring({
+        mode: 'arsenal-practice',
+        titleId: weapon.title_id,
+        weaponId: weapon.id,
+        weaponName: weapon.name,
+        formation: weapon.formation ?? undefined,
+        playName: weapon.play_name ?? undefined,
+        detectionConfig: config,
+        onRepDetected: handleRepDetected,
+      });
+      setWatching(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inExecutionPhase]);
+
+  useEffect(() => {
+    return () => watchHandleRef.current?.stop();
+  }, []);
+
+  const handleRepDetected = (analysis: FrameAnalysis) => {
+    if (analysis.success === null) return;
+    setPracticeReps((prev) => {
+      const next: PracticeRep[] = [
+        ...prev,
+        {
+          id: prev.length + 1,
+          success: analysis.success === true,
+          confidence: analysis.confidence,
+          reason: analysis.reason || '',
+          autoDetected: true,
+        },
+      ];
+      const successCount = next.filter((r) => r.success).length;
+      if (voiceEnabled) {
+        if (analysis.success) {
+          VoiceForgeService.speak(
+            successCount >= TARGET_SUCCESS_REPS
+              ? `Three clean reps detected. You have ${weapon.name} ready to deploy. ArsenalAI will signal the moment in your next game.`
+              : `Detected. ${weapon.name} executed correctly. Rep ${next.length} complete. Practice it again to build consistency.`,
+            { interruptCurrent: true, speed }
+          );
+        } else {
+          VoiceForgeService.speak(
+            `Missed. ${analysis.reason || 'Review the setup steps.'} Try it again.`,
+            { interruptCurrent: true, speed }
+          );
+        }
+      }
+      return next;
+    });
+  };
+
+  const overrideRep = (success: boolean) => {
+    handleRepDetected({
+      playInProgress: false,
+      repCompleted: true,
+      success,
+      coverageDetected: null,
+      playDetected: null,
+      executionQuality: success ? 'clean' : 'poor',
+      confidence: 100,
+      reason: success ? 'Manually marked success' : 'Manually marked failed',
+    });
+  };
 
   useEffect(() => {
     cancelRef.current = false;
@@ -782,7 +904,6 @@ function PracticeMode({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, voiceEnabled]);
 
-  const cur = steps[idx];
   const next = () => {
     if (idx < steps.length - 1) setIdx(idx + 1);
   };
@@ -847,6 +968,85 @@ function PracticeMode({
             {cur.text}
           </p>
         </div>
+
+        {/* Execution-phase watching panel */}
+        {inExecutionPhase && (
+          <div className="mt-4 space-y-2">
+            <WatchingIndicator
+              isWatching={watching}
+              onStop={() => {
+                watchHandleRef.current?.stop();
+                watchHandleRef.current = null;
+                setWatching(false);
+              }}
+              mode="arsenal"
+              detail={weapon.name}
+            />
+            <p className="text-[11px] text-dark-400">
+              Go to your game and run:{' '}
+              <span className="text-dark-200">
+                {weapon.name}
+                {weapon.formation ? ` from ${weapon.formation}` : ''}
+              </span>
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-dark-500">
+                Reps
+              </span>
+              {Array.from({ length: TARGET_SUCCESS_REPS }).map((_, i) => {
+                const rep = practiceReps.filter((r) => r.success)[i];
+                return (
+                  <span
+                    key={i}
+                    className={clsx(
+                      'inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold',
+                      rep
+                        ? 'border-forge-500 bg-forge-500/20 text-forge-300'
+                        : 'border-dark-700 text-dark-600'
+                    )}
+                  >
+                    {rep ? '✓' : i + 1}
+                  </span>
+                );
+              })}
+              <span className="text-[10px] text-dark-500">
+                {successfulReps} of {TARGET_SUCCESS_REPS} clean
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-[10px]">
+              <span className="text-dark-500">Override:</span>
+              <button
+                type="button"
+                onClick={() => overrideRep(true)}
+                className="rounded-md border border-forge-500/30 bg-forge-500/10 px-2 py-0.5 font-medium text-forge-300 hover:bg-forge-500/20"
+              >
+                ✓ It worked
+              </button>
+              <button
+                type="button"
+                onClick={() => overrideRep(false)}
+                className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-0.5 font-medium text-red-300 hover:bg-red-500/20"
+              >
+                ✗ It failed
+              </button>
+              {successfulReps >= TARGET_SUCCESS_REPS && (
+                <button
+                  type="button"
+                  onClick={onMarkPracticed}
+                  className="ml-auto rounded-md bg-forge-500 px-3 py-1 text-[11px] font-bold text-dark-950 hover:bg-forge-400"
+                >
+                  ✓ I Practiced This
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <CaptureSourceModal
+          open={showCaptureSourceModal}
+          onClose={() => setShowCaptureSourceModal(false)}
+          onSelected={() => setShowCaptureSourceModal(false)}
+        />
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
