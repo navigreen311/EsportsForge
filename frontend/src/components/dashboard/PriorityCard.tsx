@@ -5,11 +5,26 @@
 
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { Brain, Shield, Swords, Zap, ArrowRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import { Card } from '@/components/shared/Card';
 import { ConfidenceBar } from '@/components/shared/ConfidenceBar';
 import type { PriorityItem } from '@/types/dashboard';
+
+function destinationForCategory(category: PriorityItem['category']): string {
+  switch (category) {
+    case 'mental':
+      return '/drills';
+    case 'situational':
+      return '/drills/simlab';
+    case 'offense':
+    case 'defense':
+      return '/gameplan';
+    default:
+      return '/drills';
+  }
+}
 
 const categoryConfig: Record<
   PriorityItem['category'],
@@ -28,6 +43,12 @@ interface PriorityCardProps {
 export default function PriorityCard({ priority }: PriorityCardProps) {
   const cat = categoryConfig[priority.category];
   const CategoryIcon = cat.icon;
+  const router = useRouter();
+
+  const handleStartFixing = () => {
+    const dest = destinationForCategory(priority.category);
+    router.push(`${dest}?priority=${encodeURIComponent(priority.weakness)}`);
+  };
 
   return (
     <Card padding="lg" className="relative overflow-hidden">
@@ -99,6 +120,7 @@ export default function PriorityCard({ priority }: PriorityCardProps) {
         {/* CTA */}
         <button
           type="button"
+          onClick={handleStartFixing}
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-forge-500 px-4 py-2.5 text-sm font-bold text-dark-950 transition-colors hover:bg-forge-400 sm:w-auto"
         >
           Start Fixing

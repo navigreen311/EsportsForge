@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Swords } from 'lucide-react';
+import { Suspense, useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Swords, Target } from 'lucide-react';
 import { useDrills } from '@/hooks/useDrills';
 import DrillRunner from '@/components/drills/DrillRunner';
 import DrillQueue from '@/components/drills/DrillQueue';
@@ -17,7 +18,22 @@ import DrillStreakWidget from '@/components/drills/DrillStreakWidget';
 import { DrillStreak } from '@/components/drills/DrillStreakTracker';
 import { MonthlyConsistency } from '@/components/drills/DrillStreakTracker';
 
-export default function DrillsPage() {
+function PriorityBanner() {
+  const params = useSearchParams();
+  const priority = params.get('priority');
+  if (!priority) return null;
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-forge-500/30 bg-forge-500/10 px-4 py-3">
+      <Target className="h-5 w-5 shrink-0 text-forge-400" />
+      <p className="text-sm text-dark-100">
+        Fixing: <span className="font-bold text-forge-400">{priority}</span>
+        <span className="text-dark-400"> — your #1 ImpactRank priority</span>
+      </p>
+    </div>
+  );
+}
+
+function DrillsPageInner() {
   const {
     currentDrill,
     queue,
@@ -97,6 +113,8 @@ export default function DrillsPage() {
           <DrillStreak />
         </div>
       </div>
+
+      <PriorityBanner />
 
       {/* Drill Streak Widget */}
       <DrillStreakWidget />
@@ -188,5 +206,13 @@ export default function DrillsPage() {
         nextDrillName={queue[0]?.name ?? null}
       />
     </div>
+  );
+}
+
+export default function DrillsPage() {
+  return (
+    <Suspense fallback={null}>
+      <DrillsPageInner />
+    </Suspense>
   );
 }
