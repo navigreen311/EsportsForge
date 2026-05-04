@@ -56,6 +56,9 @@ class SecretWeapon(UUIDPrimaryKeyMixin, Base):
         index=True,
     )
     title_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    side: Mapped[str] = mapped_column(
+        String(16), default="offense", nullable=False, index=True
+    )  # "offense" | "defense"
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     category: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     sub_category: Mapped[str | None] = mapped_column(String(64), nullable=True)

@@ -43,6 +43,7 @@ def _to_response(weapon: SecretWeapon, saved_ids: set[str]) -> WeaponResponse:
         id=weapon.id,
         user_id=weapon.user_id,
         title_id=weapon.title_id,
+        side=weapon.side,  # type: ignore[arg-type]
         name=weapon.name,
         category=weapon.category,
         sub_category=weapon.sub_category,
@@ -79,6 +80,7 @@ def _to_response(weapon: SecretWeapon, saved_ids: set[str]) -> WeaponResponse:
 @router.get("/weapons", response_model=list[WeaponResponse])
 async def list_weapons(
     title_id: str = Query(..., min_length=1),
+    side: Literal["offense", "defense"] | None = None,
     category: str | None = None,
     difficulty: Literal["easy", "medium", "hard"] | None = None,
     source: Literal["platform", "community", "my-uploads"] | None = None,
@@ -96,6 +98,8 @@ async def list_weapons(
     """Filtered list of weapons for a title."""
     stmt = select(SecretWeapon).where(SecretWeapon.title_id == title_id)
 
+    if side:
+        stmt = stmt.where(SecretWeapon.side == side)
     if category:
         stmt = stmt.where(SecretWeapon.category == category)
     if difficulty:
@@ -180,6 +184,7 @@ async def create_weapon(
     weapon = SecretWeapon(
         user_id=current_user.id,
         title_id=body.title_id,
+        side=body.side,
         name=body.name,
         category=body.category,
         sub_category=body.sub_category,

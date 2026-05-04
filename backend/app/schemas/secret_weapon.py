@@ -9,10 +9,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 Difficulty = Literal["easy", "medium", "hard"]
 SourceType = Literal["platform", "user-upload", "web-discovery"]
+WeaponSide = Literal["offense", "defense"]
 
 
 class WeaponBase(BaseModel):
     title_id: str
+    side: WeaponSide = "offense"
     name: str
     category: str
     sub_category: str | None = None
@@ -39,6 +41,7 @@ class WeaponCreate(WeaponBase):
 
 
 class WeaponUpdate(BaseModel):
+    side: WeaponSide | None = None
     name: str | None = None
     category: str | None = None
     sub_category: str | None = None

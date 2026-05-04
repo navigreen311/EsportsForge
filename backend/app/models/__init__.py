@@ -30,6 +30,7 @@ from app.models.secret_weapon import (
     UserArsenal,
     TITLE_IDS,
 )
+from app.models.defensive import DefensiveGameplan, DefensivePriority
 
 __all__ = [
     # Mixins
@@ -75,4 +76,7 @@ __all__ = [
     "WeaponUsageLog",
     "UserArsenal",
     "TITLE_IDS",
+    # Defensive
+    "DefensiveGameplan",
+    "DefensivePriority",
 ]
