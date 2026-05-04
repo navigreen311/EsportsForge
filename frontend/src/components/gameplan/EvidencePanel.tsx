@@ -4,8 +4,12 @@ import { useState } from 'react';
 import { FileText, Database, AlertTriangle, Users, ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
 
+import type { PlayEvidence } from '@/types/gameplan';
+
 interface EvidencePanelProps {
   playId: string;
+  /** Real evidence from GameplanAI — wins over the playId mock lookup. */
+  evidence?: PlayEvidence;
 }
 
 export const PLAY_EVIDENCE: Record<string, { why: string; data: string; risk: string; comparable: string }> = {
@@ -78,10 +82,10 @@ const EVIDENCE_ITEMS = [
   { key: 'comparable' as const, label: 'COMPARABLE', icon: Users, labelColor: 'text-dark-200' },
 ];
 
-export default function EvidencePanel({ playId }: EvidencePanelProps) {
+export default function EvidencePanel({ playId, evidence: liveEvidence }: EvidencePanelProps) {
   const [expanded, setExpanded] = useState(true);
 
-  const evidence = PLAY_EVIDENCE[playId];
+  const evidence = liveEvidence ?? PLAY_EVIDENCE[playId];
 
   if (!evidence) return null;
 

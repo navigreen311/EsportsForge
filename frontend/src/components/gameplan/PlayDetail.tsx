@@ -86,9 +86,11 @@ export default function PlayDetail({ play, opponentName = 'Opponent' }: PlayDeta
           <Zap className="h-4 w-4 text-forge-400" />
           Concept Breakdown
         </h3>
-        <p className="text-sm leading-relaxed text-dark-300">{play.description}</p>
+        <p className="text-sm leading-relaxed text-dark-300">
+          {play.conceptBreakdown ?? play.description}
+        </p>
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {play.conceptTags.map((tag) => (
+          {(play.tags ?? play.conceptTags).map((tag) => (
             <Badge key={tag} variant="neutral" size="sm">
               {tag}
             </Badge>
@@ -97,23 +99,27 @@ export default function PlayDetail({ play, opponentName = 'Opponent' }: PlayDeta
       </div>
 
       {/* When to Call */}
-      {play.situationTags.length > 0 && (
+      {(play.whenToCall || play.situationTags.length > 0) && (
         <div>
           <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-dark-200">
             <Target className="h-4 w-4 text-amber-400" />
             When to Call
           </h3>
-          <ul className="space-y-1.5">
-            {play.situationTags.map((tag) => (
-              <li
-                key={tag}
-                className="flex items-center gap-2 text-sm text-dark-300"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-dark-500" />
-                {situationLabels[tag] ?? tag}
-              </li>
-            ))}
-          </ul>
+          {play.whenToCall ? (
+            <p className="text-sm leading-relaxed text-dark-300">{play.whenToCall}</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {play.situationTags.map((tag) => (
+                <li
+                  key={tag}
+                  className="flex items-center gap-2 text-sm text-dark-300"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-dark-500" />
+                  {situationLabels[tag] ?? tag}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
@@ -136,21 +142,34 @@ export default function PlayDetail({ play, opponentName = 'Opponent' }: PlayDeta
       </div>
 
       {/* 2. ProofAI Evidence Panel */}
-      <EvidencePanel playId={play.id} />
+      <EvidencePanel playId={play.id} evidence={play.evidence} />
 
       {/* ProofAI Statistical Evidence */}
-      <ProofAIEvidence playId={play.id} />
+      <ProofAIEvidence playId={play.id} liveConfidence={play.proofAIConfidence} />
 
-      {/* 5. Three-Layer Call Structure (replaces flat audible list) */}
-      {play.audibleOptions && play.audibleOptions.length > 0 && (
+      {/* 5. Three-Layer Call Structure */}
+      {(play.callStructure || (play.audibleOptions && play.audibleOptions.length > 0)) && (
         <div>
           <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-dark-200">
             Call Structure
           </h3>
           <ThreeLayerAudible
             playName={play.name}
-            audibles={play.audibleOptions}
+            audibles={play.audibleOptions ?? []}
+            callStructure={play.callStructure}
           />
+        </div>
+      )}
+
+      {/* Meta status footer */}
+      {(play.metaStatus || play.patchVersion) && (
+        <div className="flex items-center justify-between rounded-lg border border-dark-700/50 bg-dark-800/40 px-3 py-2 text-xs">
+          <span className="text-dark-400">
+            Meta: <span className="font-semibold text-dark-200">{play.metaStatus ?? 'Unknown'}</span>
+          </span>
+          {play.patchVersion && (
+            <span className="text-dark-500">Patch {play.patchVersion}</span>
+          )}
         </div>
       )}
 

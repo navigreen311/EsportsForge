@@ -1,7 +1,7 @@
 'use client';
 
 import { Play } from '@/types/gameplan';
-import { Shield, Zap, Target, Clock } from 'lucide-react';
+import { Shield, Zap, Target, Clock, AlertTriangle } from 'lucide-react';
 import PlayerTwinBadge, { PLAY_EXECUTION_PCT } from '@/components/gameplan/PlayerTwinBadge';
 import MetaExpiryWarning from '@/components/gameplan/MetaExpiryWarning';
 
@@ -76,15 +76,31 @@ export default function PlayCard({ play, index, isSelected, onSelect }: PlayCard
 
       {/* PlayerTwin + Meta badges */}
       <div className="flex flex-wrap items-center gap-1.5 mt-2">
-        {PLAY_EXECUTION_PCT[play.id] !== undefined && (
-          <PlayerTwinBadge executionPct={PLAY_EXECUTION_PCT[play.id]} />
+        {(play.executionRate !== undefined || PLAY_EXECUTION_PCT[play.id] !== undefined) && (
+          <PlayerTwinBadge executionPct={play.executionRate ?? PLAY_EXECUTION_PCT[play.id]} />
+        )}
+        {play.masteryLevel && (
+          <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-dark-800 text-dark-300 border border-dark-600 rounded">
+            {play.masteryLevel}
+          </span>
+        )}
+        {play.isTrendingCountered && (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-amber-900/40 text-amber-400 border border-amber-700/40 rounded">
+            <AlertTriangle className="w-2.5 h-2.5" />
+            Trending Countered
+          </span>
+        )}
+        {play.metaStatus && (
+          <span className="px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-dark-800/60 text-dark-400 border border-dark-700 rounded">
+            Meta: {play.metaStatus}
+          </span>
         )}
         <MetaExpiryWarning playId={play.id} />
       </div>
 
-      {play.situationTags.length > 0 && (
+      {(play.tags && play.tags.length > 0) || play.situationTags.length > 0 ? (
         <div className="flex flex-wrap gap-1.5 mt-3">
-          {play.situationTags.map((tag) => (
+          {(play.tags ?? play.situationTags).map((tag) => (
             <span
               key={tag}
               className={`inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded border ${
@@ -96,7 +112,7 @@ export default function PlayCard({ play, index, isSelected, onSelect }: PlayCard
             </span>
           ))}
         </div>
-      )}
+      ) : null}
 
       {isSelected && play.description && (
         <p className="mt-3 text-sm text-dark-300 border-t border-dark-700 pt-3">

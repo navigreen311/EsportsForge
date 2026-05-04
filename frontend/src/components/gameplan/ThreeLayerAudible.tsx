@@ -1,6 +1,6 @@
 'use client';
 
-import type { AudibleNode } from '@/types/gameplan';
+import type { AudibleNode, PlayCallStructure } from '@/types/gameplan';
 import { ArrowDown } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -18,6 +18,8 @@ export const LAYER3_COUNTERS: Record<string, string> = {
 interface ThreeLayerAudibleProps {
   playName: string;
   audibles: AudibleNode[];
+  /** Live call structure from GameplanAI — overrides the mock-keyed render. */
+  callStructure?: PlayCallStructure;
 }
 
 function LayerConnector() {
@@ -31,10 +33,57 @@ function LayerConnector() {
   );
 }
 
-export default function ThreeLayerAudible({ playName, audibles }: ThreeLayerAudibleProps) {
+export default function ThreeLayerAudible({ playName, audibles, callStructure }: ThreeLayerAudibleProps) {
+  // Real GameplanAI structure wins.
+  if (callStructure) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-lg border border-forge-500/30 bg-forge-500/5 p-3">
+          <span className="text-[10px] uppercase tracking-wider text-forge-400">
+            LAYER 1 — Base Call
+          </span>
+          <p className="text-sm font-bold text-dark-100">{callStructure.layer1.name}</p>
+          <p className="mt-0.5 text-xs text-dark-400">{callStructure.layer1.description}</p>
+        </div>
+
+        {callStructure.layer2.length > 0 && (
+          <>
+            <LayerConnector />
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+              <span className="text-[10px] uppercase tracking-wider text-amber-400">
+                LAYER 2 — If Bagged
+              </span>
+              <div className="mt-2 space-y-2">
+                {callStructure.layer2.map((a, i) => (
+                  <div key={`${a.audible}-${i}`} className="flex flex-col gap-0.5">
+                    <span className="font-medium text-dark-200">{a.audible}</span>
+                    <span className="text-xs text-amber-400/80">when {a.trigger}</span>
+                    <span className="text-xs text-dark-400">{a.description}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {callStructure.layer3 && (
+          <>
+            <LayerConnector />
+            <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+              <span className="text-[10px] uppercase tracking-wider text-red-400">
+                LAYER 3 — If They Adjust
+              </span>
+              <p className="mt-2 text-xs text-dark-300">{callStructure.layer3}</p>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // Fallback: legacy audible-list rendering keyed by mock counter table.
   return (
     <div className="space-y-3">
-      {/* LAYER 1 — Base Call */}
       <div className="rounded-lg border border-forge-500/30 bg-forge-500/5 p-3">
         <span className="text-[10px] uppercase tracking-wider text-forge-400">
           LAYER 1 — Base Call
@@ -45,8 +94,6 @@ export default function ThreeLayerAudible({ playName, audibles }: ThreeLayerAudi
       {audibles.length > 0 && (
         <>
           <LayerConnector />
-
-          {/* LAYER 2 — If Bagged */}
           <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
             <span className="text-[10px] uppercase tracking-wider text-amber-400">
               LAYER 2 — If Bagged
@@ -64,7 +111,6 @@ export default function ThreeLayerAudible({ playName, audibles }: ThreeLayerAudi
 
           <LayerConnector />
 
-          {/* LAYER 3 — If They Adjust */}
           <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
             <span className="text-[10px] uppercase tracking-wider text-red-400">
               LAYER 3 — If They Adjust
@@ -73,8 +119,7 @@ export default function ThreeLayerAudible({ playName, audibles }: ThreeLayerAudi
               {audibles.map((audible) => (
                 <div key={audible.id} className="text-xs text-dark-300">
                   <span className="font-medium text-dark-200">{audible.label}:</span>{' '}
-                  {LAYER3_COUNTERS[audible.id] ??
-                    'Counter: Run a draw play to punish over-pursuit'}
+                  {LAYER3_COUNTERS[audible.id] ?? 'Counter: Run a draw play to punish over-pursuit'}
                 </div>
               ))}
             </div>

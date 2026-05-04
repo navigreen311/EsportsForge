@@ -11,6 +11,8 @@ import { clsx } from 'clsx';
 
 interface ProofAIEvidenceProps {
   playId: string;
+  /** Live ProofAI confidence (0-100) from GameplanAI — wins over mock lookup. */
+  liveConfidence?: number;
 }
 
 interface PlayEvidence {
@@ -19,6 +21,7 @@ interface PlayEvidence {
   confidence: number;
   dataSource: string;
 }
+
 
 const PLAY_PROOF_DATA: Record<string, PlayEvidence> = {
   'play-1': { sampleSize: 14, winRate: 71, confidence: 87, dataSource: 'Last 3 weeks ranked matches' },
@@ -39,9 +42,18 @@ function getConfidenceColor(confidence: number) {
   return 'text-red-400';
 }
 
-export default function ProofAIEvidence({ playId }: ProofAIEvidenceProps) {
+export default function ProofAIEvidence({ playId, liveConfidence }: ProofAIEvidenceProps) {
   const [expanded, setExpanded] = useState(false);
-  const evidence = PLAY_PROOF_DATA[playId];
+  const baseline = PLAY_PROOF_DATA[playId];
+  const evidence: PlayEvidence | undefined =
+    liveConfidence !== undefined
+      ? {
+          sampleSize: baseline?.sampleSize ?? 0,
+          winRate: baseline?.winRate ?? Math.round(liveConfidence * 0.85),
+          confidence: liveConfidence,
+          dataSource: baseline?.dataSource ?? 'GameplanAI live confidence',
+        }
+      : baseline;
 
   if (!evidence) return null;
 
