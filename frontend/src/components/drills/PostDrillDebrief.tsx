@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Modal } from '@/components/shared/Modal';
 import {
   Trophy,
@@ -9,7 +10,12 @@ import {
   Target,
   AlertTriangle,
   CheckCircle2,
+  Film,
 } from 'lucide-react';
+import { AnimaPlayer } from '@/components/animaforge/AnimaPlayer';
+import { useAnimaForgeAvailable } from '@/hooks/useAnimaForge';
+import { animaforgeApi } from '@/lib/animaforge/api';
+import { useActiveTitle } from '@/hooks/useActiveTitle';
 
 interface PostDrillDebriefProps {
   open: boolean;
@@ -17,6 +23,12 @@ interface PostDrillDebriefProps {
   onContinue: () => void;
   onEndSession: () => void;
   drillName: string;
+  /**
+   * Stable id of the drill — used to look up the cached AnimaForge demo
+   * (same animation as the pre-drill brief, so users compare ideal vs reps).
+   * Optional for backwards compatibility with existing callers.
+   */
+  drillId?: string;
   score: number;
   previousScore: number | null;
   /** Skills / areas that improved this drill. */
@@ -38,6 +50,7 @@ export default function PostDrillDebrief({
   onContinue,
   onEndSession,
   drillName,
+  drillId,
   score,
   previousScore,
   improvements,
@@ -47,6 +60,71 @@ export default function PostDrillDebrief({
 }: PostDrillDebriefProps) {
   const delta = previousScore !== null ? score - previousScore : null;
   const scoreDropped = delta !== null && delta < 0;
+
+  // === AnimaForge: ideal-execution comparison =============================
+  const { available: animaAvailable } = useAnimaForgeAvailable();
+  const { activeTitleId } = useActiveTitle();
+  const [showIdeal, setShowIdeal] = useState(false);
+  const [idealVideoUrl, setIdealVideoUrl] = useState<string | null>(null);
+  const [idealThumbnailUrl, setIdealThumbnailUrl] = useState<string | null>(
+    null,
+  );
+  const [idealJobId, setIdealJobId] = useState<string | null>(null);
+  const [idealLoading, setIdealLoading] = useState(false);
+
+  // When the modal opens for a given drill, probe the cached demo so the
+  // button can play it instantly (same source = same animation).
+  useEffect(() => {
+    if (!open || animaAvailable !== true || !drillId) return;
+    let cancelled = false;
+    animaforgeApi
+      .getDrillStatus({ title_id: activeTitleId, drill_type: drillId })
+      .then((data) => {
+        if (cancelled) return;
+        if (data.video_url) {
+          setIdealVideoUrl(data.video_url);
+          if (data.thumbnail_url) setIdealThumbnailUrl(data.thumbnail_url);
+        } else if (data.job_id) {
+          setIdealJobId(data.job_id);
+        }
+      })
+      .catch(() => {
+        // Stay silent.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, animaAvailable, activeTitleId, drillId]);
+
+  const handleWatchIdeal = async () => {
+    if (idealVideoUrl) {
+      setShowIdeal(true);
+      return;
+    }
+    if (!drillId) return;
+    setIdealLoading(true);
+    try {
+      const data = await animaforgeApi.requestDrillRender({
+        title_id: activeTitleId,
+        drill_type: drillId,
+        drill_name: drillName,
+      });
+      if (data.video_url) {
+        setIdealVideoUrl(data.video_url);
+        if (data.thumbnail_url) setIdealThumbnailUrl(data.thumbnail_url);
+      } else if (data.job_id) {
+        setIdealJobId(data.job_id);
+      }
+      setShowIdeal(true);
+    } catch {
+      // Silent.
+    } finally {
+      setIdealLoading(false);
+    }
+  };
+
+  const showAnimaForgeUI = animaAvailable === true && !!drillId;
+  // ========================================================================
 
   return (
     <Modal
@@ -87,6 +165,36 @@ export default function PostDrillDebrief({
         {scoreDropped && (
           <div className="rounded-lg border border-amber-600/40 bg-amber-950/30 px-4 py-3 text-sm text-amber-300">
             Consider a break — fatigue may be affecting performance
+          </div>
+        )}
+
+        {/* AnimaForge: ideal execution comparison */}
+        {showAnimaForgeUI && (
+          <div className="rounded-lg border border-forge-700/30 bg-forge-950/10 p-3">
+            <p className="text-xs text-forge-300 mb-2">
+              Compare what perfect looks like vs your reps
+            </p>
+            <button
+              onClick={handleWatchIdeal}
+              disabled={idealLoading}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-800 hover:bg-dark-700 border border-forge-700/40 text-dark-100 text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <Film className="w-4 h-4 text-forge-400" />
+              {idealLoading ? 'Loading…' : 'Watch Ideal Execution'}
+            </button>
+            {showIdeal && (idealVideoUrl || idealJobId) && (
+              <div className="mt-3">
+                <AnimaPlayer
+                  jobId={idealJobId ?? undefined}
+                  videoUrl={idealVideoUrl ?? undefined}
+                  thumbnailUrl={idealThumbnailUrl ?? undefined}
+                  type="drill-demo"
+                  autoPlay
+                  loop
+                  onReady={(url) => setIdealVideoUrl(url)}
+                />
+              </div>
+            )}
           </div>
         )}
 
