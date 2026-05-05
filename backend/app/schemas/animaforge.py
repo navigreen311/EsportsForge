@@ -17,7 +17,7 @@ Section ownership:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -96,3 +96,26 @@ class JobDeleteResponse(BaseModel):
 
     deleted: bool
     job_id: str
+
+
+# ---------------------------------------------------------------------------
+# === Webhook (Agent #2) ===
+# ---------------------------------------------------------------------------
+
+class WebhookPayload(BaseModel):
+    """Body shape AnimaForge sends to ``POST /api/v1/animaforge/webhook``.
+
+    Mirrors the spec in the integration blueprint Section 1 / contract §4.
+    """
+
+    jobId: str = Field(..., description="AnimaForge's external job id")
+    status: Literal["complete", "failed", "rendering"]
+    videoUrl: str | None = None
+    thumbnailUrl: str | None = None
+    errorMessage: str | None = None
+
+
+class WebhookResponse(BaseModel):
+    """Echoed back to AnimaForge so it stops retrying."""
+
+    received: bool = True
