@@ -27,6 +27,7 @@ import VoiceSettings from '@/components/settings/VoiceSettings';
 import { ArsenalVoiceSettings } from '@/components/settings/ArsenalVoiceSettings';
 import ForgeIntegrations from '@/components/settings/ForgeIntegrations';
 import VisionSettings from '@/components/settings/VisionSettings';
+import AnimaForgeSettingsPanel from '@/components/settings/AnimaForgeSettingsPanel';
 import TiltGuardConfig from '@/components/settings/TiltGuardConfig';
 import ProgressionPreferences from '@/components/settings/ProgressionPreferences';
 import IntegrityModeSelector from '@/components/settings/IntegrityModeSelector';
@@ -140,6 +141,7 @@ export default function SettingsPage() {
             <VoiceSettings />
             <ArsenalVoiceSettings />
             <VisionSettings />
+            <AnimaForgeSettingsPanel />
             <ForgeIntegrations />
           </div>
         )}

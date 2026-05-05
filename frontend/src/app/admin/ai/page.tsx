@@ -4,7 +4,18 @@
 
 'use client';
 
-import { Brain, Cpu, Zap, Database } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+  Brain,
+  Clock,
+  Cpu,
+  Database,
+  Film,
+  ListOrdered,
+  Zap,
+} from 'lucide-react';
+
+import api from '@/lib/api';
 
 /* ------------------------------------------------------------------ */
 /*  Mock data                                                          */
@@ -57,7 +68,52 @@ const TREND_ICON: Record<string, { symbol: string; color: string }> = {
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
+interface AnimaForgeAdminStats {
+  jobs_today: number;
+  avg_render_seconds: number;
+  storage_mb: number;
+  queue_depth: number;
+}
+
+const ANIMA_ZERO: AnimaForgeAdminStats = {
+  jobs_today: 0,
+  avg_render_seconds: 0,
+  storage_mb: 0,
+  queue_depth: 0,
+};
+
 export default function AdminAIPage() {
+  const [animaStats, setAnimaStats] = useState<AnimaForgeAdminStats>(ANIMA_ZERO);
+  const [animaLoaded, setAnimaLoaded] = useState(false);
+  const [animaOnline, setAnimaOnline] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get<AnimaForgeAdminStats>(
+          '/animaforge/admin/stats'
+        );
+        if (!cancelled) {
+          setAnimaStats({ ...ANIMA_ZERO, ...res.data });
+        }
+      } catch {
+        if (!cancelled) setAnimaStats(ANIMA_ZERO);
+      } finally {
+        if (!cancelled) setAnimaLoaded(true);
+      }
+      try {
+        const res = await api.get<{ available: boolean }>('/animaforge/status');
+        if (!cancelled) setAnimaOnline(res.data.available);
+      } catch {
+        if (!cancelled) setAnimaOnline(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -126,6 +182,51 @@ export default function AdminAIPage() {
         </div>
       </div>
 
+      {/* AnimaForge — animation render service */}
+      <div className="rounded-xl border border-dark-700/60 bg-dark-900 p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Film className="h-4 w-4 text-forge-400" />
+            <h2 className="text-sm font-semibold text-dark-100">AnimaForge</h2>
+          </div>
+          {animaOnline === null ? (
+            <span className="text-[11px] text-dark-500">Checking…</span>
+          ) : animaOnline ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+              <span className="h-1 w-1 rounded-full bg-emerald-400" /> Online
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-400">
+              <span className="h-1 w-1 rounded-full bg-amber-400" /> Offline
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <AnimaTile
+            icon={<Film className="h-3.5 w-3.5" />}
+            label="Jobs Today"
+            value={animaLoaded ? animaStats.jobs_today.toLocaleString() : '—'}
+          />
+          <AnimaTile
+            icon={<Clock className="h-3.5 w-3.5" />}
+            label="Avg Render"
+            value={
+              animaLoaded ? `${animaStats.avg_render_seconds.toFixed(1)}s` : '—'
+            }
+          />
+          <AnimaTile
+            icon={<Database className="h-3.5 w-3.5" />}
+            label="Storage"
+            value={animaLoaded ? `${animaStats.storage_mb.toFixed(1)} MB` : '—'}
+          />
+          <AnimaTile
+            icon={<ListOrdered className="h-3.5 w-3.5" />}
+            label="Queue"
+            value={animaLoaded ? animaStats.queue_depth.toLocaleString() : '—'}
+          />
+        </div>
+      </div>
+
       {/* Agent Accuracy */}
       <div className="rounded-xl border border-dark-700/60 bg-dark-900 p-5">
         <h2 className="mb-4 text-sm font-semibold text-dark-100">Agent Accuracy</h2>
@@ -158,6 +259,26 @@ export default function AdminAIPage() {
           </table>
         </div>
       </div>
+    </div>
+  );
+}
+
+function AnimaTile({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-lg border border-dark-700/40 bg-dark-800/40 p-3">
+      <div className="flex items-center gap-1.5 text-[11px] text-dark-400">
+        {icon}
+        {label}
+      </div>
+      <p className="mt-0.5 text-lg font-bold text-dark-50">{value}</p>
     </div>
   );
 }

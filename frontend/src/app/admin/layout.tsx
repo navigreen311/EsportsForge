@@ -18,6 +18,7 @@ import {
   LifeBuoy,
   ArrowLeft,
   Shield,
+  Film,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -32,6 +33,7 @@ const ADMIN_NAV: AdminNavItem[] = [
   { label: 'Users',           href: '/admin/users',    icon: Users },
   { label: 'Revenue',         href: '/admin/revenue',  icon: DollarSign },
   { label: 'AI Performance',  href: '/admin/ai',       icon: Brain },
+  { label: 'AnimaForge',      href: '/admin/animaforge', icon: Film },
   { label: 'Meta Content',    href: '/admin/meta',     icon: Swords },
   { label: 'Patches',         href: '/admin/patches',  icon: FileText },
   { label: 'Support',         href: '/admin/support',  icon: LifeBuoy },

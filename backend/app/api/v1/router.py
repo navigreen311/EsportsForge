@@ -203,6 +203,14 @@ _mount("app.api.v1.endpoints.support",         prefix="/support",         tags=[
 # ═══════════════════════════════════════════════════════════════════════════
 _mount("app.api.v1.endpoints.admin",           prefix="/admin",           tags=["Admin"])
 
+# ===========================================================================
+# AnimaForge
+# ===========================================================================
+# Section header owned by Agent #1 per the integration contract; bootstrapped
+# here so Agent #10's slice can ship independently. Each agent appends ONLY
+# their own line under this header.
+_mount("app.api.v1.endpoints.animaforge_settings", prefix="/animaforge", tags=["AnimaForge"])
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Growth
 # ═══════════════════════════════════════════════════════════════════════════
