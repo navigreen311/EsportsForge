@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8000"]
 
+    # AnimaForge integration
+    animaforge_api_url: str = "http://localhost:3001"
+    animaforge_api_key: str = ""
+    animaforge_webhook_secret: str = ""           # HMAC for webhook verification
+    animaforge_webhook_base_url: str = "http://localhost:8001"  # the URL AnimaForge calls back
+    animaforge_default_quality: str = "standard"  # standard|high|low
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

@@ -211,6 +211,17 @@ _mount("app.api.v1.endpoints.push",            prefix="/push",            tags=[
 _mount("app.api.v1.endpoints.certifications",  prefix="/certifications",  tags=["Certifications"])
 _mount("app.api.v1.endpoints.leaderboard",     prefix="/leaderboard",     tags=["Leaderboard"])
 
+# ═══════════════════════════════════════════════════════════════════════════
+# AnimaForge
+# ═══════════════════════════════════════════════════════════════════════════
+_mount("app.api.v1.endpoints.animaforge_core",     prefix="/animaforge", tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_webhook",  prefix="/animaforge", tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_arsenal",  prefix="/animaforge/arsenal", tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_drill",    prefix="/animaforge/drill",   tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_play",     prefix="/animaforge/play",    tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_share",    prefix="/animaforge/share-win", tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_settings", prefix="/animaforge/settings",  tags=["AnimaForge"])
+
 
 # Backwards-compatible alias — tests/integration/conftest.py imports
 # `api_v1_router`. Keep both names exported so historic imports keep working.
