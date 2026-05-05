@@ -9,6 +9,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
+from app.services.animaforge.session_end_hook import fire_share_win_hook
+
 router = APIRouter(tags=["Sessions"])
 
 
@@ -172,4 +174,17 @@ async def update_session(session_id: uuid.UUID, payload: SessionUpdate) -> Sessi
     update_data = payload.model_dump(exclude_unset=True)
     session.update(update_data)
     session["updated_at"] = datetime.now(timezone.utc)
+
+    # Session-end → fire share-win triggers (non-blocking, errors swallowed).
+    if "result" in update_data:
+        await fire_share_win_hook(
+            user_id=str(session.get("user_id")),
+            title_id=str(session.get("title", "unknown")),
+            session_data={
+                "mode": session.get("mode"),
+                "result": session.get("result"),
+                **(session.get("stats") or {}),
+            },
+        )
+
     return SessionOut(**session)
