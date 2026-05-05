@@ -28,10 +28,10 @@ const MAX_RETRIES = 3;
 
 export interface AnimaPlayerProps {
   /** Job to poll. Either jobId OR videoUrl must be provided. */
-  jobId?: string;
+  jobId?: string | null;
   /** Direct video URL — skips polling. */
-  videoUrl?: string;
-  thumbnailUrl?: string;
+  videoUrl?: string | null;
+  thumbnailUrl?: string | null;
   type: AnimaPlayerType;
   /** Auto-play muted on mount (default: true for short diagrams). */
   autoPlay?: boolean;
@@ -68,7 +68,7 @@ export function AnimaPlayer({
   // Job polling. Disabled when we already have a direct videoUrl.
   // -------------------------------------------------------------------------
   const pollEnabled = !videoUrl && !!jobId && available !== false;
-  const { job, error: jobError, refresh } = useAnimaForgeJob(jobId, {
+  const { job, error: jobError, refresh } = useAnimaForgeJob(jobId ?? undefined, {
     pollIntervalMs,
     enabled: pollEnabled,
   });

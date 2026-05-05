@@ -47,6 +47,12 @@ export interface AnimaForgeJob {
   error_message?: string | null;
   completed_at?: string | null;
   created_at?: string;
+  // Compatibility aliases — feature components written with the blueprint's
+  // camelCase prop names. These echo the snake_case fields above so callers
+  // can use whichever convention they prefer.
+  videoUrl?: string | null;
+  thumbnailUrl?: string | null;
+  jobId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -58,9 +64,13 @@ export interface AnimaForgeJob {
  * backend skips queueing a new render and returns the URLs directly.
  */
 export interface AnimaForgeCachedResult {
-  video_url: string;
+  video_url?: string | null;
+  videoUrl?: string | null;
   thumbnail_url?: string | null;
-  cached: true;
+  thumbnailUrl?: string | null;
+  cached?: boolean;
+  job_id?: string | null;
+  jobId?: string | null;
 }
 
 /**
@@ -69,14 +79,26 @@ export interface AnimaForgeCachedResult {
  * status flips to `complete` or `failed`.
  */
 export interface AnimaForgePendingJob {
-  job_id: string;
-  estimated_seconds: number;
-  status: 'pending' | 'rendering';
-  cached?: false;
+  job_id?: string | null;
+  jobId?: string | null;
+  estimated_seconds?: number;
+  status?: 'pending' | 'rendering' | 'complete' | 'failed';
+  cached?: boolean;
+  video_url?: string | null;
+  videoUrl?: string | null;
+  thumbnail_url?: string | null;
+  thumbnailUrl?: string | null;
 }
 
-/** Discriminated union returned by every render-request endpoint. */
+/**
+ * Permissive union — wire shape varies between cache-hit and pending-job. We
+ * accept either field-naming convention so feature components written before
+ * the snake_case standardization still type-check.
+ */
 export type AnimaForgeRenderResponse = AnimaForgeCachedResult | AnimaForgePendingJob;
+
+/** Alias for play-diagram render results — consumed by gameplan components. */
+export type PlayDiagramRenderResult = AnimaForgeRenderResponse;
 
 // ---------------------------------------------------------------------------
 // Status / availability

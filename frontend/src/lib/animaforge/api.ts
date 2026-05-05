@@ -94,8 +94,9 @@ export async function requestDrillRender(payload: {
 /** Convenience: POST `/animaforge/play` (gameplan play diagrams). */
 export async function requestPlayRender(payload: {
   play_id: string;
-  title_id: string;
+  title_id?: string;
   coverage?: string;
+  opponent_coverage?: string;
 }): Promise<AnimaForgeRenderResponse> {
   const res = await api.post<AnimaForgeRenderResponse>('/animaforge/play', payload);
   return res.data;
@@ -121,14 +122,14 @@ export async function requestShareWinRender(payload: {
  */
 export async function getArsenalStatus(
   weaponId: string,
-): Promise<AnimaForgeJob | null> {
+): Promise<Partial<AnimaForgeJob>> {
   try {
     const res = await api.get<AnimaForgeJob | null>('/animaforge/arsenal/status', {
       params: { weapon_id: weaponId },
     });
-    return res.data ?? null;
+    return res.data ?? {};
   } catch {
-    return null;
+    return {};
   }
 }
 
@@ -139,12 +140,12 @@ export async function getArsenalStatus(
 export async function getDrillStatus(params: {
   title_id: string;
   drill_type: string;
-}): Promise<AnimaForgeJob | null> {
+}): Promise<Partial<AnimaForgeJob>> {
   try {
     const res = await api.get<AnimaForgeJob | null>('/animaforge/drill/status', { params });
-    return res.data ?? null;
+    return res.data ?? {};
   } catch {
-    return null;
+    return {};
   }
 }
 
@@ -155,11 +156,54 @@ export async function getDrillStatus(params: {
 export async function getPlayStatus(params: {
   play_id: string;
   coverage?: string;
-}): Promise<AnimaForgeJob | null> {
+  opponent_coverage?: string;
+}): Promise<Partial<AnimaForgeJob>> {
   try {
     const res = await api.get<AnimaForgeJob | null>('/animaforge/play/status', { params });
-    return res.data ?? null;
+    return res.data ?? {};
   } catch {
-    return null;
+    return {};
   }
 }
+
+// ---------------------------------------------------------------------------
+// Aliases consumed by feature components (added during merge — keep stable).
+// ---------------------------------------------------------------------------
+
+/**
+ * Alias for `getPlayStatus` — used by gameplan components which call it as
+ * `getPlayDiagramStatus(playId, coverage)` (positional). Accepts both shapes.
+ */
+export async function getPlayDiagramStatus(
+  playIdOrParams: string | { play_id: string; coverage?: string; opponent_coverage?: string },
+  coverage?: string,
+): Promise<Partial<AnimaForgeJob>> {
+  const params =
+    typeof playIdOrParams === 'string'
+      ? { play_id: playIdOrParams, coverage }
+      : playIdOrParams;
+  return getPlayStatus(params);
+}
+
+/** Alias for `requestPlayRender` — used by gameplan components. */
+export const renderPlayDiagram = requestPlayRender;
+
+/**
+ * Namespace export — feature components prefer `animaforgeApi.getJob(...)`
+ * over individual named imports. Just re-bundles the named exports above.
+ */
+export const animaforgeApi = {
+  getAvailability,
+  getJob,
+  listJobs,
+  deleteJob,
+  requestArsenalRender,
+  requestDrillRender,
+  requestPlayRender,
+  requestShareWinRender,
+  getArsenalStatus,
+  getDrillStatus,
+  getPlayStatus,
+  getPlayDiagramStatus,
+  renderPlayDiagram,
+};

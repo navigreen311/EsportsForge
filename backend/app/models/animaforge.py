@@ -45,6 +45,10 @@ STATUS_RENDERING = "rendering"
 STATUS_COMPLETE = "complete"
 STATUS_FAILED = "failed"
 
+# Statuses that close a render job — Agent #2's webhook uses this to
+# decide whether to set completed_at and create a Notification.
+TERMINAL_STATUSES: tuple[str, ...] = (STATUS_COMPLETE, STATUS_FAILED)
+
 
 # Special user_id used for shared (non-personalized) renders, e.g. drill demos.
 SYSTEM_USER_ID = "system"
