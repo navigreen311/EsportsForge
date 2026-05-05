@@ -16,6 +16,8 @@ import {
   Upload,
   Shield,
   Swords,
+  Camera,
+  PlayCircle,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import {
@@ -23,6 +25,18 @@ import {
   useRemoveWeapon,
   type Weapon,
 } from '@/hooks/useArsenal';
+import { useAnimaForgeAvailable } from '@/hooks/useAnimaForge';
+
+/**
+ * Animation status hint for a weapon card. Populated by the parent grid
+ * (which can batch-fetch jobs) — left undefined here means the card falls
+ * back to the static "Generate Animation" camera icon.
+ */
+export interface WeaponAnimationStatus {
+  status: 'complete' | 'pending' | 'rendering' | 'failed';
+  videoUrl?: string | null;
+  thumbnailUrl?: string | null;
+}
 
 const CATEGORY_TONE: Record<string, string> = {
   'Trick Play': 'bg-amber-500/15 text-amber-300 border-amber-500/30',
@@ -93,17 +107,36 @@ interface WeaponCardProps {
   weapon: Weapon;
   onView: (weapon: Weapon) => void;
   onAddToGameplan?: (weapon: Weapon) => void;
+  /**
+   * Optional animation-status hint sourced by the parent grid (avoids an
+   * N+1 fetch per card). Undefined = static "Generate Animation" state.
+   */
+  animationStatus?: WeaponAnimationStatus;
 }
 
-export function WeaponCard({ weapon, onView, onAddToGameplan }: WeaponCardProps) {
+export function WeaponCard({
+  weapon,
+  onView,
+  onAddToGameplan,
+  animationStatus,
+}: WeaponCardProps) {
   const save = useSaveWeapon();
   const remove = useRemoveWeapon();
+  const animaforge = useAnimaForgeAvailable();
+  const animaforgeAvailable = animaforge.available !== false;
 
   const toggleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (weapon.saved) remove.mutate(weapon.id);
     else save.mutate(weapon.id);
   };
+
+  const showAnimationHint =
+    animaforgeAvailable &&
+    animationStatus?.status === 'complete' &&
+    !!animationStatus.videoUrl;
+  const showAnimationGenerate =
+    animaforgeAvailable && !showAnimationHint;
 
   return (
     <div
@@ -120,6 +153,41 @@ export function WeaponCard({ weapon, onView, onAddToGameplan }: WeaponCardProps)
           : 'border-dark-700/50 hover:border-dark-600'
       )}
     >
+      {/* AnimaForge animation hint (top-right). Clicking opens the detail
+          panel — same as the rest of the card — so the player can hit
+          [Watch Animation]. */}
+      {showAnimationHint && animationStatus?.thumbnailUrl ? (
+        <div
+          className="absolute right-2 top-2 z-10 flex h-9 w-12 items-center justify-center overflow-hidden rounded-md border border-purple-500/40 bg-dark-950/60 shadow-sm"
+          title="Animation ready — click to watch"
+          aria-label="Animation ready"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={animationStatus.thumbnailUrl}
+            alt=""
+            className="h-full w-full object-cover opacity-90"
+          />
+          <PlayCircle className="absolute h-4 w-4 text-white drop-shadow" />
+        </div>
+      ) : showAnimationHint ? (
+        <div
+          className="absolute right-2 top-2 z-10 flex h-9 w-12 items-center justify-center rounded-md border border-purple-500/40 bg-purple-500/10 shadow-sm"
+          title="Animation ready — click to watch"
+          aria-label="Animation ready"
+        >
+          <PlayCircle className="h-4 w-4 text-purple-300" />
+        </div>
+      ) : showAnimationGenerate ? (
+        <div
+          className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-md border border-dark-700 bg-dark-800/80 text-dark-400 opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
+          title="Generate Animation"
+          aria-label="Generate Animation"
+        >
+          <Camera className="h-3.5 w-3.5" />
+        </div>
+      ) : null}
+
       {/* Top row: badges + bookmark */}
       <div className="mb-2 flex items-start gap-2">
         {weapon.side === 'defense' ? (
