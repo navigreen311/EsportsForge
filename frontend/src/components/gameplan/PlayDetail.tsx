@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 import { Target, Lightbulb, Zap } from 'lucide-react';
 import { Badge } from '@/components/shared/Badge';
 import { ConfidenceBar } from '@/components/shared/ConfidenceBar';
@@ -11,11 +13,20 @@ import ThreeLayerAudible from '@/components/gameplan/ThreeLayerAudible';
 import PlayerTwinBadge, { PLAY_EXECUTION_PCT } from '@/components/gameplan/PlayerTwinBadge';
 import ProofAIEvidence from '@/components/gameplan/ProofAIEvidence';
 import MetaExpiryWarning from '@/components/gameplan/MetaExpiryWarning';
+import AnimaPlayer from '@/components/animaforge/AnimaPlayer';
+import { useAnimaForgeAvailable } from '@/hooks/useAnimaForge';
+import {
+  getPlayDiagramStatus,
+  renderPlayDiagram,
+} from '@/lib/animaforge/api';
+import type { PlayDiagramRenderResult } from '@/lib/animaforge/types';
 import type { Play } from '@/types/gameplan';
 
 interface PlayDetailProps {
   play: Play | null;
   opponentName?: string;
+  /** Opponent's most likely coverage shell (drives per-coverage cache key). */
+  opponentCoverage?: string | null;
 }
 
 const situationLabels: Record<string, string> = {
@@ -29,7 +40,51 @@ const situationLabels: Record<string, string> = {
   'hurry-up': 'No-huddle tempo',
 };
 
-export default function PlayDetail({ play, opponentName = 'Opponent' }: PlayDetailProps) {
+export default function PlayDetail({
+  play,
+  opponentName = 'Opponent',
+  opponentCoverage = null,
+}: PlayDetailProps) {
+  const animaAvailable = useAnimaForgeAvailable();
+  const [animJob, setAnimJob] = useState<PlayDiagramRenderResult | null>(null);
+  const [showPlayer, setShowPlayer] = useState(false);
+
+  // Pre-request the play animation as soon as the panel mounts (or when the
+  // selected play / coverage variant changes). This way the render is already
+  // in flight by the time the user clicks Watch.
+  useEffect(() => {
+    if (!play || !animaAvailable) return;
+    let cancelled = false;
+    const coverageKey = opponentCoverage ?? 'none';
+
+    // Reset previous variant's state when the selection changes.
+    setAnimJob(null);
+    setShowPlayer(false);
+
+    (async () => {
+      try {
+        // Cheap status check first to avoid duplicate render submissions.
+        const existing = await getPlayDiagramStatus(play.id, coverageKey);
+        if (cancelled) return;
+        if (existing?.videoUrl || existing?.jobId) {
+          setAnimJob(existing);
+          return;
+        }
+        const fresh = await renderPlayDiagram({
+          play_id: play.id,
+          opponent_coverage: coverageKey,
+        });
+        if (!cancelled) setAnimJob(fresh);
+      } catch {
+        // Service offline — leave animJob null; gating hook hides UI.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [play?.id, opponentCoverage, animaAvailable]);
+
   if (!play) {
     return (
       <Card className="flex h-full items-center justify-center min-h-[400px]">
@@ -64,6 +119,16 @@ export default function PlayDetail({ play, opponentName = 'Opponent' }: PlayDeta
           >
             Test in SimLab
           </a>
+          {animaAvailable && (
+            <button
+              type="button"
+              onClick={() => setShowPlayer(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-forge-500/30 bg-forge-500/10 px-3 py-1.5 text-xs font-medium text-forge-400 transition-colors hover:bg-forge-500/20 hover:border-forge-500/50"
+              aria-label="Watch animated play diagram"
+            >
+              <span aria-hidden="true">🎬</span> Watch
+            </button>
+          )}
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {play.isKillSheetPlay && (
@@ -95,6 +160,30 @@ export default function PlayDetail({ play, opponentName = 'Opponent' }: PlayDeta
           ))}
         </div>
       </div>
+
+      {/* AnimaForge animated play diagram (only mounted after [Watch]). */}
+      {animaAvailable && showPlayer && (animJob?.jobId || animJob?.videoUrl) && (
+        <div>
+          <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-dark-200">
+            <span aria-hidden="true">🎬</span>
+            Animated Play Diagram
+            {opponentCoverage && (
+              <Badge variant="neutral" size="sm">
+                vs {opponentCoverage}
+              </Badge>
+            )}
+          </h3>
+          <AnimaPlayer
+            jobId={animJob.jobId}
+            videoUrl={animJob.videoUrl}
+            thumbnailUrl={animJob.thumbnailUrl}
+            type="play-diagram"
+            onReady={(url) =>
+              setAnimJob((prev) => ({ ...(prev ?? {}), videoUrl: url }))
+            }
+          />
+        </div>
+      )}
 
       {/* When to Call */}
       {play.situationTags.length > 0 && (
