@@ -31,6 +31,10 @@ from app.models.secret_weapon import (
     TITLE_IDS,
 )
 from app.models.defensive import DefensiveGameplan, DefensivePriority
+# STUB IMPORT (Agent #2 branch only) — AnimaForgeJob registered for test
+# table-creation. Agent #1 owns the canonical model; this import survives
+# merge because Agent #1's __init__.py update will replace this line.
+from app.models.animaforge import AnimaForgeJob  # noqa: F401
 
 __all__ = [
     # Mixins
