@@ -214,13 +214,15 @@ _mount("app.api.v1.endpoints.leaderboard",     prefix="/leaderboard",     tags=[
 # ═══════════════════════════════════════════════════════════════════════════
 # AnimaForge
 # ═══════════════════════════════════════════════════════════════════════════
+# All endpoint files declare absolute route paths (e.g. @router.post("/arsenal")),
+# so they all mount at the same /animaforge prefix.
 _mount("app.api.v1.endpoints.animaforge_core",     prefix="/animaforge", tags=["AnimaForge"])
 _mount("app.api.v1.endpoints.animaforge_webhook",  prefix="/animaforge", tags=["AnimaForge"])
-_mount("app.api.v1.endpoints.animaforge_arsenal",  prefix="/animaforge/arsenal", tags=["AnimaForge"])
-_mount("app.api.v1.endpoints.animaforge_drill",    prefix="/animaforge/drill",   tags=["AnimaForge"])
-_mount("app.api.v1.endpoints.animaforge_play",     prefix="/animaforge/play",    tags=["AnimaForge"])
-_mount("app.api.v1.endpoints.animaforge_share",    prefix="/animaforge/share-win", tags=["AnimaForge"])
-_mount("app.api.v1.endpoints.animaforge_settings", prefix="/animaforge/settings",  tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_arsenal",  prefix="/animaforge", tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_drill",    prefix="/animaforge", tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_play",     prefix="/animaforge", tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_share",    prefix="/animaforge", tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_settings", prefix="/animaforge", tags=["AnimaForge"])
 
 
 # Backwards-compatible alias — tests/integration/conftest.py imports

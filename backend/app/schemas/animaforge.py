@@ -321,3 +321,68 @@ class PendingShareWinsResponse(BaseModel):
     """Response for GET /api/v1/animaforge/pending-wins."""
 
     items: list[PendingShareWin] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# === Settings (Agent #10) ===
+# ---------------------------------------------------------------------------
+
+QualityLevel = Literal["standard", "high", "low"]
+
+
+class AnimaForgeSettingsResponse(BaseModel):
+    """User's per-user AnimaForge preferences.
+
+    Persistence is best-effort. The User model does not currently expose a JSON
+    settings column, so the backend may simply echo the defaults from
+    ``settings.animaforge_default_quality``. The frontend mirrors the values in
+    localStorage so they survive across sessions even when the backend cannot
+    persist them.
+    """
+
+    auto_arsenal: bool = Field(
+        default=True,
+        description="Auto-generate weapon-diagram animations when a weapon is saved.",
+    )
+    auto_drill: bool = Field(
+        default=True,
+        description="Auto-generate the drill demo before the first rep.",
+    )
+    auto_share: bool = Field(
+        default=True,
+        description="Auto-generate Share Your Win cards on milestone events.",
+    )
+    quality: QualityLevel = Field(
+        default="standard",
+        description="Default render quality (standard | high | low).",
+    )
+
+
+class AnimaForgeSettingsUpdate(BaseModel):
+    """Inbound payload for POST /api/v1/animaforge/settings."""
+
+    auto_arsenal: bool
+    auto_drill: bool
+    auto_share: bool
+    quality: QualityLevel
+
+
+class TestConnectionResponse(BaseModel):
+    """Returned by POST /api/v1/animaforge/test-connection."""
+
+    available: bool
+    latency_ms: int = Field(
+        ..., description="Round-trip latency in milliseconds, or 0 when offline."
+    )
+    message: str = Field(
+        ..., description="Human-readable status message for the UI to display."
+    )
+
+
+class AdminStatsResponse(BaseModel):
+    """Returned by GET /api/v1/animaforge/admin/stats — admin only."""
+
+    jobs_today: int = Field(..., ge=0)
+    avg_render_seconds: float = Field(..., ge=0.0)
+    storage_mb: float = Field(..., ge=0.0)
+    queue_depth: int = Field(..., ge=0)
