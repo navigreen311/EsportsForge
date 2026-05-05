@@ -273,3 +273,51 @@ class PlayDiagramStatusResponse(BaseModel):
     thumbnail_url: Optional[str] = None
     completed_at: Optional[datetime] = None
     spec: Optional[dict[str, Any]] = None
+
+
+# ---------------------------------------------------------------------------
+# === Share (Agent #9) ===
+# ---------------------------------------------------------------------------
+
+class ShareWinTrigger(BaseModel):
+    """A single share-win trigger fired during session-end detection."""
+
+    type: str = Field(..., description="Trigger type — see VALID_TRIGGER_TYPES.")
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
+class ShareWinRenderRequest(BaseModel):
+    """Body for POST /api/v1/animaforge/share-win."""
+
+    trigger_type: str
+    trigger_data: dict[str, Any] = Field(default_factory=dict)
+
+
+class ShareWinRenderResponse(BaseModel):
+    """Response for POST /api/v1/animaforge/share-win."""
+
+    job_id: str
+    status: str
+    estimated_seconds: int | None = None
+    cached: bool = False
+    video_url: str | None = None
+    thumbnail_url: str | None = None
+
+
+class PendingShareWin(BaseModel):
+    """A single share-win surfaced for the dashboard ShareWinModal."""
+
+    job_id: str
+    trigger_type: str
+    status: str
+    video_url: str | None = None
+    thumbnail_url: str | None = None
+    share_text: str | None = None
+    hashtags: list[str] = Field(default_factory=list)
+    completed_at: datetime | None = None
+
+
+class PendingShareWinsResponse(BaseModel):
+    """Response for GET /api/v1/animaforge/pending-wins."""
+
+    items: list[PendingShareWin] = Field(default_factory=list)

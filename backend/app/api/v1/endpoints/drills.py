@@ -16,6 +16,7 @@ from app.db.base import get_db
 from app.models.drill import Drill
 from app.models.user import User
 from app.services.ai.forgecore import forgecore
+from app.services.animaforge.session_end_hook import fire_share_win_hook
 
 router = APIRouter(tags=["Drills"])
 
@@ -168,6 +169,22 @@ async def complete_drill(
 
     await db.flush()
     await db.refresh(drill)
+
+    # Fire share-win triggers (non-blocking, errors swallowed). Synthesises
+    # session-data from the drill record so detectors that read win-streak /
+    # benchmark / ROI fields can run on richer payloads when callers extend.
+    await fire_share_win_hook(
+        user=current_user,
+        user_id=str(current_user.id),
+        title_id=drill.title,
+        session_data={
+            "mode": "drill",
+            "result": "win" if success else "loss",
+            "drill_id": str(drill.id),
+            "success_rate": drill.success_rate,
+            "completion_count": drill.completion_count,
+        },
+    )
 
     return drill
 
