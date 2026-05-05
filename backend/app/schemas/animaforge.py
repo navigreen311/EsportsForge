@@ -17,7 +17,7 @@ Section ownership:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -119,3 +119,45 @@ class WebhookResponse(BaseModel):
     """Echoed back to AnimaForge so it stops retrying."""
 
     received: bool = True
+
+
+# ---------------------------------------------------------------------------
+# === Arsenal (Agent #4) ===
+# ---------------------------------------------------------------------------
+
+class WeaponRenderRequest(BaseModel):
+    """Body for `POST /api/v1/animaforge/arsenal`."""
+
+    weapon_id: str = Field(..., min_length=1, description="Secret Weapon ID")
+
+
+class WeaponRenderResponse(BaseModel):
+    """Response for `POST /api/v1/animaforge/arsenal`.
+
+    Either the cached `video_url` block OR the pending `job_id` block is
+    populated — never both. Frontend branches on `cached`.
+    """
+
+    # Cached path
+    video_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    cached: Optional[bool] = None
+
+    # Pending path
+    job_id: Optional[str] = None
+    estimated_seconds: Optional[int] = None
+    status: Optional[str] = None
+
+
+class WeaponJobStatusResponse(BaseModel):
+    """Response for `GET /api/v1/animaforge/arsenal/status?weapon_id=...`.
+
+    All fields are optional so the endpoint can also return `{}` (no job
+    exists yet for this weapon).
+    """
+
+    job_id: Optional[str] = None
+    status: Optional[str] = None
+    video_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    completed_at: Optional[str] = None
