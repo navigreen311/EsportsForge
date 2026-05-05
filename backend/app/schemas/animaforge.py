@@ -1,0 +1,98 @@
+"""Pydantic schemas for the AnimaForge integration.
+
+This file is shared across all 10 AnimaForge agents. Each agent appends
+their own block under a ``# === <feature> ===`` header — DO NOT overwrite
+or reorganize blocks owned by other agents.
+
+Section ownership:
+  * ``# === Core (Agent #1) ===``     — Job, JobStatusResponse, RenderRequestResponse, AvailabilityResponse
+  * ``# === Webhook (Agent #2) ===``  — webhook payload schemas
+  * ``# === Arsenal (Agent #4) ===``  — weapon-diagram render schemas
+  * ``# === Drill (Agent #6) ===``    — drill-demo render schemas
+  * ``# === Play (Agent #8) ===``     — play-diagram render schemas
+  * ``# === Share (Agent #9) ===``    — share-win render schemas
+  * ``# === Settings (Agent #10) ===``— settings/admin schemas
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+# ---------------------------------------------------------------------------
+# === Core (Agent #1) ===
+# ---------------------------------------------------------------------------
+
+class AvailabilityResponse(BaseModel):
+    """Response for ``GET /api/v1/animaforge/status``."""
+
+    available: bool
+
+
+class JobStatusResponse(BaseModel):
+    """Detailed view of a single AnimaForge render job.
+
+    Returned by ``GET /api/v1/animaforge/jobs/{job_id}``. Merges the local
+    DB row with live status from AnimaForge when the job is still pending.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    job_id: str
+    user_id: str
+    type: str
+    source_id: str
+    title_id: str
+    status: str
+    video_url: str | None = None
+    thumbnail_url: str | None = None
+    progress: int | None = None
+    error_message: str | None = None
+    created_at: datetime
+    completed_at: datetime | None = None
+
+
+class JobListResponse(BaseModel):
+    """Paginated list of jobs for the current user.
+
+    Returned by ``GET /api/v1/animaforge/jobs``.
+    """
+
+    items: list[JobStatusResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class RenderRequestResponse(BaseModel):
+    """Response shape for any ``POST /api/v1/animaforge/<feature>`` endpoint.
+
+    Two valid populations (per contract §4):
+      * Cache hit:   ``{video_url, thumbnail_url, cached: true}``
+      * New job:     ``{job_id, estimated_seconds, status: "pending"}``
+
+    All fields are optional so a single schema covers both shapes.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    # Cache-hit fields
+    video_url: str | None = None
+    thumbnail_url: str | None = None
+    cached: bool | None = None
+
+    # New-job fields
+    job_id: str | None = None
+    estimated_seconds: int | None = None
+    status: str | None = None
+
+
+class JobDeleteResponse(BaseModel):
+    """Response for ``DELETE /api/v1/animaforge/jobs/{job_id}``."""
+
+    deleted: bool
+    job_id: str

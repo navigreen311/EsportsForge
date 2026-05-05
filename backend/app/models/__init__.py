@@ -31,6 +31,19 @@ from app.models.secret_weapon import (
     TITLE_IDS,
 )
 from app.models.defensive import DefensiveGameplan, DefensivePriority
+from app.models.animaforge import (
+    AnimaForgeJob,
+    JOB_TYPES,
+    JOB_TYPE_WEAPON,
+    JOB_TYPE_DRILL,
+    JOB_TYPE_PLAY,
+    JOB_TYPE_SHARE,
+    STATUS_PENDING,
+    STATUS_RENDERING,
+    STATUS_COMPLETE,
+    STATUS_FAILED,
+    SYSTEM_USER_ID,
+)
 
 __all__ = [
     # Mixins
@@ -79,4 +92,16 @@ __all__ = [
     # Defensive
     "DefensiveGameplan",
     "DefensivePriority",
+    # AnimaForge
+    "AnimaForgeJob",
+    "JOB_TYPES",
+    "JOB_TYPE_WEAPON",
+    "JOB_TYPE_DRILL",
+    "JOB_TYPE_PLAY",
+    "JOB_TYPE_SHARE",
+    "STATUS_PENDING",
+    "STATUS_RENDERING",
+    "STATUS_COMPLETE",
+    "STATUS_FAILED",
+    "SYSTEM_USER_ID",
 ]
