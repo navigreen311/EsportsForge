@@ -41,6 +41,21 @@ export default function InfoTooltip({
     return () => mq.removeEventListener?.('change', handler);
   }, []);
 
+  // Mobile bottom-sheet UX polish: Escape closes, body scroll locks while open
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSheetOpen(false);
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [sheetOpen]);
+
   if (isTouch) {
     return (
       <>
