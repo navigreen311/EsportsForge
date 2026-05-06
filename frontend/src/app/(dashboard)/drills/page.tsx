@@ -23,6 +23,7 @@ import TransferAIReadiness from '@/components/drills/TransferAIReadiness';
 import DrillStreakWidget from '@/components/drills/DrillStreakWidget';
 import { DrillStreak } from '@/components/drills/DrillStreakTracker';
 import { MonthlyConsistency } from '@/components/drills/DrillStreakTracker';
+import { WatchingPageHint } from '@/components/global/WatchingPageHint';
 
 export default function DrillsPage() {
   const {
@@ -140,15 +141,23 @@ export default function DrillsPage() {
           </p>
         </div>
 
-        {/* Session Progress + Streak */}
-        <div className="text-right hidden md:block space-y-1">
-          <p className="text-sm text-dark-400">Session Progress</p>
-          <p className="text-lg font-bold font-mono text-dark-100">
-            {totalReps}/{totalTargetReps}{' '}
-            <span className="text-sm text-dark-500 font-normal">reps</span>
-          </p>
-          {/* 9. Drill Streak */}
-          <DrillStreak />
+        {/* Watching status + Session Progress + Streak */}
+        <div className="flex items-start gap-3">
+          <WatchingPageHint
+            pageName="Drill Lab"
+            onHint="Watching Drill Lab — auto-tracking reps when frames flow"
+            offHint="Enable Watching for auto-rep tracking"
+            className="hidden md:inline-flex"
+          />
+          <div className="text-right hidden md:block space-y-1">
+            <p className="text-sm text-dark-400">Session Progress</p>
+            <p className="text-lg font-bold font-mono text-dark-100">
+              {totalReps}/{totalTargetReps}{' '}
+              <span className="text-sm text-dark-500 font-normal">reps</span>
+            </p>
+            {/* 9. Drill Streak */}
+            <DrillStreak />
+          </div>
         </div>
       </div>
 

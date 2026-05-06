@@ -33,6 +33,7 @@ import {
 } from '@/components/shared/SideToggle';
 import { useActiveArsenalTitle, type WeaponSide } from '@/hooks/useArsenal';
 import type { PackageTab, Play } from '@/types/gameplan';
+import { WatchingPageHint } from '@/components/global/WatchingPageHint';
 
 type ViewTab = PackageTab | 'script' | 'arsenal';
 
@@ -183,6 +184,11 @@ function GameplanPageBody() {
 
         {/* Opponent Selector + Generate */}
         <div className="flex items-center gap-3">
+          <WatchingPageHint
+            pageName="Gameplan"
+            onHint="Watching Gameplan — pre-snap reads will highlight matching plays"
+            offHint="Enable Watching for live play highlights"
+          />
           <div className="relative">
             <select
               value={selectedOpponentId}
