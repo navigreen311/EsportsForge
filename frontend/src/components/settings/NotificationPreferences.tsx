@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bell, BellOff, Calendar, Flame, Swords, Trophy, Brain, BarChart3, Bot, Zap, Save, CheckCircle } from 'lucide-react';
 import type { NotificationPreferences as NotificationPreferencesType } from '@/types/settings';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8001';
 
 interface NotificationPreferencesProps {
   preferences: NotificationPreferencesType;
@@ -80,24 +82,36 @@ export default function NotificationPreferences({ preferences, onUpdate }: Notif
   const [frequency, setFrequency] = useState<FrequencyOption>('immediately');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [permState, setPermState] = useState<NotificationPermission | 'unsupported'>('default');
+
+  useEffect(() => {
+    if (typeof Notification === 'undefined') setPermState('unsupported');
+    else setPermState(Notification.permission);
+  }, []);
 
   const handleToggleType = (key: string, value: boolean) => {
     setTypeToggles((prev) => ({ ...prev, [key]: value }));
   };
 
+  const requestPermission = async () => {
+    if (typeof Notification === 'undefined') return;
+    const result = await Notification.requestPermission();
+    setPermState(result);
+  };
+
   const handleSave = async () => {
     setSaving(true);
-    // Mock POST
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    try {
+      await fetch(`${API_BASE}/api/v1/notifications/preferences`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pushEnabled, types: typeToggles, frequency }),
+      });
+    } catch { /* ignore — local state still saved */ }
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
-
-  const showPermissionButton =
-    typeof window !== 'undefined' &&
-    typeof Notification !== 'undefined' &&
-    Notification.permission !== 'granted';
 
   const frequencyOptions: { key: FrequencyOption; label: string }[] = [
     { key: 'immediately', label: 'Immediately' },
@@ -140,13 +154,28 @@ export default function NotificationPreferences({ preferences, onUpdate }: Notif
             />
           </button>
         </div>
-        {showPermissionButton && (
+        {permState === 'default' && (
           <button
-            onClick={() => Notification.requestPermission()}
+            onClick={requestPermission}
             className="mt-4 rounded-lg border border-forge-500/30 bg-forge-500/10 px-4 py-2 text-sm font-medium text-forge-400 hover:bg-forge-500/20 transition-colors"
           >
             Request Permission
           </button>
+        )}
+        {permState === 'granted' && (
+          <p className="mt-4 inline-flex items-center gap-1.5 text-sm text-forge-400">
+            <CheckCircle className="w-4 h-4" /> Permissions Granted ✓
+          </p>
+        )}
+        {permState === 'denied' && (
+          <p className="mt-4 text-xs text-amber-300">
+            Browser notifications are denied. To enable, click the padlock in the address bar and allow notifications, then reload.
+          </p>
+        )}
+        {permState === 'unsupported' && (
+          <p className="mt-4 text-xs text-dark-500">
+            Browser notifications are not supported in this browser.
+          </p>
         )}
       </div>
 
