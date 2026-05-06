@@ -185,9 +185,9 @@ export default function PlayDetail({
         <div className="mt-1 flex items-center gap-3">
           <h2 className="text-2xl font-bold text-dark-50">{play.name}</h2>
           <SimLabButton
-            playId={play.id}
-            playName={play.name}
+            play={play}
             opponentName={opponentName}
+            opponentCoverage={opponentCoverage}
           />
           <a
             href={`/drills/simlab?play=${encodeURIComponent(play.name)}`}
