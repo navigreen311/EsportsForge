@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query
 
 from app.schemas.community import (
     CommunityContribution,
@@ -42,7 +42,7 @@ async def get_rankings(
 async def seed_opponent(
     title: str = Query(...),
     opponent_id: str = Query(...),
-    tendencies: dict = ...,
+    tendencies: dict = Body(...),
     archetype: str = Query("unknown"),
 ) -> OpponentSeed:
     """Seed opponent scouting data from community contributions."""

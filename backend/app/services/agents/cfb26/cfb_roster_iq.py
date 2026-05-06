@@ -47,7 +47,7 @@ class CFBRosterIQ:
     """School-by-school depth chart intelligence and dynasty roster projection."""
 
     def analyze_depth_chart(self, school: str, roster: list[dict]) -> DepthChartAnalysis:
-        position_groups = {}
+        position_groups: dict[str, list[dict]] = {}
         for player in roster:
             pos = player.get("position", "UNKNOWN")
             if pos not in position_groups:
@@ -94,7 +94,7 @@ class CFBRosterIQ:
 
     def get_position_needs(self, roster: list[dict], scheme: str = "spread") -> list[PositionNeed]:
         weights = POSITION_WEIGHTS.get(scheme, POSITION_WEIGHTS["spread"])
-        position_groups = {}
+        position_groups: dict[str, list[dict]] = {}
         for player in roster:
             pos = player.get("position", "UNKNOWN")
             if pos not in position_groups:
