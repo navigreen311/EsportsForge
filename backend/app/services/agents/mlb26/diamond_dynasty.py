@@ -38,8 +38,8 @@ _LINEUP_ORDER_PRIORITY: dict[int, dict[str, Any]] = {
     9: {"role": "nine_hole", "priority": ["speed", "contact"], "notes": "Pitcher spot in NL / fast guy in DH"},
 }
 
-# Pitching staff composition rules
-_STAFF_RULES: dict[str, dict[str, Any]] = {
+# Pitching staff composition rules — heterogeneous (int + nested dicts)
+_STAFF_RULES: dict[str, Any] = {
     "starter_count": 5,
     "closer": {"min_velocity": 95, "min_h9": 80, "min_k9": 85},
     "setup": {"min_velocity": 93, "min_h9": 75, "min_k9": 80},

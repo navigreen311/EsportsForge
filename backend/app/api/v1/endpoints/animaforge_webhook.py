@@ -29,8 +29,7 @@ import json
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Header, HTTPException, Request, status
-from fastapi.params import Depends
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

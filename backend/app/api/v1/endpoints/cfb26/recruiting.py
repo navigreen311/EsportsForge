@@ -32,15 +32,19 @@ async def evaluate_recruit(recruit: RecruitData) -> RecruitEvaluation:
 async def build_recruiting_board(dynasty: DynastyStateInput) -> RecruitingBoard:
     """Build a prioritized recruiting board for a dynasty program."""
     try:
-        return _engine.build_board(dynasty)
+        return _engine.optimize_recruiting_board(dynasty)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.post("/roadmap", response_model=RosterRoadmap)
-async def generate_roster_roadmap(roster: RosterInput) -> RosterRoadmap:
+async def generate_roster_roadmap(roster: RosterInput, years: int = 4) -> RosterRoadmap:
     """Generate a multi-year roster roadmap to maximize team trajectory."""
     try:
-        return _engine.generate_roadmap(roster)
+        return _engine.build_roster_roadmap(
+            current_roster=[p.model_dump() if hasattr(p, "model_dump") else p for p in roster.players],
+            years=years,
+            scheme_type=roster.scheme_type,
+        )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))

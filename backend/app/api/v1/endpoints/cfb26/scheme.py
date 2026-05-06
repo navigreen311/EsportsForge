@@ -8,6 +8,7 @@ from app.schemas.cfb26.scheme import (
     CounterScheme,
     OptionReadProgression,
     PlaybookAnalysis,
+    PlayType,
     SchemeProgression,
     SchemeType,
 )
@@ -22,7 +23,7 @@ _engine = SchemeDepthAI()
 async def analyze_playbook(scheme: SchemeType) -> PlaybookAnalysis:
     """Analyze playbook depth for a given scheme archetype."""
     try:
-        return _engine.analyze_playbook(scheme)
+        return _engine.analyze_playbook_depth({"scheme": scheme.value})
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -34,31 +35,27 @@ async def get_scheme_progression(
 ) -> SchemeProgression:
     """Get scheme mastery progression for a player."""
     try:
-        return _engine.get_progression(user_id, scheme)
+        return _engine.suggest_progression(user_id, scheme)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get("/{user_id}/option-reads", response_model=OptionReadProgression)
-async def get_option_reads(
+async def get_option_reads_endpoint(
     user_id: str,
-    scheme: SchemeType = Query(..., description="Scheme type"),
+    play_type: PlayType = Query(..., description="Play type to analyze"),
 ) -> OptionReadProgression:
-    """Get option read analysis and progression."""
+    """Get option read analysis and progression for a play type."""
     try:
-        return _engine.get_option_read_progression(user_id, scheme)
+        return _engine.get_option_reads(play_type)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get("/counter/{scheme}", response_model=CounterScheme)
-async def get_counter_scheme(
-    scheme: SchemeType,
-    opponent_tendencies: str = Query("", description="Comma-separated tendencies"),
-) -> CounterScheme:
+async def get_counter_scheme(scheme: SchemeType) -> CounterScheme:
     """Generate counter-strategy against an opponent's scheme."""
-    tendencies = [t.strip() for t in opponent_tendencies.split(",") if t.strip()]
     try:
-        return _engine.generate_counter(scheme, tendencies)
+        return _engine.get_scheme_counter(scheme)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
