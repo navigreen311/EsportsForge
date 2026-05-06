@@ -90,15 +90,17 @@ def require_role(allowed_roles: list[UserTier]):
     from app.core.security import get_current_user as _get_user
 
     async def _check_role(current_user: User = Depends(_get_user)) -> User:
-        if current_user.tier not in allowed_roles:
-            allowed_names = ", ".join(r.value for r in allowed_roles)
+        # current_user.tier is already a string (UserRole.value via property)
+        allowed_strs = [r.value for r in allowed_roles]
+        if current_user.tier not in allowed_strs:
+            allowed_names = ", ".join(allowed_strs)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
                     "error": "role_denied",
-                    "message": f"Requires one of: {allowed_names}. Your tier: {current_user.tier.value}.",
-                    "allowed_roles": [r.value for r in allowed_roles],
-                    "current_tier": current_user.tier.value,
+                    "message": f"Requires one of: {allowed_names}. Your tier: {current_user.tier}.",
+                    "allowed_roles": allowed_strs,
+                    "current_tier": current_user.tier,
                 },
             )
         return current_user

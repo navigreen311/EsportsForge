@@ -27,10 +27,20 @@ TIER_ORDER: list[UserTier] = [
 ]
 
 
-def _tier_level(tier: UserTier) -> int:
+def _as_role(tier: "UserTier | str") -> UserTier:
+    """Coerce a tier (which may arrive as a plain string from User.tier @property)
+    back into the UserTier enum so dict[UserTier]-keyed lookups type-check.
+
+    UserTier is a `str` enum, so equality and hashing already work at runtime —
+    this helper only exists to keep mypy happy at the boundary.
+    """
+    return tier if isinstance(tier, UserTier) else UserTier(tier)
+
+
+def _tier_level(tier: "UserTier | str") -> int:
     """Return the numeric level for a tier (0-based)."""
     try:
-        return TIER_ORDER.index(tier)
+        return TIER_ORDER.index(_as_role(tier))
     except ValueError:
         return 0
 
@@ -139,10 +149,10 @@ def require_tier(minimum_tier: UserTier):
                     "error": "tier_access_denied",
                     "message": (
                         f"This feature requires '{minimum_tier.value}' tier or above. "
-                        f"Current tier: '{current_user.tier.value}'."
+                        f"Current tier: '{current_user.tier}'."
                     ),
                     "required_tier": minimum_tier.value,
-                    "current_tier": current_user.tier.value,
+                    "current_tier": current_user.tier,
                     "upgrade_url": "/api/v1/subscription/upgrade",
                 },
             )
@@ -162,7 +172,7 @@ def check_title_access(user: User, title: str) -> bool:
 
     Free = 1 title, Competitive = 3, Elite/Team = all 11.
     """
-    limit = TIER_TITLE_LIMITS.get(user.tier)
+    limit = TIER_TITLE_LIMITS.get(_as_role(user.tier))
     if limit is None:
         return True  # unlimited
 
@@ -194,16 +204,16 @@ def require_title_access(title_param: str = "title"):
             title_param
         )
         if title and not check_title_access(current_user, title):
-            limit = TIER_TITLE_LIMITS.get(current_user.tier, 1)
+            limit = TIER_TITLE_LIMITS.get(_as_role(current_user.tier), 1)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
                     "error": "title_access_denied",
                     "message": (
-                        f"Your '{current_user.tier.value}' tier allows access to "
+                        f"Your '{current_user.tier}' tier allows access to "
                         f"{limit} title(s). Upgrade to access '{title}'."
                     ),
-                    "current_tier": current_user.tier.value,
+                    "current_tier": current_user.tier,
                     "title_limit": limit,
                     "requested_title": title,
                     "upgrade_url": "/api/v1/subscription/upgrade",
@@ -220,7 +230,7 @@ def require_title_access(title_param: str = "title"):
 
 def check_feature_access(user: User, feature: str) -> bool:
     """Return True if the user's tier includes the named feature."""
-    allowed = TIER_FEATURES.get(user.tier, set())
+    allowed = TIER_FEATURES.get(_as_role(user.tier), set())
     return feature in allowed
 
 
@@ -236,10 +246,10 @@ def require_feature(feature: str):
                     "error": "feature_access_denied",
                     "message": (
                         f"The '{feature}' feature is not available on your "
-                        f"'{current_user.tier.value}' tier."
+                        f"'{current_user.tier}' tier."
                     ),
                     "feature": feature,
-                    "current_tier": current_user.tier.value,
+                    "current_tier": current_user.tier,
                     "upgrade_url": "/api/v1/subscription/upgrade",
                 },
             )
@@ -288,10 +298,10 @@ def requires_tier(minimum_tier: UserTier):
                                 "error": "tier_access_denied",
                                 "message": (
                                     f"This feature requires '{minimum_tier.value}' tier or above. "
-                                    f"Current tier: '{user.tier.value}'."
+                                    f"Current tier: '{user.tier}'."
                                 ),
                                 "required_tier": minimum_tier.value,
-                                "current_tier": user.tier.value,
+                                "current_tier": user.tier,
                             },
                         )
             return await func(*args, **kwargs)
@@ -355,7 +365,7 @@ class TierGateMiddleware(BaseHTTPMiddleware):
         user = getattr(request.state, "user", None)
         if user is not None:
             request.state.user_tier = user.tier
-            request.state.tier_features = TIER_FEATURES.get(user.tier, set())
+            request.state.tier_features = TIER_FEATURES.get(_as_role(user.tier), set())
 
             # Check route-level tier requirements
             for prefix, min_tier in self.ROUTE_TIER_MAP.items():
