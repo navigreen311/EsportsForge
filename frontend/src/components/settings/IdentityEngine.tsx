@@ -2,6 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Save, Loader2, CheckCircle } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8001';
+
+function sliderColor(v: number): string {
+  if (v <= 3) return 'text-red-400';
+  if (v <= 7) return 'text-amber-300';
+  return 'text-green-400';
+}
 
 // --- Data Definitions ---
 
@@ -73,6 +82,7 @@ const STORAGE_KEY = 'esportsforge_identity_engine';
 // --- Component ---
 
 export default function IdentityEngine() {
+  const { data: session } = useSession();
   // Section A
   const [offensiveIdentity, setOffensiveIdentity] = useState<string>('balanced');
   const [defensivePhilosophy, setDefensivePhilosophy] = useState<string>('coverage-shell');
@@ -148,11 +158,17 @@ export default function IdentityEngine() {
         new CustomEvent('playertwin-recalibrating', { detail: { active: true } })
       );
 
-      // Step 5: Fire-and-forget API persist
-      fetch('/api/identity', {
+      // Step 5: Fire-and-forget API persist + PlayerTwin recalibrate trigger
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.accessToken) headers.Authorization = `Bearer ${session.accessToken}`;
+      fetch(`${API_BASE}/api/v1/identity/save`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(data),
+      }).catch(() => {});
+      fetch(`${API_BASE}/api/v1/player-twin/recalibrate`, {
+        method: 'POST',
+        headers,
       }).catch(() => {});
 
       // Button success flash
@@ -185,6 +201,7 @@ export default function IdentityEngine() {
     comfortZones,
     directness,
     frequency,
+    session?.accessToken,
   ]);
 
   const toggleComfortZone = (tag: string) => {
@@ -270,7 +287,7 @@ export default function IdentityEngine() {
             className="w-full accent-forge-500 bg-dark-700"
           />
           <div className="flex items-center justify-between mt-1.5">
-            <span className="text-sm font-medium text-forge-400">
+            <span className={`text-sm font-medium ${sliderColor(riskTolerance)}`}>
               {riskTolerance} &mdash; {getRiskLabel(riskTolerance)}
             </span>
           </div>
@@ -294,7 +311,7 @@ export default function IdentityEngine() {
           />
           <div className="flex items-center justify-between mt-1.5">
             <span className="text-xs text-dark-500">Always Kick</span>
-            <span className="text-sm font-medium text-forge-400">
+            <span className={`text-sm font-medium ${sliderColor(fourthDown)}`}>
               {fourthDown} &mdash; {getFourthDownLabel(fourthDown)}
             </span>
             <span className="text-xs text-dark-500">Always Go For It</span>
@@ -316,7 +333,7 @@ export default function IdentityEngine() {
           />
           <div className="flex items-center justify-between mt-1.5">
             <span className="text-xs text-dark-500">Conservative Hold</span>
-            <span className="text-sm font-medium text-forge-400">
+            <span className={`text-sm font-medium ${sliderColor(aggressionAfterLead)}`}>
               {aggressionAfterLead} &mdash; {getAggressionLabel(aggressionAfterLead)}
             </span>
             <span className="text-xs text-dark-500">Keep Attacking</span>
