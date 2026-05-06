@@ -1,8 +1,27 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Save, Loader2, CheckCircle } from 'lucide-react';
+import { Save, Loader2, CheckCircle, Info } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import InfoTooltip from '@/components/global/InfoTooltip';
+
+const DIRECTNESS_TOOLTIPS: Record<string, string> = {
+  'one-answer':
+    "ForgeCore tells you exactly what to do, no debate. 'Run PA Crossers.' No alternatives, no explanation unless you ask. Best for tournament play when you need decisions fast.",
+  'recommendation':
+    "ForgeCore gives you the best play AND a backup. 'Run PA Crossers. If they show Cover 0, audible to Quick Slants.' Gives you flexibility without slowing you down.",
+  'full-analysis':
+    'ForgeCore explains the why behind every recommendation — defensive read, evidence, confidence %, risk factors, alternative options. Best for learning and offline lab study. Slower in live play.',
+};
+
+const FREQUENCY_TOOLTIPS: Record<string, string> = {
+  'low':
+    'ForgeCore only speaks up for critical moments — 4th down decisions, red zone calls, late-game clutch situations. The rest of the time it stays silent and lets you play.',
+  'standard':
+    'ForgeCore offers balanced suggestions throughout the game — pre-snap reads, situational adjustments, mid-drive corrections. Recommended default.',
+  'high':
+    'ForgeCore is proactive coaching — every drive, every red zone trip, every defensive series. Best for skill development. Can feel chatty in tournament play.',
+};
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8001';
 
@@ -402,18 +421,24 @@ export default function IdentityEngine() {
           </label>
           <div className="grid grid-cols-3 gap-3">
             {directnessOptions.map((option) => (
-              <button
+              <InfoTooltip
                 key={option.id}
-                onClick={() => setDirectness(option.id)}
-                className={`rounded-lg p-4 text-left border transition-all ${
-                  directness === option.id
-                    ? 'border-forge-500 bg-forge-500/5'
-                    : 'border-dark-700 bg-dark-800/50 hover:border-dark-500'
-                }`}
+                content={DIRECTNESS_TOOLTIPS[option.id]}
+                mobileTitle={option.label}
               >
-                <p className="text-sm font-bold text-dark-100">{option.label}</p>
-                <p className="text-xs text-dark-400 mt-0.5">{option.description}</p>
-              </button>
+                <button
+                  onClick={() => setDirectness(option.id)}
+                  className={`relative rounded-lg p-4 text-left border transition-all cursor-help hover:bg-dark-800/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forge-500/40 ${
+                    directness === option.id
+                      ? 'border-forge-500 bg-forge-500/5'
+                      : 'border-dark-700 bg-dark-800/50 hover:border-dark-500'
+                  }`}
+                >
+                  <Info className="absolute top-2 right-2 h-3 w-3 text-dark-500 hover:text-dark-300 transition-colors" />
+                  <p className="text-sm font-bold text-dark-100 pr-4">{option.label}</p>
+                  <p className="text-xs text-dark-400 mt-0.5">{option.description}</p>
+                </button>
+              </InfoTooltip>
             ))}
           </div>
         </div>
@@ -425,18 +450,24 @@ export default function IdentityEngine() {
           </label>
           <div className="grid grid-cols-3 gap-3">
             {frequencyOptions.map((option) => (
-              <button
+              <InfoTooltip
                 key={option.id}
-                onClick={() => setFrequency(option.id)}
-                className={`rounded-lg p-4 text-left border transition-all ${
-                  frequency === option.id
-                    ? 'border-forge-500 bg-forge-500/5'
-                    : 'border-dark-700 bg-dark-800/50 hover:border-dark-500'
-                }`}
+                content={FREQUENCY_TOOLTIPS[option.id]}
+                mobileTitle={option.label}
               >
-                <p className="text-sm font-bold text-dark-100">{option.label}</p>
-                <p className="text-xs text-dark-400 mt-0.5">{option.description}</p>
-              </button>
+                <button
+                  onClick={() => setFrequency(option.id)}
+                  className={`relative rounded-lg p-4 text-left border transition-all cursor-help hover:bg-dark-800/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forge-500/40 ${
+                    frequency === option.id
+                      ? 'border-forge-500 bg-forge-500/5'
+                      : 'border-dark-700 bg-dark-800/50 hover:border-dark-500'
+                  }`}
+                >
+                  <Info className="absolute top-2 right-2 h-3 w-3 text-dark-500 hover:text-dark-300 transition-colors" />
+                  <p className="text-sm font-bold text-dark-100 pr-4">{option.label}</p>
+                  <p className="text-xs text-dark-400 mt-0.5">{option.description}</p>
+                </button>
+              </InfoTooltip>
             ))}
           </div>
         </div>

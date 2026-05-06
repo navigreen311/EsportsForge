@@ -1,8 +1,20 @@
 'use client';
 
-import { Gamepad2, Target, Joystick, Lock } from 'lucide-react';
+import { Gamepad2, Target, Joystick, Lock, Info } from 'lucide-react';
 import type { GameSettings as GameSettingsType, GameTitle, GameMode, InputType } from '@/types/settings';
 import { GAME_TITLE_LABELS } from '@/types/settings';
+import InfoTooltip from '@/components/global/InfoTooltip';
+
+export const GAME_MODE_TOOLTIPS: Record<GameMode, string> = {
+  ranked:
+    'Competitive ladder play. Most AI features active. Some restrictions for fair play — no live formation prediction, no auto-audible AI. Counts toward your competitive record.',
+  tournament:
+    'Bracket-based competition. Stricter rules — only pre-approved AI tools allowed. No real-time AI suggestions, no opponent scouting during matches. Anti-cheat compliance enforced. Used for sanctioned events.',
+  training:
+    'Practice and skill building. Full AI suite available. Drills, SimLab scenarios, gameplan testing. No competitive impact. Best for learning new schemes or working on weaknesses.',
+  casual:
+    'Unranked play. All AI features active, no competitive pressure. Use for warm-ups, friendly matches, or trying experimental gameplans without affecting your record.',
+};
 
 interface GameSettingsProps {
   settings: GameSettingsType;
@@ -80,26 +92,32 @@ export default function GameSettings({ settings, onUpdate, tier = 'free' }: Game
         </label>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {gameModes.map((mode) => (
-            <button
+            <InfoTooltip
               key={mode.value}
-              onClick={() => onUpdate({ preferredMode: mode.value })}
-              className={`rounded-lg border p-3 text-left transition-all ${
-                settings.preferredMode === mode.value
-                  ? 'border-forge-500 bg-forge-500/10 ring-1 ring-forge-500'
-                  : 'border-dark-600 bg-dark-800 hover:border-dark-500'
-              }`}
+              content={GAME_MODE_TOOLTIPS[mode.value]}
+              mobileTitle={mode.label}
             >
-              <p
-                className={`text-sm font-medium ${
+              <button
+                onClick={() => onUpdate({ preferredMode: mode.value })}
+                className={`relative rounded-lg border p-3 text-left transition-all cursor-help hover:bg-dark-800/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forge-500/40 ${
                   settings.preferredMode === mode.value
-                    ? 'text-forge-400'
-                    : 'text-dark-200'
+                    ? 'border-forge-500 bg-forge-500/10 ring-1 ring-forge-500'
+                    : 'border-dark-600 bg-dark-800 hover:border-dark-500'
                 }`}
               >
-                {mode.label}
-              </p>
-              <p className="text-xs text-dark-500 mt-0.5">{mode.description}</p>
-            </button>
+                <Info className="absolute top-2 right-2 h-3 w-3 text-dark-500 hover:text-dark-300 transition-colors" />
+                <p
+                  className={`text-sm font-medium pr-4 ${
+                    settings.preferredMode === mode.value
+                      ? 'text-forge-400'
+                      : 'text-dark-200'
+                  }`}
+                >
+                  {mode.label}
+                </p>
+                <p className="text-xs text-dark-500 mt-0.5">{mode.description}</p>
+              </button>
+            </InfoTooltip>
           ))}
         </div>
       </div>

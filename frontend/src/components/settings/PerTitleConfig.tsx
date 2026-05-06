@@ -1,6 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { Info } from 'lucide-react';
+import InfoTooltip from '@/components/global/InfoTooltip';
+import { GAME_MODE_TOOLTIPS } from './GameSettings';
+import type { GameMode } from '@/types/settings';
 
 interface PerTitleConfigProps {
   activeTitle: string;
@@ -126,19 +130,28 @@ export default function PerTitleConfig({ activeTitle }: PerTitleConfigProps) {
             Preferred Mode
           </label>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {modes.map((mode) => (
-              <button
-                key={mode}
-                onClick={() => updateConfig({ preferredMode: mode })}
-                className={`rounded-lg border p-3 text-left text-sm font-medium transition-all ${
-                  current.preferredMode === mode
-                    ? 'border-forge-500 bg-forge-500/5 text-forge-400'
-                    : 'border-dark-700 bg-dark-800/50 text-dark-200 hover:border-dark-500'
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
+            {modes.map((mode) => {
+              const tipKey = mode.toLowerCase() as GameMode;
+              return (
+                <InfoTooltip
+                  key={mode}
+                  content={GAME_MODE_TOOLTIPS[tipKey]}
+                  mobileTitle={mode}
+                >
+                  <button
+                    onClick={() => updateConfig({ preferredMode: mode })}
+                    className={`relative rounded-lg border p-3 text-left text-sm font-medium transition-all cursor-help hover:bg-dark-800/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forge-500/40 ${
+                      current.preferredMode === mode
+                        ? 'border-forge-500 bg-forge-500/5 text-forge-400'
+                        : 'border-dark-700 bg-dark-800/50 text-dark-200 hover:border-dark-500'
+                    }`}
+                  >
+                    <Info className="absolute top-1.5 right-1.5 h-3 w-3 text-dark-500 hover:text-dark-300 transition-colors" />
+                    <span className="pr-3">{mode}</span>
+                  </button>
+                </InfoTooltip>
+              );
+            })}
           </div>
         </div>
 
