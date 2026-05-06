@@ -1,142 +1,122 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff, Lock, Check, X } from 'lucide-react';
-import Link from 'next/link';
+import { useState } from 'react';
+import { Eye, EyeOff, Lock } from 'lucide-react';
+import { clsx } from 'clsx';
 import { useUIStore } from '@/lib/store';
+import { useWatchingStore } from '@/lib/watchingStore';
+import { VisionAudioForgeService } from '@/lib/services/visionaudioforge';
+import { CaptureSourceModal } from '@/components/session/CaptureSourceModal';
 
-type VisionStatus = 'active' | 'processing' | 'offline' | 'restricted';
-
-const STATUS_CONFIG: Record<VisionStatus, { tooltip: string }> = {
-  active: { tooltip: 'VisionAudioForge — Ready' },
-  processing: { tooltip: 'FilmAI is analyzing...' },
-  offline: { tooltip: 'VisionAudioForge offline' },
-  restricted: { tooltip: 'Screen capture disabled in Ranked mode (anti-cheat)' },
-};
-
+/**
+ * Canonical Watching toggle in the top bar.
+ *
+ * UX:
+ *   - OFF + capture source not configured → opens CaptureSourceModal; on
+ *     selection, transitions to ON.
+ *   - OFF + source configured            → toggles to ON immediately.
+ *   - ON                                  → toggles to OFF.
+ *   - Restricted (ranked / tournament mode) → button is disabled with a Lock
+ *     overlay and a tooltip explaining the anti-cheat policy. Clicks no-op.
+ *   - Paused                              → amber dot + "paused" tooltip; click
+ *     still toggles to OFF (player can stop a paused session).
+ */
 export default function VisionStatusIcon() {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const currentMode = useUIStore((s) => s.currentMode);
+  const isWatching = useWatchingStore((s) => s.isWatching);
+  const pausedUntil = useWatchingStore((s) => s.pausedUntil);
+  const captureSource = useWatchingStore((s) => s.captureSource);
+  const start = useWatchingStore((s) => s.start);
+  const stop = useWatchingStore((s) => s.stop);
+  const setSource = useWatchingStore((s) => s.setSource);
+  const [showCaptureModal, setShowCaptureModal] = useState(false);
 
-  // Determine status based on integrity / game mode
-  const status =
-    (currentMode === 'ranked' || currentMode === 'tournament'
-      ? 'restricted'
-      : 'active') as VisionStatus;
+  const isRestricted =
+    currentMode === 'ranked' || currentMode === 'tournament';
+  const isPaused = pausedUntil !== null && pausedUntil > Date.now();
 
-  const isRestricted = status === 'restricted';
+  const tooltip = isRestricted
+    ? 'Watching is disabled in ranked / tournament modes (anti-cheat).'
+    : isWatching
+      ? isPaused
+        ? 'Paused — click to stop'
+        : 'Watching live — click to stop'
+      : captureSource
+        ? 'Click to start watching'
+        : 'Click to set up watching';
 
-  // Close on outside click
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+  const handleClick = () => {
+    if (isRestricted) return;
+    if (isWatching) {
+      stop();
+      return;
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const features = [
-    { label: 'Film Analysis', available: true },
-    { label: 'Replay Upload', available: true },
-    { label: 'Screen Capture', available: !isRestricted },
-    { label: 'Input Telemetry', available: true },
-    { label: 'Clip Export', available: true },
-  ];
+    if (!captureSource) {
+      setShowCaptureModal(true);
+      return;
+    }
+    start();
+  };
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      {/* Icon Button */}
+    <>
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="rounded-lg p-2 text-dark-400 hover:bg-dark-800 hover:text-dark-200 transition-colors relative"
-        title={STATUS_CONFIG[status].tooltip}
-        aria-label={STATUS_CONFIG[status].tooltip}
+        onClick={handleClick}
+        disabled={isRestricted}
+        className={clsx(
+          'relative rounded-lg p-2 transition-colors',
+          isRestricted
+            ? 'cursor-not-allowed text-amber-400 opacity-70'
+            : isWatching
+              ? 'text-forge-300 hover:bg-forge-500/10'
+              : 'text-dark-400 hover:bg-dark-800 hover:text-dark-200'
+        )}
+        title={tooltip}
+        aria-label={tooltip}
+        aria-pressed={isWatching}
       >
-        {status === 'offline' ? (
-          <EyeOff className="h-5 w-5 text-dark-500" />
-        ) : status === 'restricted' ? (
+        {isRestricted ? (
           <span className="relative inline-flex">
             <Eye className="h-5 w-5" />
             <Lock className="absolute -bottom-0.5 -right-0.5 h-3 w-3 text-amber-400" />
           </span>
-        ) : (
+        ) : isWatching ? (
           <Eye className="h-5 w-5" />
+        ) : (
+          <EyeOff className="h-5 w-5" />
         )}
 
-        {/* Status dot overlay */}
-        {status === 'active' && (
-          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-forge-400" />
+        {/* Status dot — green pulsing when live, amber when paused. */}
+        {isWatching && !isPaused && (
+          <span className="absolute right-1 top-1 inline-flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-forge-400 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-forge-400" />
+          </span>
         )}
-        {status === 'processing' && (
-          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+        {isWatching && isPaused && (
+          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-400" />
         )}
       </button>
 
-      {/* Dropdown Panel */}
-      {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-72 z-20 rounded-lg border border-dark-700/50 bg-dark-900 shadow-xl p-4">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-bold text-dark-100">VisionAudioForge</h3>
-            <span
-              className={`inline-flex items-center gap-1 text-xs font-medium ${
-                isRestricted ? 'text-amber-400' : 'text-forge-400'
-              }`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  isRestricted ? 'bg-amber-400' : 'bg-forge-400'
-                }`}
-              />
-              {isRestricted ? 'Restricted' : 'Active'}
-            </span>
-          </div>
-
-          {/* Source */}
-          <p className="text-[10px] text-dark-500 mb-3">navigreen311/visionaudioforge</p>
-
-          {/* Feature List */}
-          <div className="space-y-1.5 mb-4">
-            {features.map((feat) => (
-              <div key={feat.label} className="flex items-center justify-between text-xs">
-                <span className="text-dark-300">{feat.label}</span>
-                {feat.available ? (
-                  <span className="flex items-center gap-1 text-forge-400">
-                    <Check className="h-3 w-3" />
-                    Available
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 text-red-400">
-                    <X className="h-3 w-3" />
-                    Blocked
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <Link
-              href="/analytics"
-              className="flex-1 rounded-md bg-dark-800 px-3 py-1.5 text-center text-xs font-medium text-dark-200 hover:bg-dark-700 transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              Upload Replay
-            </Link>
-            <Link
-              href="/analytics"
-              className="flex-1 rounded-md bg-forge-600 px-3 py-1.5 text-center text-xs font-medium text-white hover:bg-forge-500 transition-colors"
-              onClick={() => setIsOpen(false)}
-            >
-              Open Film Room
-            </Link>
-          </div>
-        </div>
-      )}
-    </div>
+      <CaptureSourceModal
+        open={showCaptureModal}
+        onClose={() => setShowCaptureModal(false)}
+        onSelected={(source) => {
+          // CaptureSourceModal already wrote to localStorage via
+          // VisionAudioForgeService.setCaptureSource — mirror it into the
+          // store and proceed straight to ON.
+          setSource(source);
+          setShowCaptureModal(false);
+          start();
+          // Defensive: keep VisionAudioForgeService and store in lock-step
+          // even if the modal's persistence path changes underneath us.
+          try {
+            VisionAudioForgeService.setCaptureSource(source);
+          } catch {
+            /* noop */
+          }
+        }}
+      />
+    </>
   );
 }
