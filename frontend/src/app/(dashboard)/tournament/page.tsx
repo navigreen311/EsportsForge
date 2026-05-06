@@ -261,27 +261,38 @@ export default function TournamentPage() {
   const resetComplete = resetSteps.every(Boolean);
   const resetCount = resetSteps.filter(Boolean).length;
 
-  // Task 2C: voice command handler
+  // Task 2C: voice command handlers (also bound to clickable pills, C2)
+  const speakBriefing = useCallback(() => {
+    const firstOpp = OPPONENT_QUEUE[0];
+    const cards = MEMORY_CARDS[firstOpp.name];
+    const text = cards
+      ? `Next opponent: ${firstOpp.name}. ${firstOpp.archetype}. ${cards.join('. ')}`
+      : `Next opponent: ${firstOpp.name}. ${firstOpp.archetype}.`;
+    voice.speak(text);
+  }, [voice]);
+
+  const startReset = useCallback(() => {
+    resetSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setBreathingActive(true);
+  }, []);
+
+  const speakRecord = useCallback(() => {
+    const wins = RECORD_BREAKDOWN.filter((r) => r.result === 'Won').map((r) => r.round).join(', ');
+    const next = RECORD_BREAKDOWN.find((r) => r.result === 'Pending');
+    const minutes = Math.max(0, Math.floor((TOURNAMENT.nextMatchTime.getTime() - Date.now()) / 60000));
+    const nextLine = next ? ` ${next.round} is in ${minutes} minutes vs ${next.opponent}.` : '';
+    voice.speak(
+      `Record ${TOURNAMENT.record.replace('-', ' and ')}. You've won ${wins || 'none yet'}.${nextLine} Bracket position: top ${Math.max(4, TOURNAMENT.totalPlayers / 8)}.`
+    );
+  }, [voice]);
+
   const handleVoiceCommand = useCallback(async () => {
     const transcript = await voice.listen({ timeout: 5000 });
     const cmd = transcript.toLowerCase().trim();
-
-    if (cmd.includes('read next briefing') || cmd.includes('next opponent')) {
-      const firstOpp = OPPONENT_QUEUE[0];
-      const cards = MEMORY_CARDS[firstOpp.name];
-      if (cards) {
-        const text = `Next opponent: ${firstOpp.name}. ${firstOpp.archetype}. ${cards.join('. ')}`;
-        voice.speak(text);
-      }
-    } else if (cmd.includes('start reset') || cmd.includes('mental reset')) {
-      resetSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
-      setBreathingActive(true);
-    } else if (cmd.includes('my record') || cmd.includes('what\'s my record')) {
-      voice.speak(
-        `Your record is ${TOURNAMENT.record}. Seed number ${TOURNAMENT.seed}. Currently in ${TOURNAMENT.bracketPosition}.`
-      );
-    }
-  }, [voice]);
+    if (cmd.includes('read next briefing') || cmd.includes('next opponent')) speakBriefing();
+    else if (cmd.includes('start reset') || cmd.includes('mental reset')) startReset();
+    else if (cmd.includes('my record') || cmd.includes("what's my record")) speakRecord();
+  }, [voice, speakBriefing, startReset, speakRecord]);
 
   // Task 2F: bracket intelligence
   const hardestOpponent = OPPONENT_QUEUE.reduce((min, opp) => opp.winRate < min.winRate ? opp : min, OPPONENT_QUEUE[0]);
@@ -431,13 +442,19 @@ export default function TournamentPage() {
             <Mic className="h-4 w-4" />
           </button>
           <div className="flex flex-wrap gap-2">
-            {['Read next briefing', 'Start reset', 'My record?'].map((hint) => (
-              <span
-                key={hint}
-                className="rounded-full border border-dark-700 bg-dark-800 px-3 py-1 text-xs text-dark-300"
+            {[
+              { label: 'Read next briefing', onClick: speakBriefing },
+              { label: 'Start reset', onClick: startReset },
+              { label: 'My record?', onClick: speakRecord },
+            ].map(({ label, onClick }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={onClick}
+                className="rounded-full border border-dark-700 bg-dark-800 px-3 py-1 text-xs text-dark-300 hover:border-forge-500/40 hover:text-forge-300 transition-colors"
               >
-                {hint}
-              </span>
+                {label}
+              </button>
             ))}
           </div>
           {voice.isListening && (
