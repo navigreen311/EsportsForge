@@ -44,6 +44,7 @@ from app.models.animaforge import (
     STATUS_FAILED,
     SYSTEM_USER_ID,
 )
+from app.models.daily_forge import DailyForgeCompletion, DailyForgeStreak
 
 __all__ = [
     # Mixins
@@ -104,4 +105,7 @@ __all__ = [
     "STATUS_COMPLETE",
     "STATUS_FAILED",
     "SYSTEM_USER_ID",
+    # Daily Forge
+    "DailyForgeCompletion",
+    "DailyForgeStreak",
 ]
