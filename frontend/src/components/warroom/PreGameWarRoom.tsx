@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Shield,
   Crosshair,
@@ -30,9 +31,14 @@ import {
   Clock,
   FileText,
   ArrowLeft,
+  Smile,
+  ChevronDown,
+  Droplets,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useVoiceForge } from '@/hooks/useVoiceForge';
+import { VoiceForgeService } from '@/lib/services/voiceforge';
+import { useSessionStore } from '@/lib/sessionStore';
 
 // ---------- Types ----------
 
@@ -86,6 +92,10 @@ interface OpponentData {
 }
 
 // ---------- Mock Data ----------
+//
+// Mock opponents only — the war room is a UI-shell page until the real
+// opponent fetch is wired (separate architecture PR). The selector dropdown
+// switches between these so the player can at least *try* changing context.
 
 const MOCK_OPPONENT: OpponentData = {
   gamertag: 'xKillSwitch',
@@ -170,6 +180,50 @@ const MOCK_OPPONENT: OpponentData = {
     },
   ],
 };
+
+const MOCK_OPPONENT_BLITZ: OpponentData = {
+  ...MOCK_OPPONENT,
+  gamertag: 'BlitzMaster99',
+  archetype: 'Pure Blitz Spammer',
+  winRate: 75,
+  winTrend: 'up',
+  lastSeen: '5 days ago',
+  dossierDepth: 11,
+  tendencies: [
+    { label: 'Send 5+ rushers', frequency: '78%' },
+    { label: 'Cover 0 over the top', frequency: '46%' },
+    { label: 'Press at the LOS', frequency: '71%' },
+  ],
+  metaAlert: {
+    weapon: 'HB Screen + Quick Slants',
+    notes: 'Quick releases neutralize his blitz before it hits the QB.',
+  },
+};
+
+const MOCK_OPPONENT_AIRRAID: OpponentData = {
+  ...MOCK_OPPONENT,
+  gamertag: 'AirRaidKing',
+  archetype: 'Spread Air Raid',
+  winRate: 40,
+  winTrend: 'down',
+  lastSeen: '1 day ago',
+  dossierDepth: 9,
+  tendencies: [
+    { label: 'Empty backfield 1st down', frequency: '62%' },
+    { label: '4 verts vs 2-high', frequency: '54%' },
+    { label: 'No-huddle tempo after big gains', frequency: '83%' },
+  ],
+  metaAlert: {
+    weapon: 'Cover 4 Palms with robber',
+    notes: 'Disguise palms — kills 4 verts and forces him underneath.',
+  },
+};
+
+const MOCK_OPPONENTS_LIST: OpponentData[] = [
+  MOCK_OPPONENT,
+  MOCK_OPPONENT_BLITZ,
+  MOCK_OPPONENT_AIRRAID,
+];
 
 // ---------- Counter Package Data ----------
 
@@ -326,7 +380,24 @@ function TendenciesPills({ tendencies }: { tendencies: Tendency[] }) {
   );
 }
 
-function TiltGuardStatusPanel({ status }: { status: TiltGuardStatus }) {
+type Mood = TiltGuardStatus['mood'];
+
+const MOOD_OPTIONS: { mood: Mood; label: string; emoji: string }[] = [
+  { mood: 'focused', label: 'Locked In', emoji: '🔥' },
+  { mood: 'confident', label: 'Good', emoji: '👍' },
+  { mood: 'anxious', label: 'Anxious', emoji: '😬' },
+  { mood: 'tilted', label: 'Tilted', emoji: '🌀' },
+];
+
+function TiltGuardStatusPanel({
+  status,
+  onUpdateMood,
+}: {
+  status: TiltGuardStatus;
+  onUpdateMood: (mood: Mood) => void;
+}) {
+  const [picking, setPicking] = useState(false);
+
   const moodColors = {
     focused: 'text-forge-400 bg-forge-500/15',
     confident: 'text-blue-400 bg-blue-500/15',
@@ -340,12 +411,27 @@ function TiltGuardStatusPanel({ status }: { status: TiltGuardStatus }) {
     high: 'text-red-400',
   };
 
+  const handlePick = (mood: Mood) => {
+    onUpdateMood(mood);
+    setPicking(false);
+  };
+
   return (
     <div className="rounded-xl border border-dark-700/50 bg-dark-900/80 p-5">
-      <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-dark-100">
-        <Heart className="h-4 w-4 text-pink-400" />
-        TiltGuard Status
-      </h3>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-dark-100">
+          <Heart className="h-4 w-4 text-pink-400" />
+          TiltGuard Status
+        </h3>
+        <button
+          type="button"
+          onClick={() => setPicking((p) => !p)}
+          className="inline-flex items-center gap-1 rounded-md border border-dark-700 bg-dark-800/60 px-2 py-1 text-[11px] font-medium text-dark-300 transition-colors hover:bg-dark-700"
+        >
+          <Smile className="h-3 w-3" />
+          Update Mood
+        </button>
+      </div>
       <div className="grid grid-cols-3 gap-3">
         <div className="text-center">
           <div className="text-2xl font-bold text-dark-100">{status.readiness}%</div>
@@ -364,6 +450,35 @@ function TiltGuardStatusPanel({ status }: { status: TiltGuardStatus }) {
           <span className="mt-1 text-[11px] text-dark-500">Fatigue</span>
         </div>
       </div>
+      {picking && (
+        <div className="mt-3 rounded-lg border border-dark-700 bg-dark-800/60 p-3">
+          <p className="mb-2 text-[11px] text-dark-400">How are you feeling right now?</p>
+          <div className="flex flex-wrap gap-1.5">
+            {MOOD_OPTIONS.map((opt) => (
+              <button
+                key={opt.mood}
+                type="button"
+                onClick={() => handlePick(opt.mood)}
+                className={clsx(
+                  'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                  status.mood === opt.mood
+                    ? 'border-forge-500/40 bg-forge-500/15 text-forge-300'
+                    : 'border-dark-700 bg-dark-800 text-dark-300 hover:border-dark-500 hover:bg-dark-700'
+                )}
+              >
+                <span aria-hidden="true">{opt.emoji}</span>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {status.readiness < 70 && (
+        <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+          Your readiness is low — consider running the Mental Reset before
+          entering the game.
+        </div>
+      )}
     </div>
   );
 }
@@ -699,6 +814,9 @@ function CountdownTimer() {
   const [totalSeconds, setTotalSeconds] = useState(300); // 5 min default
   const [remaining, setRemaining] = useState(300);
   const [isRunning, setIsRunning] = useState(false);
+  const [customMinutes, setCustomMinutes] = useState('');
+  const [showHydration, setShowHydration] = useState(false);
+  const completedRef = useState({ fired: false })[0];
 
   useEffect(() => {
     if (!isRunning || remaining <= 0) return;
@@ -714,15 +832,42 @@ function CountdownTimer() {
     return () => clearInterval(interval);
   }, [isRunning, remaining]);
 
+  // Fire the hydration overlay + VoiceForge speak exactly once when the timer
+  // hits zero from a running state. The completed ref keeps us idempotent.
+  useEffect(() => {
+    if (remaining === 0 && !completedRef.fired && totalSeconds > 0) {
+      completedRef.fired = true;
+      setShowHydration(true);
+      try {
+        VoiceForgeService.speak(
+          'Briefing complete. Drink water. Stand up. Take a breath. You are ready.',
+          { interruptCurrent: true, priority: 'high' }
+        );
+      } catch {
+        /* noop — VoiceForge offline */
+      }
+      const t = window.setTimeout(() => setShowHydration(false), 8000);
+      return () => window.clearTimeout(t);
+    }
+  }, [remaining, totalSeconds, completedRef]);
+
   const minutes = Math.floor(remaining / 60);
   const seconds = remaining % 60;
 
-  const presets = [60, 180, 300, 600];
+  const presets = [60, 180, 300, 600, 900, 1800, 3600];
 
   const setPreset = (secs: number) => {
     setTotalSeconds(secs);
     setRemaining(secs);
     setIsRunning(false);
+    completedRef.fired = false;
+  };
+
+  const applyCustom = () => {
+    const mins = Number(customMinutes);
+    if (!Number.isFinite(mins) || mins <= 0 || mins > 180) return;
+    setPreset(Math.round(mins * 60));
+    setCustomMinutes('');
   };
 
   return (
@@ -743,7 +888,10 @@ function CountdownTimer() {
         <div className="mt-3 flex items-center justify-center gap-2">
           <button
             onClick={() => {
-              if (remaining === 0) setRemaining(totalSeconds);
+              if (remaining === 0) {
+                setRemaining(totalSeconds);
+                completedRef.fired = false;
+              }
               setIsRunning(!isRunning);
             }}
             className="flex items-center gap-1.5 rounded-lg bg-forge-500/15 px-4 py-2 text-sm font-medium text-forge-400 transition-colors hover:bg-forge-500/25"
@@ -752,14 +900,18 @@ function CountdownTimer() {
             {isRunning ? 'Pause' : 'Start'}
           </button>
           <button
-            onClick={() => { setRemaining(totalSeconds); setIsRunning(false); }}
+            onClick={() => {
+              setRemaining(totalSeconds);
+              setIsRunning(false);
+              completedRef.fired = false;
+            }}
             className="rounded-lg bg-dark-800 px-3 py-2 text-sm text-dark-400 transition-colors hover:text-dark-200"
           >
             Reset
           </button>
         </div>
 
-        <div className="mt-3 flex justify-center gap-2">
+        <div className="mt-3 flex flex-wrap justify-center gap-2">
           {presets.map((p) => (
             <button
               key={p}
@@ -775,7 +927,51 @@ function CountdownTimer() {
             </button>
           ))}
         </div>
+
+        <div className="mt-3 flex items-center justify-center gap-1.5">
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={180}
+            value={customMinutes}
+            onChange={(e) => setCustomMinutes(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') applyCustom();
+            }}
+            placeholder="Custom"
+            className="w-20 rounded-md border border-dark-700 bg-dark-800 px-2 py-1 text-center text-xs text-dark-200 placeholder-dark-500 focus:border-forge-500 focus:outline-none"
+          />
+          <span className="text-[11px] text-dark-500">min</span>
+          <button
+            type="button"
+            onClick={applyCustom}
+            disabled={!customMinutes.trim()}
+            className="rounded-md border border-dark-700 bg-dark-800 px-2 py-1 text-[11px] font-medium text-dark-300 transition-colors hover:bg-dark-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Set
+          </button>
+        </div>
       </div>
+
+      {showHydration && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="max-w-sm rounded-xl border border-forge-500/40 bg-dark-900 p-6 text-center shadow-xl">
+            <Droplets className="mx-auto mb-3 h-10 w-10 text-blue-400" />
+            <h3 className="text-lg font-bold text-dark-50">Time&apos;s Up</h3>
+            <p className="mt-2 text-sm text-dark-300">
+              Drink water. Stand up. Take a breath. You&apos;re ready.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowHydration(false)}
+              className="mt-4 rounded-lg bg-forge-500/15 px-4 py-2 text-xs font-semibold text-forge-300 transition-colors hover:bg-forge-500/25"
+            >
+              I&apos;m ready
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -783,15 +979,74 @@ function CountdownTimer() {
 // ---------- Main Component ----------
 
 export default function PreGameWarRoom() {
-  const [exited, setExited] = useState(false);
+  const router = useRouter();
+  const startSession = useSessionStore((s) => s.startSession);
   const [showArchetypePanel, setShowArchetypePanel] = useState(false);
   const [quickNote, setQuickNote] = useState('');
   const [noteSaved, setNoteSaved] = useState(false);
+  const [selectedGamertag, setSelectedGamertag] = useState<string>(
+    MOCK_OPPONENTS_LIST[0]?.gamertag ?? 'xKillSwitch'
+  );
+  const [tiltGuard, setTiltGuard] = useState<TiltGuardStatus>(
+    MOCK_OPPONENTS_LIST[0]?.tiltGuard ?? MOCK_OPPONENT.tiltGuard
+  );
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [entering, setEntering] = useState(false);
 
   // 2B: VoiceForge
   const { speak, stop, isSpeaking, isAvailable } = useVoiceForge();
 
-  const data = MOCK_OPPONENT;
+  const data: OpponentData = {
+    ...(MOCK_OPPONENTS_LIST.find((o) => o.gamertag === selectedGamertag) ??
+      MOCK_OPPONENT),
+    tiltGuard,
+  };
+
+  // Reset mood + readiness when the active opponent changes so the panel
+  // reflects the new context (each opponent's TiltGuard mock is the starting
+  // point; mood updates layer on top).
+  useEffect(() => {
+    const next = MOCK_OPPONENTS_LIST.find((o) => o.gamertag === selectedGamertag);
+    if (next) setTiltGuard(next.tiltGuard);
+  }, [selectedGamertag]);
+
+  // Recompute readiness when mood changes — focused/confident keep readiness
+  // high, anxious/tilted drop it. This mirrors what the backend TiltGuard
+  // service would do and lets the low-readiness warning fire on mood swings.
+  const handleUpdateMood = useCallback((mood: Mood) => {
+    setTiltGuard((prev) => {
+      const moodReadiness: Record<Mood, number> = {
+        focused: 92,
+        confident: 86,
+        anxious: 64,
+        tilted: 48,
+      };
+      return { ...prev, mood, readiness: moodReadiness[mood] };
+    });
+  }, []);
+
+  const handleRefreshBrief = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+    setNoteSaved(false);
+  }, []);
+
+  const handleEnterGame = useCallback(() => {
+    setEntering(true);
+    try {
+      startSession('ranked', { opponent: data.gamertag });
+    } catch {
+      /* sessionStore unavailable in test envs — non-fatal */
+    }
+    try {
+      VoiceForgeService.speak(
+        `Briefing complete. ${data.gamertag} runs ${data.tendencies[0]?.label ?? 'a varied scheme'} ${data.tendencies[0]?.frequency ?? ''}. Your kill shot is ${data.killSheet[0]?.name ?? 'your top play'}. You are ready.`,
+        { interruptCurrent: true, priority: 'high' }
+      );
+    } catch {
+      /* VoiceForge offline */
+    }
+    router.push('/dashboard');
+  }, [data, router, startSession]);
 
   // 2B: Compile and speak briefing
   const handleReadBriefing = useCallback(() => {
@@ -818,29 +1073,39 @@ export default function PreGameWarRoom() {
     setTimeout(() => setNoteSaved(false), 2000);
   }, [quickNote]);
 
-  if (exited) {
-    return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center">
-        <div className="rounded-xl border border-forge-500/30 bg-forge-500/5 p-10 text-center">
-          <Flame className="mx-auto mb-4 h-12 w-12 text-forge-400" />
-          <h2 className="text-2xl font-bold text-dark-50">Ready. Enter the game.</h2>
-          <p className="mt-2 text-dark-400">You have the intel. Trust your preparation.</p>
-          <button
-            onClick={() => setExited(false)}
-            className="mt-6 rounded-lg bg-dark-800 px-4 py-2 text-sm text-dark-400 hover:text-dark-200"
-          >
-            Back to War Room
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-5">
-      {/* 2B: VoiceForge Read Briefing */}
-      {isAvailable && (
-        <div className="flex justify-end">
+      {/* Opponent selector + Refresh + Read Briefing */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-dark-500">
+            vs
+          </span>
+          <div className="relative">
+            <select
+              value={selectedGamertag}
+              onChange={(e) => setSelectedGamertag(e.target.value)}
+              className="appearance-none rounded-lg border border-dark-700 bg-dark-900/80 px-3 pr-8 py-2 text-sm font-semibold text-dark-100 transition-colors hover:border-dark-500 focus:border-forge-500 focus:outline-none"
+            >
+              {MOCK_OPPONENTS_LIST.map((o) => (
+                <option key={o.gamertag} value={o.gamertag}>
+                  {o.gamertag}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-dark-400" />
+          </div>
+          <button
+            type="button"
+            onClick={handleRefreshBrief}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-dark-700 bg-dark-900/80 px-3 py-2 text-xs font-medium text-dark-300 transition-colors hover:border-dark-500 hover:bg-dark-800"
+            title="Regenerate the briefing with current data"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Refresh Brief
+          </button>
+        </div>
+        {isAvailable && (
           <button
             onClick={handleReadBriefing}
             className={clsx(
@@ -853,11 +1118,12 @@ export default function PreGameWarRoom() {
             <Volume2 className="h-4 w-4" />
             {isSpeaking ? 'Reading...' : 'Read Briefing'}
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Opponent Header */}
       <OpponentHeader
+        key={`${selectedGamertag}-${refreshKey}`}
         data={data}
         onArchetypeClick={() => setShowArchetypePanel(true)}
       />
@@ -893,7 +1159,10 @@ export default function PreGameWarRoom() {
         {/* Right column */}
         <div className="space-y-5">
           <OpeningRecommendation rec={data.openingRecommendation} />
-          <TiltGuardStatusPanel status={data.tiltGuard} />
+          <TiltGuardStatusPanel
+            status={tiltGuard}
+            onUpdateMood={handleUpdateMood}
+          />
           <MetaAlertPanel meta={data.metaAlert} />
           <CountdownTimer />
         </div>
@@ -932,10 +1201,12 @@ export default function PreGameWarRoom() {
         )}
       </div>
 
-      {/* Exit Button */}
+      {/* Enter the game — starts the ranked session and routes to the
+          dashboard so CompetitionModeCard takes over. */}
       <button
-        onClick={() => setExited(true)}
-        className="group flex w-full items-center justify-center gap-3 rounded-xl border border-forge-500/30 bg-forge-500/10 py-4 text-lg font-bold text-forge-400 transition-all hover:bg-forge-500/20"
+        onClick={handleEnterGame}
+        disabled={entering}
+        className="group flex w-full items-center justify-center gap-3 rounded-xl border border-forge-500/30 bg-forge-500/10 py-4 text-lg font-bold text-forge-400 transition-all hover:bg-forge-500/20 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <Zap className="h-5 w-5" />
         Ready. Enter the game.
