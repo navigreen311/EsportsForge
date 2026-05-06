@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   WinRateDataPoint,
   ModePerformance,
@@ -38,6 +39,7 @@ import {
   ChevronDown,
   Brain,
   X,
+  Info,
 } from 'lucide-react';
 import {
   LineChart,
@@ -134,6 +136,14 @@ function LoopAITooltip({ active, payload, label }: any) {
   );
 }
 
+const skillSlugLabel: Record<string, string> = {
+  'win-rate': 'Win Rate',
+  'read-speed': 'Read Speed',
+  'red-zone': 'Red Zone',
+  'clutch': 'Clutch',
+  'adaptation': 'Adaptation',
+};
+
 export default function AnalyticsPage() {
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [analyticsTab, setAnalyticsTab] = useState<'performance' | 'film-room'>('performance');
@@ -145,8 +155,56 @@ export default function AnalyticsPage() {
     ? mockSessions.filter((s) => s.situationalTags.includes(situationalFilter))
     : mockSessions;
 
+  // Banner reader: period/skill query params
+  const searchParams = useSearchParams();
+  const periodParam = searchParams?.get('period') ?? null;
+  const skillParam = searchParams?.get('skill') ?? null;
+  const weeklySectionRef = useRef<HTMLDivElement | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  let bannerMessage: string | null = null;
+  if (periodParam === 'this-week') {
+    bannerMessage = "This week's breakdown";
+  } else if (skillParam) {
+    const label = skillSlugLabel[skillParam] ?? skillParam;
+    bannerMessage = `Showing: ${label}`;
+  }
+
+  useEffect(() => {
+    setBannerDismissed(false);
+  }, [bannerMessage]);
+
+  // Scroll to weekly section if present, or to the skill row by id
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (periodParam === 'this-week' && weeklySectionRef.current) {
+      weeklySectionRef.current.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+    if (skillParam) {
+      const el = document.getElementById(`skill-row-${skillParam}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [periodParam, skillParam]);
+
   return (
     <div className="space-y-6">
+      {/* Contextual banner — driven by query params */}
+      {bannerMessage && !bannerDismissed && (
+        <div className="flex items-start gap-3 rounded-xl border border-forge-500/30 bg-forge-500/10 px-4 py-3">
+          <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-forge-300" />
+          <p className="flex-1 text-sm text-forge-100">{bannerMessage}</p>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => setBannerDismissed(true)}
+            className="flex-shrink-0 rounded-md p-1 text-forge-300 transition-colors hover:bg-forge-500/20 hover:text-forge-100"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Header + Export */}
       <div className="flex items-center justify-between">
         <div>

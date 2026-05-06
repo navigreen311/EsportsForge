@@ -23,7 +23,7 @@ const mockSession: SessionStatus | null = null;
 const mockTournament: TournamentInfo | null = {
   id: 'tourney-1',
   name: 'Weekend Warrior Cup #14',
-  date: '2026-03-28',
+  date: '2026-05-19',
   format: 'Single Elimination Bo3',
   registeredPlayers: 64,
   status: 'upcoming',
@@ -42,7 +42,7 @@ export function useDashboard() {
     const titleData = getDashboardDataForTitle(selectedTitle);
 
     return {
-      username: 'Commander',
+      username: '',
       stats: titleData.stats,
       priority: titleData.priorities[0] ?? {
         id: 'empty',
