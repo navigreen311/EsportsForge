@@ -422,7 +422,7 @@ function GameplanPageBody() {
 
       {/* Export Controls */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <ExportControls gameplanName={gameplan.name} />
+        <ExportControls gameplan={gameplan} opponent={opponent} />
       </div>
 
       {/* Meta Status Bar */}
