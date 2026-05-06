@@ -308,6 +308,27 @@ export default function TournamentPage() {
   const resetComplete = resetSteps.every(Boolean);
   const resetCount = resetSteps.filter(Boolean).length;
 
+  // C7: when reset transitions to 5/5, fire side effects (toast, mood, fatigue drop, auto-nav)
+  const resetCompleteFiredRef = useRef(false);
+  useEffect(() => {
+    if (resetComplete && !resetCompleteFiredRef.current) {
+      resetCompleteFiredRef.current = true;
+      setTiltStatus('green');
+      setFatigue((f) => Math.max(0, f - 12));
+      setWarmupToast("Reset complete — you're ready");
+      setTimeout(() => setWarmupToast(null), 3500);
+      // Persist to TiltGuard backend (best-effort)
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001';
+      fetch(`${apiBase}/api/v1/tiltguard/reset-logged`, { method: 'POST' }).catch(() => {});
+      // Auto-nav to next-round prep after a brief delay
+      setTimeout(() => {
+        const next = OPPONENT_QUEUE[0];
+        router.push(`/war-room?opponent=${slug(next.name)}`);
+      }, 2500);
+    }
+    if (!resetComplete) resetCompleteFiredRef.current = false;
+  }, [resetComplete, router]);
+
   // Task 2C: voice command handlers (also bound to clickable pills, C2)
   const speakBriefing = useCallback(() => {
     const firstOpp = OPPONENT_QUEUE[0];
@@ -975,16 +996,11 @@ export default function TournamentPage() {
           <div className="mt-4 pt-3 border-t border-dark-700/50">
             <p className="text-xs text-dark-400 mb-2">{resetCount}/5 steps complete</p>
             <div className="flex items-center gap-3">
-              {resetComplete ? (
-                <button
-                  onClick={() => {
-                    fetch('/api/tiltguard/reset-logged', { method: 'POST' }).catch(() => {});
-                  }}
-                  className="rounded-lg bg-green-500/15 border border-green-500/30 px-3 py-1.5 text-xs font-semibold text-green-400 hover:bg-green-500/25 transition-colors"
-                >
-                  Reset Complete
-                </button>
-              ) : null}
+              {resetComplete && (
+                <span className="rounded-lg bg-green-500/15 border border-green-500/30 px-3 py-1.5 text-xs font-semibold text-green-400">
+                  Reset Complete &middot; routing to next round prep…
+                </span>
+              )}
               <button
                 onClick={() => {
                   setResetSteps([false, false, false, false, false]);
