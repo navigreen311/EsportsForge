@@ -148,12 +148,62 @@ const GAMEPLAN = [
   { id: 15, play: 'Hail Mary / Scramble', situation: '2-min desperation', note: 'Last resort', confidence: 70 },
 ];
 
-const CLOCK_TREE = [
-  { time: '2:00', condition: 'Down 3+', action: 'No huddle, attack sidelines' },
-  { time: '1:30', condition: 'Need TD', action: 'Aggressive — 4 verts / crossers' },
-  { time: '1:00', condition: 'In FG range', action: 'Run clock, kick at :05' },
-  { time: '0:30', condition: 'Need TD still', action: 'Endzone shots only' },
-  { time: '0:10', condition: 'Any', action: 'Spike or timeout, last play' },
+type ClockNode = {
+  time: string;
+  seconds: number;
+  condition: string;
+  action: string;
+  sequence: string[];
+  decisionTree: { ifBranch: string; thenAction: string }[];
+  audibles: string[];
+};
+const CLOCK_TREE: ClockNode[] = [
+  {
+    time: '2:00', seconds: 120, condition: 'Down 3+', action: 'No huddle, attack sidelines',
+    sequence: ['Gun Trips — Sail concept', 'Gun Empty — Mesh', 'Gun Doubles — Smash'],
+    decisionTree: [
+      { ifBranch: 'Cover 2', thenAction: 'Smash to fade-flat' },
+      { ifBranch: 'Man press', thenAction: 'Mesh rub' },
+      { ifBranch: 'Cover 3', thenAction: 'Sail flood' },
+    ],
+    audibles: ['Kill to Slip Screen vs blitz', 'Check to PA Boot if box >= 7'],
+  },
+  {
+    time: '1:30', seconds: 90, condition: 'Need TD', action: 'Aggressive — 4 verts / crossers',
+    sequence: ['Gun Empty — 4 Verts', 'Gun Trips — Levels', 'Gun Bunch — Crossers'],
+    decisionTree: [
+      { ifBranch: 'MOFC (single high)', thenAction: 'Seam to slot' },
+      { ifBranch: 'MOFO (Cover 2)', thenAction: 'Levels dig at 12' },
+    ],
+    audibles: ['Kill to Slants vs heavy blitz'],
+  },
+  {
+    time: '1:00', seconds: 60, condition: 'In FG range', action: 'Run clock, kick at :05',
+    sequence: ['HB Inside Zone', 'QB Kneel — clock to :05', 'FG Unit'],
+    decisionTree: [
+      { ifBranch: 'Have all 3 TOs', thenAction: 'One more shot for TD' },
+      { ifBranch: '0 TOs', thenAction: 'Kneel + spike at :05' },
+    ],
+    audibles: [],
+  },
+  {
+    time: '0:30', seconds: 30, condition: 'Need TD still', action: 'Endzone shots only',
+    sequence: ['Gun Empty — Fade-Flat', 'Gun Trey — Corner Strike', 'Hail Mary if last'],
+    decisionTree: [
+      { ifBranch: 'Have a TO', thenAction: 'Take 2 shots' },
+      { ifBranch: '0 TOs', thenAction: 'Sideline routes only' },
+    ],
+    audibles: ['Kill to Spike if WRs not set'],
+  },
+  {
+    time: '0:10', seconds: 10, condition: 'Any', action: 'Spike or timeout, last play',
+    sequence: ['Spike OR Hail Mary'],
+    decisionTree: [
+      { ifBranch: 'Down by <8', thenAction: 'Hail Mary' },
+      { ifBranch: 'Need FG', thenAction: 'Spike then kick' },
+    ],
+    audibles: [],
+  },
 ];
 
 const RESET_STEPS = [
@@ -189,6 +239,29 @@ export default function TournamentPage() {
   const [customCards, setCustomCards] = useState<Record<string, MemoryBullet[]>>({});
   const [playDetail, setPlayDetail] = useState<typeof GAMEPLAN[number] | null>(null);
   const [gameplanFilter, setGameplanFilter] = useState<'all' | 'cover3' | 'redzone' | '3rd' | '2min'>('all');
+  const [clockNodeDetail, setClockNodeDetail] = useState<ClockNode | null>(null);
+  const [drillModeActive, setDrillModeActive] = useState(false);
+  const [drillModeRemaining, setDrillModeRemaining] = useState(120);
+
+  // C11: 2-Minute Drill Mode timer
+  useEffect(() => {
+    if (!drillModeActive) return;
+    const interval = setInterval(() => {
+      setDrillModeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setDrillModeActive(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [drillModeActive]);
+
+  const activeClockIndex = drillModeActive
+    ? CLOCK_TREE.findIndex((n, i) => drillModeRemaining <= n.seconds && (i === CLOCK_TREE.length - 1 || drillModeRemaining > CLOCK_TREE[i + 1].seconds))
+    : -1;
   const [matchStartTriggered, setMatchStartTriggered] = useState(false);
   const oneMinPulseRef = useRef(false);
   const [checklist, setChecklist] = useState<Record<string, boolean>>(
@@ -724,6 +797,50 @@ export default function TournamentPage() {
                 <p className="text-lg font-bold" style={{ color: confidenceColor(bulletDetail.bullet.confidence) }}>{bulletDetail.bullet.confidence}%</p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2-Minute Drill Tree node detail modal (C11) */}
+      {clockNodeDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setClockNodeDetail(null)}>
+          <div className="w-full max-w-md rounded-xl border border-dark-700 bg-dark-900 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <p className="text-xs text-forge-400 font-mono">{clockNodeDetail.time}</p>
+                <h3 className="text-lg font-bold text-dark-50">{clockNodeDetail.action}</h3>
+                <p className="text-xs text-dark-400">{clockNodeDetail.condition}</p>
+              </div>
+              <button onClick={() => setClockNodeDetail(null)} className="text-dark-500 hover:text-dark-200"><X className="h-5 w-5" /></button>
+            </div>
+            <p className="text-xs font-semibold text-dark-300 uppercase mt-4 mb-1">Play Sequence</p>
+            <ol className="space-y-1 mb-4">
+              {clockNodeDetail.sequence.map((s, i) => (
+                <li key={i} className="text-xs text-dark-200 flex gap-2"><span className="text-dark-500 w-4">{i + 1}.</span>{s}</li>
+              ))}
+            </ol>
+            <p className="text-xs font-semibold text-dark-300 uppercase mb-1">Decision Tree</p>
+            <ul className="space-y-1 mb-4">
+              {clockNodeDetail.decisionTree.map((d, i) => (
+                <li key={i} className="text-xs text-dark-300"><span className="text-amber-300">If</span> {d.ifBranch} <span className="text-dark-500">→</span> <span className="text-dark-100">{d.thenAction}</span></li>
+              ))}
+            </ul>
+            {clockNodeDetail.audibles.length > 0 && (
+              <>
+                <p className="text-xs font-semibold text-dark-300 uppercase mb-1">Audibles</p>
+                <ul className="space-y-1 mb-4">
+                  {clockNodeDetail.audibles.map((a, i) => (
+                    <li key={i} className="text-xs text-dark-300 flex gap-2"><Mic className="h-3 w-3 text-forge-400 mt-0.5 flex-shrink-0" />{a}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <a
+              href={`/sim-lab?scenario=2min-${clockNodeDetail.seconds}`}
+              className="block w-full text-center rounded-lg bg-forge-500/15 border border-forge-500/30 px-4 py-2 text-sm font-semibold text-forge-300 hover:bg-forge-500/25"
+            >
+              Practice in SimLab &rarr;
+            </a>
           </div>
         </div>
       )}
@@ -1348,21 +1465,57 @@ export default function TournamentPage() {
           </div>
         </div>
 
-        {/* CLOCK SECTION — 2-Minute Drill Decision Tree */}
+        {/* CLOCK SECTION — 2-Minute Drill Decision Tree (C11) */}
         <div className="rounded-xl border border-dark-700/50 bg-dark-900 p-5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-dark-200 mb-4">
-            <Timer className="h-4 w-4 text-forge-400" /> 2-Minute Drill Tree
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-dark-200">
+              <Timer className="h-4 w-4 text-forge-400" /> 2-Minute Drill Tree
+            </h2>
+            <button
+              type="button"
+              onClick={() => {
+                if (drillModeActive) {
+                  setDrillModeActive(false);
+                } else {
+                  setDrillModeRemaining(120);
+                  setDrillModeActive(true);
+                }
+              }}
+              className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                drillModeActive
+                  ? 'bg-red-500/15 border border-red-500/40 text-red-300'
+                  : 'bg-forge-500/15 border border-forge-500/40 text-forge-300 hover:bg-forge-500/25'
+              }`}
+            >
+              {drillModeActive ? (
+                <><Pause className="h-3 w-3" /> {Math.floor(drillModeRemaining / 60)}:{(drillModeRemaining % 60).toString().padStart(2, '0')}</>
+              ) : (
+                <><Play className="h-3 w-3" /> Start 2-Min Drill Mode</>
+              )}
+            </button>
+          </div>
           <div className="space-y-2">
-            {CLOCK_TREE.map((node) => (
-              <div key={node.time} className="flex items-center gap-3 rounded-lg bg-dark-800/60 px-3 py-2">
-                <span className="text-xs font-bold text-forge-400 font-mono w-10">{node.time}</span>
-                <div className="flex-1">
-                  <p className="text-xs text-dark-400">{node.condition}</p>
-                  <p className="text-xs font-medium text-dark-200">{node.action}</p>
-                </div>
-              </div>
-            ))}
+            {CLOCK_TREE.map((node, idx) => {
+              const isCurrent = idx === activeClockIndex;
+              return (
+                <button
+                  key={node.time}
+                  type="button"
+                  onClick={() => setClockNodeDetail(node)}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 w-full text-left transition-colors ${
+                    isCurrent
+                      ? 'bg-forge-500/10 ring-2 ring-forge-500/50 animate-pulse'
+                      : 'bg-dark-800/60 hover:bg-dark-800 hover:ring-1 hover:ring-forge-500/30'
+                  }`}
+                >
+                  <span className="text-xs font-bold text-forge-400 font-mono w-10">{node.time}</span>
+                  <div className="flex-1">
+                    <p className="text-xs text-dark-400">{node.condition}</p>
+                    <p className="text-xs font-medium text-dark-200">{node.action}</p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
