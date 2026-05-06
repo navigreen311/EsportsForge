@@ -201,11 +201,19 @@ export default function PlayDetail({
       });
       setAnimJob(fresh);
     } catch {
-      setAnimError('Animation service offline — try again later.');
-      setShowPlayer(false);
+      // Keep the panel visible so the error renders in-place (otherwise the
+      // panel flashes then disappears and the user thinks "nothing happened").
+      setAnimError(
+        'Animation service is offline right now — the play diagram can\'t render. Try again later.'
+      );
     } finally {
       setAnimLoading(false);
     }
+  };
+
+  const handleRetryWatch = () => {
+    setAnimError(null);
+    void handleWatch();
   };
 
   if (!play) {
@@ -344,8 +352,8 @@ export default function PlayDetail({
       </div>
 
       {/* AnimaForge animated play diagram. Mounted any time [Watch] is open;
-          renders an internal pending state when the render hasn't returned a
-          jobId/videoUrl yet so the user always sees feedback. */}
+          renders pending / error / video states inline so the panel never just
+          disappears on the user. */}
       {animaAvailable && showPlayer && (
         <div>
           <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-dark-200">
@@ -357,7 +365,42 @@ export default function PlayDetail({
               </Badge>
             )}
           </h3>
-          {animJobId || animVideoUrl ? (
+          {animError ? (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-400" />
+                <div className="flex-1 text-sm text-red-200">
+                  <p className="font-semibold text-red-300">
+                    Animation unavailable
+                  </p>
+                  <p className="mt-1 text-red-200/90">{animError}</p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleRetryWatch}
+                      disabled={animLoading}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-red-500/40 bg-red-500/15 px-3 py-1 text-xs font-semibold text-red-300 transition-colors hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {animLoading ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : null}
+                      Try again
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAnimError(null);
+                        setShowPlayer(false);
+                      }}
+                      className="rounded-md border border-dark-700 bg-dark-800/60 px-3 py-1 text-xs font-medium text-dark-300 transition-colors hover:bg-dark-700"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : animJobId || animVideoUrl ? (
             <AnimaPlayer
               jobId={animJobId}
               videoUrl={animVideoUrl}
@@ -382,14 +425,6 @@ export default function PlayDetail({
               </p>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Inline error when the on-demand render fails — e.g. AnimaForge is
-          probing healthy but the actual /render endpoint isn't reachable. */}
-      {animError && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
-          {animError}
         </div>
       )}
 
