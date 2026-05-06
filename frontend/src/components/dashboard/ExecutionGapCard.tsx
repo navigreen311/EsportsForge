@@ -44,7 +44,7 @@ export default function ExecutionGapCard({ gap }: ExecutionGapCardProps) {
             &minus;{delta}%
           </span>
           <Link
-            href={`/drills${gap.drillId ? `?focus=${gap.drillId}` : ''}`}
+            href="/drills?priority=Coverage%20Reads&focus=execution-gap"
             className="inline-flex items-center gap-1.5 rounded-lg bg-forge-500 px-3 py-1.5 text-xs font-bold text-dark-950 transition-colors hover:bg-forge-400"
           >
             Drill This
