@@ -94,7 +94,15 @@ export default function PlayDetail({
   opponentName = 'Opponent',
   opponentCoverage = null,
 }: PlayDetailProps) {
-  const animaAvailable = useAnimaForgeAvailable();
+  // useAnimaForgeAvailable returns `{ available, loading }`. Reading the
+  // hook's whole return value as a boolean makes the gating condition always
+  // truthy (objects are truthy) AND — far worse — produces a fresh object
+  // reference on every render, which puts the variable in the
+  // pre-fetch effect's deps array and causes the effect to fire on EVERY
+  // render. That effect resets showPlayer/animJob/animLoading/animError, so
+  // every Watch click was instantly stomped (visible as a brief
+  // disabled-cursor flicker, no panel). Destructure the boolean.
+  const { available: animaAvailable } = useAnimaForgeAvailable();
   const [animJob, setAnimJob] = useState<PlayDiagramRenderResult | null>(null);
   const [showPlayer, setShowPlayer] = useState(false);
   const [animLoading, setAnimLoading] = useState(false);
