@@ -17,18 +17,18 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.get("/me/profile", response_model=UserProfile)
 async def get_my_profile(current_user: User = Depends(get_current_user)):
     """Get the full profile for the currently authenticated user."""
-    return UserProfile(
-        id=current_user.id,
-        email=current_user.email,
-        username=current_user.username,
-        display_name=current_user.display_name,
-        tier=current_user.tier,
-        title_limit=get_user_title_limit(current_user),
-        is_active=current_user.is_active,
-        is_verified=current_user.is_verified,
-        created_at=current_user.created_at,
-        updated_at=current_user.updated_at,
-    )
+    return UserProfile.model_validate({
+        "id": current_user.id,
+        "email": current_user.email,
+        "username": current_user.username,
+        "display_name": current_user.display_name,
+        "tier": current_user.tier,
+        "title_limit": get_user_title_limit(current_user),
+        "is_active": current_user.is_active,
+        "is_verified": current_user.is_verified,
+        "created_at": current_user.created_at,
+        "updated_at": current_user.updated_at,
+    })
 
 
 @router.patch("/me", response_model=UserProfile)
@@ -66,18 +66,18 @@ async def update_my_profile(
     await db.flush()
     await db.refresh(current_user)
 
-    return UserProfile(
-        id=current_user.id,
-        email=current_user.email,
-        username=current_user.username,
-        display_name=current_user.display_name,
-        tier=current_user.tier,
-        title_limit=get_user_title_limit(current_user),
-        is_active=current_user.is_active,
-        is_verified=current_user.is_verified,
-        created_at=current_user.created_at,
-        updated_at=current_user.updated_at,
-    )
+    return UserProfile.model_validate({
+        "id": current_user.id,
+        "email": current_user.email,
+        "username": current_user.username,
+        "display_name": current_user.display_name,
+        "tier": current_user.tier,
+        "title_limit": get_user_title_limit(current_user),
+        "is_active": current_user.is_active,
+        "is_verified": current_user.is_verified,
+        "created_at": current_user.created_at,
+        "updated_at": current_user.updated_at,
+    })
 
 
 @router.get("/{user_id}", response_model=UserPublic)

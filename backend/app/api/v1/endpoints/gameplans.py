@@ -119,7 +119,7 @@ async def generate_gameplan(
     await db.flush()
     await db.refresh(gameplan)
 
-    return gameplan
+    return GameplanOut.model_validate(gameplan)
 
 
 @router.get(
@@ -153,7 +153,7 @@ async def list_gameplans(
     items = list(result.scalars().all())
 
     return GameplanListOut(
-        items=items,
+        items=[GameplanOut.model_validate(g) for g in items],
         total=total,
         page=page,
         page_size=page_size,
@@ -183,7 +183,7 @@ async def get_gameplan(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Gameplan not found.",
         )
-    return plan
+    return GameplanOut.model_validate(plan)
 
 
 @router.delete(
