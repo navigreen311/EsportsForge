@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useOpponents } from '@/hooks/useOpponents';
+import { useActiveArsenalTitle } from '@/hooks/useArsenal';
 import OpponentCard from '@/components/opponents/OpponentCard';
 import { OpponentFilter, OpponentSort, Opponent } from '@/types/opponent';
 import { calculateThreatLevel } from '@/components/opponents/ThreatLevelBadge';
+import api from '@/lib/api';
 import {
   Search,
   Users,
@@ -14,6 +16,8 @@ import {
   Eye,
   ArrowUpDown,
   UserPlus,
+  Loader2,
+  X,
 } from 'lucide-react';
 
 const filters: { key: OpponentFilter; label: string; icon: React.ReactNode }[] = [
@@ -42,6 +46,48 @@ export default function OpponentsPage() {
     setSort,
   } = useOpponents();
   const [localSort, setLocalSort] = useState<string>('threatLevel');
+  const titleId = useActiveArsenalTitle();
+  const [scoutOpen, setScoutOpen] = useState(false);
+  const [scoutGamertag, setScoutGamertag] = useState('');
+  const [scoutLoading, setScoutLoading] = useState(false);
+  const [scoutError, setScoutError] = useState<string | null>(null);
+  const [scoutSuccess, setScoutSuccess] = useState<string | null>(null);
+
+  const closeScout = () => {
+    setScoutOpen(false);
+    setScoutGamertag('');
+    setScoutError(null);
+    setScoutSuccess(null);
+  };
+
+  const handleScoutSubmit = async () => {
+    const gamertag = scoutGamertag.trim();
+    if (!gamertag) {
+      setScoutError('Enter a gamertag first.');
+      return;
+    }
+    setScoutLoading(true);
+    setScoutError(null);
+    setScoutSuccess(null);
+    try {
+      await api.post('/scout', { gamertag, title_id: titleId });
+      setScoutSuccess(
+        `ScoutBot is building ${gamertag}'s dossier. You'll see them in the grid once data lands.`
+      );
+      setScoutGamertag('');
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message?: unknown }).message ?? '')
+          : '';
+      setScoutError(
+        message ||
+          'ScoutBot is unavailable right now — try again in a moment.'
+      );
+    } finally {
+      setScoutLoading(false);
+    }
+  };
 
   const handleSortChange = (key: string) => {
     setLocalSort(key);
@@ -72,7 +118,11 @@ export default function OpponentsPage() {
             Scout, analyze, and track your competition
           </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-forge-500 hover:bg-forge-600 text-white font-medium text-sm transition-colors shadow-lg shadow-forge-500/20">
+        <button
+          type="button"
+          onClick={() => setScoutOpen(true)}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-forge-500 hover:bg-forge-600 text-white font-medium text-sm transition-colors shadow-lg shadow-forge-500/20"
+        >
           <UserPlus className="w-4 h-4" />
           Scout New Opponent
         </button>
@@ -154,6 +204,114 @@ export default function OpponentsPage() {
               ? 'Try adjusting your search terms'
               : 'Scout your first opponent to get started'}
           </p>
+        </div>
+      )}
+
+      {/* Scout New Opponent modal */}
+      {scoutOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={closeScout}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-dark-700 bg-dark-900 p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-dark-50">
+                  🔍 Scout New Opponent
+                </h3>
+                <p className="mt-1 text-xs text-dark-400">
+                  ScoutBot will build a full dossier — tendencies,
+                  behavioral signals, and a kill sheet.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeScout}
+                className="rounded-md p-1 text-dark-400 transition-colors hover:bg-dark-800 hover:text-dark-200"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label
+                  htmlFor="scout-gamertag"
+                  className="mb-1 block text-xs font-medium text-dark-400"
+                >
+                  Gamertag
+                </label>
+                <input
+                  id="scout-gamertag"
+                  type="text"
+                  value={scoutGamertag}
+                  onChange={(e) => {
+                    setScoutGamertag(e.target.value);
+                    setScoutError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !scoutLoading) {
+                      void handleScoutSubmit();
+                    }
+                  }}
+                  placeholder="Enter their gamertag…"
+                  disabled={scoutLoading}
+                  className="w-full rounded-lg border border-dark-700 bg-dark-800 px-3 py-2 text-sm text-dark-100 placeholder-dark-500 focus:border-forge-500 focus:outline-none focus:ring-1 focus:ring-forge-500/30 disabled:opacity-60"
+                  autoFocus
+                />
+              </div>
+              <div className="rounded-lg border border-dark-700/60 bg-dark-800/40 px-3 py-2 text-xs text-dark-400">
+                Title:{' '}
+                <span className="font-mono text-dark-200">{titleId}</span>{' '}
+                <span className="text-dark-500">
+                  (active title — change it via the title selector)
+                </span>
+              </div>
+              {scoutError && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                  {scoutError}
+                </div>
+              )}
+              {scoutSuccess && (
+                <div className="rounded-lg border border-forge-500/30 bg-forge-500/10 px-3 py-2 text-xs text-forge-300">
+                  {scoutSuccess}
+                </div>
+              )}
+            </div>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeScout}
+                disabled={scoutLoading}
+                className="rounded-lg border border-dark-700 bg-dark-800/80 px-3 py-1.5 text-xs font-medium text-dark-200 transition-colors hover:border-dark-500 hover:bg-dark-700 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleScoutSubmit}
+                disabled={scoutLoading || !scoutGamertag.trim()}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-forge-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-forge-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {scoutLoading ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Scouting…
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-3.5 w-3.5" />
+                    Scout Now
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
