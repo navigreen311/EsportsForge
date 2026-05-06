@@ -30,7 +30,7 @@ router = APIRouter()
 # In-memory caches (per process — fine for dev)
 # ---------------------------------------------------------------------------
 
-_discover_cache: dict[str, tuple[float, list[dict[str, Any]]]] = {}
+_discover_cache: dict[str, tuple[float, list[str]]] = {}
 _trigger_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 
 

@@ -109,7 +109,7 @@ async def list_recommendations(
     items = list(result.scalars().all())
 
     return RecommendationListOut(
-        items=items,
+        items=[RecommendationOut.model_validate(r) for r in items],
         total=total,
         page=page,
         page_size=page_size,
@@ -139,7 +139,7 @@ async def get_recommendation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Recommendation not found.",
         )
-    return rec
+    return RecommendationOut.model_validate(rec)
 
 
 @router.post(

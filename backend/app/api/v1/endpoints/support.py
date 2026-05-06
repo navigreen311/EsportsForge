@@ -108,7 +108,12 @@ async def list_tickets(
     result = await db.execute(query)
     tickets = result.scalars().all()
 
-    return TicketListOut(tickets=tickets, total=total, page=page, page_size=page_size)
+    return TicketListOut(
+        tickets=[TicketOut.model_validate(t) for t in tickets],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get("/tickets/{ticket_id}", response_model=TicketOut)

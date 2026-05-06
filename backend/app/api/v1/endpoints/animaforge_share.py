@@ -56,7 +56,7 @@ try:
         AnimaForgeJob,
     )
 except Exception:  # noqa: BLE001
-    AnimaForgeJob = None  # type: ignore[assignment]
+    AnimaForgeJob = None  # type: ignore[assignment,misc]
     JOB_TYPE_SHARE = "share-win"
     STATUS_PENDING = "pending"
     STATUS_RENDERING = "rendering"
@@ -68,7 +68,7 @@ try:
         AnimaForgeUnavailable,
     )
 except Exception:  # noqa: BLE001
-    AnimaForgeService = None  # type: ignore[assignment]
+    AnimaForgeService = None  # type: ignore[assignment,misc]
 
     class AnimaForgeUnavailable(Exception):  # type: ignore[no-redef]
         """Raised when AnimaForge is unreachable or returns 5xx."""

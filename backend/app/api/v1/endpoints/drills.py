@@ -90,7 +90,7 @@ async def list_drills(
     return DrillListOut(
         user_id=user_id,
         title=title,
-        drills=drills,
+        drills=[DrillOut.model_validate(d) for d in drills],
         total=len(drills),
     )
 
@@ -132,7 +132,7 @@ async def generate_drill(
     await db.flush()
     await db.refresh(drill)
 
-    return drill
+    return DrillOut.model_validate(drill)
 
 
 @router.post("/{user_id}/{drill_id}/complete")
@@ -186,7 +186,7 @@ async def complete_drill(
         },
     )
 
-    return drill
+    return DrillOut.model_validate(drill)
 
 
 @router.get("/{user_id}/history")
@@ -215,7 +215,7 @@ async def drill_history(
     return DrillHistoryOut(
         user_id=user_id,
         title=title,
-        history=drills,
+        history=[DrillOut.model_validate(d) for d in drills],
         total_completions=total_completions,
         average_success_rate=round(avg_success, 4),
     )
