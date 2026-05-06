@@ -502,33 +502,40 @@ export default function TournamentPage() {
                 >
                   <div className="flex items-center gap-3 px-3 py-2">
                     <span className="text-xs font-bold text-dark-500 w-5">{i + 1}</span>
-                    <div
-                      className="flex-1 min-w-0 cursor-pointer"
-                      onClick={() => setExpandedOpponent(isExpanded ? null : opp.name)}
-                    >
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-dark-100 truncate">{opp.name}</p>
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/opponents/${slug(opp.name)}`)}
+                          className="text-sm font-medium text-dark-100 truncate hover:text-forge-300 transition-colors text-left"
+                        >
+                          {opp.name}
+                        </button>
                         {isFirst && (
                           <span className="rounded-full bg-green-500/15 border border-green-500/30 px-2 py-0.5 text-[10px] font-bold text-green-400 uppercase">
                             Next
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-dark-400 flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedOpponent(isExpanded ? null : opp.name)}
+                        className="text-xs text-dark-400 hover:text-dark-200 flex items-center gap-1 transition-colors"
+                      >
                         {opp.archetype}
                         {cards && (
                           isExpanded
                             ? <ChevronDown className="h-3 w-3 text-dark-500" />
                             : <ChevronRight className="h-3 w-3 text-dark-500" />
                         )}
-                      </p>
+                      </button>
                     </div>
                     <span className="text-xs text-dark-400">{opp.winRate}%</span>
                     <span className={`h-2 w-2 rounded-full ${
                       opp.prep === 'ready' ? 'bg-forge-400' : opp.prep === 'partial' ? 'bg-amber-400' : 'bg-red-400'
-                    }`} title={`Prep: ${opp.prep}`} />
+                    }`} title={`Prep: ${opp.prep === 'ready' ? 'Dossier complete' : opp.prep === 'partial' ? 'Partial dossier' : 'Minimal data'}`} />
                     <button
-                      onClick={() => router.push(`/war-room?opponent=${encodeURIComponent(opp.name)}`)}
+                      onClick={() => router.push(`/war-room?opponent=${slug(opp.name)}`)}
                       className="rounded-full border border-green-500/40 px-2.5 py-1 text-[10px] font-semibold text-green-400 hover:bg-green-500/10 transition-colors whitespace-nowrap"
                     >
                       Prep &rarr;
@@ -546,7 +553,7 @@ export default function TournamentPage() {
                         ))}
                       </ul>
                       <a
-                        href={`/war-room?opponent=${encodeURIComponent(opp.name)}`}
+                        href={`/opponents/${slug(opp.name)}`}
                         className="text-xs text-forge-400 hover:text-forge-300 transition-colors"
                       >
                         View Full Dossier &rarr;
