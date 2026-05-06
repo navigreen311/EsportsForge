@@ -104,7 +104,11 @@ const WARMUP_CHECKLIST_ITEMS = [
   { id: 'drills', label: 'Pre-match drills completed', default: true },
   { id: 'mental', label: 'Mental state check — focused', default: false },
   { id: 'killsheet', label: 'Kill sheet loaded', default: false },
+  { id: 'hydration', label: 'Hydrated + bathroom break', default: false },
+  { id: 'equipment', label: 'Equipment checked (controller battery, mic)', default: false },
 ];
+
+const WARMUP_STORAGE_KEY = 'esf:tournament:warmup';
 
 const MEMORY_CARDS: Record<string, string[]> = {
   'xViper_Elite': ['Runs cover-3 on 1st down 80%', 'Blitzes on 3rd & long from nickel', 'Goes for it on 4th in opponent territory'],
@@ -170,6 +174,22 @@ export default function TournamentPage() {
   const [checklist, setChecklist] = useState<Record<string, boolean>>(
     Object.fromEntries(WARMUP_CHECKLIST_ITEMS.map((i) => [i.id, i.default]))
   );
+  const [showResetChecklistConfirm, setShowResetChecklistConfirm] = useState(false);
+  const [warmupToast, setWarmupToast] = useState<string | null>(null);
+
+  // Hydrate from localStorage on mount, persist on change
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(WARMUP_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, boolean>;
+        setChecklist((prev) => ({ ...prev, ...parsed }));
+      }
+    } catch { /* ignore */ }
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem(WARMUP_STORAGE_KEY, JSON.stringify(checklist)); } catch { /* ignore */ }
+  }, [checklist]);
   const [notes, setNotes] = useState<{ time: string; text: string }[]>([]);
   const [noteInput, setNoteInput] = useState('');
   const [failsafeMode, setFailsafeMode] = useState(false);
@@ -567,6 +587,42 @@ export default function TournamentPage() {
         </div>
       )}
 
+      {/* Reset Checklist confirm modal (C6) */}
+      {showResetChecklistConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowResetChecklistConfirm(false)}>
+          <div className="w-full max-w-sm rounded-xl border border-dark-700 bg-dark-900 p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-dark-50 mb-1">Reset all warmup items?</h3>
+            <p className="text-sm text-dark-400 mb-5">All {WARMUP_CHECKLIST_ITEMS.length} checkboxes will be cleared.</p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowResetChecklistConfirm(false)}
+                className="rounded-lg border border-dark-600 bg-dark-800 px-4 py-2 text-sm text-dark-200 hover:bg-dark-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setChecklist(Object.fromEntries(WARMUP_CHECKLIST_ITEMS.map((i) => [i.id, false])));
+                  setShowResetChecklistConfirm(false);
+                  setWarmupToast('Warmup checklist reset');
+                  setTimeout(() => setWarmupToast(null), 3000);
+                }}
+                className="rounded-lg bg-amber-500/15 border border-amber-500/40 px-4 py-2 text-sm font-semibold text-amber-300 hover:bg-amber-500/25"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Warmup toast (C6) */}
+      {warmupToast && (
+        <div className="fixed bottom-6 right-6 z-50 rounded-lg border border-forge-500/40 bg-dark-900 px-4 py-3 text-sm text-forge-300 shadow-lg">
+          {warmupToast}
+        </div>
+      )}
+
       {/* Task 2C: VoiceForge command bar */}
       {voice.isAvailable && (
         <div className="flex items-center gap-3 rounded-xl border border-dark-700/50 bg-dark-900 px-4 py-3">
@@ -825,13 +881,17 @@ export default function TournamentPage() {
             </p>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setChecklist(Object.fromEntries(WARMUP_CHECKLIST_ITEMS.map((i) => [i.id, false])))}
+                onClick={() => setShowResetChecklistConfirm(true)}
                 className="text-xs text-dark-500 hover:text-dark-300 transition-colors"
               >
                 Reset Checklist
               </button>
               <button
-                onClick={() => setChecklist(Object.fromEntries(WARMUP_CHECKLIST_ITEMS.map((i) => [i.id, true])))}
+                onClick={() => {
+                  setChecklist(Object.fromEntries(WARMUP_CHECKLIST_ITEMS.map((i) => [i.id, true])));
+                  setWarmupToast("Warmup complete — you're ready");
+                  setTimeout(() => setWarmupToast(null), 3500);
+                }}
                 className="rounded-lg bg-forge-500/15 px-3 py-1.5 text-xs font-semibold text-forge-400 hover:bg-forge-500/25 transition-colors"
               >
                 Complete All
