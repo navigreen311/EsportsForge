@@ -35,7 +35,7 @@ export default function TransferAIWidget({
             <span className="text-sm font-bold text-dark-100">TransferAI</span>
           </div>
           <Link
-            href="/drills"
+            href="/drills?filter=pressure&focus=transfer-gap"
             className="inline-flex items-center gap-1 text-[11px] font-medium text-forge-400 hover:text-forge-300 transition-colors"
           >
             Close Gap

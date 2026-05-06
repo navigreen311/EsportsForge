@@ -42,6 +42,7 @@ _mount("app.api.v1.endpoints.two_factor",      prefix="/2fa",             tags=[
 _mount("app.api.v1.endpoints.users",           prefix="/users",           tags=["Users"])
 _mount("app.api.v1.endpoints.onboarding",      prefix="/onboarding",      tags=["Onboarding"])
 _mount("app.api.v1.endpoints.sessions",        prefix="/sessions",        tags=["Sessions"])
+_mount("app.api.v1.endpoints.daily_forge",     prefix="/daily-forge",     tags=["DailyForge"])
 _mount("app.api.v1.endpoints.subscriptions",   prefix="/subscriptions",   tags=["Subscriptions"])
 _mount("app.api.v1.endpoints.titles",          prefix="/titles",          tags=["Titles"])
 
@@ -85,6 +86,10 @@ _mount("app.api.v1.endpoints.simulation",      prefix="/simulation",      tags=[
 _mount("app.api.v1.endpoints.tournament",      prefix="/tournament",      tags=["Tournament"])
 _mount("app.api.v1.endpoints.streamer",        prefix="/streamer",        tags=["Streamer"])
 _mount("app.api.v1.endpoints.gameplans",       prefix="/gameplans",       tags=["Gameplans"])
+# Mount the action-shaped follow/dismiss endpoint *before* the legacy
+# recommendations router so its compact `{"action": ...}` POST handler wins
+# the route match against the structured-feedback handler.
+_mount("app.api.v1.endpoints.recommendation_feedback", prefix="/recommendations", tags=["Recommendations"])
 _mount("app.api.v1.endpoints.recommendations", prefix="/recommendations", tags=["Recommendations"])
 
 # ═══════════════════════════════════════════════════════════════════════════
