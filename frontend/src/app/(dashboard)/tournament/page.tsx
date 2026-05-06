@@ -68,11 +68,11 @@ const OPPONENT_QUEUE = [
   { name: 'LabRat420', archetype: 'Spread Option', prep: 'partial', winRate: 58 },
 ];
 
-const BRACKET_ROUNDS = [
-  { round: 'R1', matchups: [['You (W)', 'Player16'], ['xViper_Elite (W)', 'Player15']] },
-  { round: 'R2', matchups: [['You (W)', 'ColdRead99'], ['xViper_Elite (W)', 'BlitzKing_']] },
-  { round: 'R3', matchups: [['You', 'xViper_Elite']] },
-  { round: 'Final', matchups: [['TBD', 'TBD']] },
+const BRACKET_ROUNDS: { round: string; matchups: { players: [string, string]; sourceMatch?: string; expectedTime?: string }[] }[] = [
+  { round: 'R1', matchups: [{ players: ['You (W)', 'Player16'] }, { players: ['xViper_Elite (W)', 'Player15'] }] },
+  { round: 'R2', matchups: [{ players: ['You (W)', 'ColdRead99'] }, { players: ['xViper_Elite (W)', 'BlitzKing_'] }] },
+  { round: 'R3', matchups: [{ players: ['You', 'xViper_Elite'], expectedTime: '8:42 PM' }] },
+  { round: 'Final', matchups: [{ players: ['TBD', 'TBD'], sourceMatch: 'R3', expectedTime: '9:30 PM' }] },
 ];
 
 const WARMUP_CHECKLIST_ITEMS = [
@@ -578,18 +578,43 @@ export default function TournamentPage() {
                 <div className="space-y-2">
                   {round.matchups.map((match, mi) => (
                     <div key={mi} className="rounded-lg border border-dark-700/50 bg-dark-800/60 p-2">
-                      {match.map((player, pi) => (
-                        <div
-                          key={pi}
-                          className={`px-2 py-1 text-xs rounded ${
-                            player.startsWith('You')
-                              ? 'bg-forge-500/15 text-forge-400 font-semibold'
-                              : 'text-dark-300'
-                          } ${pi === 0 ? 'border-b border-dark-700/30 mb-1 pb-1' : ''}`}
-                        >
-                          {player}
-                        </div>
-                      ))}
+                      {match.players.map((player, pi) => {
+                        const isYou = player.startsWith('You');
+                        const isTBD = player === 'TBD';
+                        const cleanName = player.replace(/\s+\(W\)$/, '');
+                        const tbdTitle = isTBD && match.sourceMatch
+                          ? `Winner of ${match.sourceMatch}${match.expectedTime ? ` — game starts at ${match.expectedTime}` : ''}`
+                          : isTBD
+                          ? 'To be determined'
+                          : undefined;
+                        const baseClass = `px-2 py-1 text-xs rounded transition-colors ${
+                          isYou ? 'bg-forge-500/15 text-forge-400 font-semibold' : 'text-dark-300'
+                        } ${pi === 0 ? 'border-b border-dark-700/30 mb-1 pb-1' : ''}`;
+                        if (isTBD) {
+                          return (
+                            <div key={pi} className={`${baseClass} text-dark-500 italic cursor-help`} title={tbdTitle}>
+                              {player}
+                            </div>
+                          );
+                        }
+                        if (isYou) {
+                          return (
+                            <div key={pi} className={baseClass}>
+                              {player}
+                            </div>
+                          );
+                        }
+                        return (
+                          <button
+                            key={pi}
+                            type="button"
+                            onClick={() => router.push(`/opponents/${slug(cleanName)}`)}
+                            className={`${baseClass} block w-full text-left hover:text-forge-300`}
+                          >
+                            {player}
+                          </button>
+                        );
+                      })}
                     </div>
                   ))}
                 </div>
