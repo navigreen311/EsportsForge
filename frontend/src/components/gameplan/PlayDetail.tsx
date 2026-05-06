@@ -127,6 +127,15 @@ export default function PlayDetail({
     VoiceForgeService.speak(script, { interruptCurrent: true });
   };
 
+  // The backend returns snake_case (`job_id`, `video_url`, `thumbnail_url`)
+  // but the type union also exposes the camelCase aliases. Normalize on read
+  // so gating + AnimaPlayer props don't depend on which convention the wire
+  // happens to use.
+  const animJobId = animJob?.jobId ?? animJob?.job_id ?? undefined;
+  const animVideoUrl = animJob?.videoUrl ?? animJob?.video_url ?? undefined;
+  const animThumbnailUrl =
+    animJob?.thumbnailUrl ?? animJob?.thumbnail_url ?? undefined;
+
   // Pre-request the play animation as soon as the panel mounts (or when the
   // selected play / coverage variant changes). This way the render is already
   // in flight by the time the user clicks Watch. The pre-fetch is best-effort:
@@ -148,7 +157,9 @@ export default function PlayDetail({
       try {
         const existing = await getPlayDiagramStatus(play.id, coverageKey);
         if (cancelled) return;
-        if (existing?.videoUrl || existing?.jobId) {
+        const existingJobId = existing?.jobId ?? existing?.job_id;
+        const existingVideoUrl = existing?.videoUrl ?? existing?.video_url;
+        if (existingVideoUrl || existingJobId) {
           setAnimJob(existing);
           return;
         }
@@ -175,7 +186,7 @@ export default function PlayDetail({
     if (!play) return;
     setAnimError(null);
 
-    if (animJob?.jobId || animJob?.videoUrl) {
+    if (animJobId || animVideoUrl) {
       setShowPlayer(true);
       return;
     }
@@ -346,14 +357,18 @@ export default function PlayDetail({
               </Badge>
             )}
           </h3>
-          {animJob?.jobId || animJob?.videoUrl ? (
+          {animJobId || animVideoUrl ? (
             <AnimaPlayer
-              jobId={animJob.jobId ?? undefined}
-              videoUrl={animJob.videoUrl ?? undefined}
-              thumbnailUrl={animJob.thumbnailUrl ?? undefined}
+              jobId={animJobId}
+              videoUrl={animVideoUrl}
+              thumbnailUrl={animThumbnailUrl}
               type="play-diagram"
               onReady={(url) =>
-                setAnimJob((prev) => ({ ...(prev ?? {}), videoUrl: url }))
+                setAnimJob((prev) => ({
+                  ...(prev ?? {}),
+                  video_url: url,
+                  videoUrl: url,
+                }))
               }
             />
           ) : (
