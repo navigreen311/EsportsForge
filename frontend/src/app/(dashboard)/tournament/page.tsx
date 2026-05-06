@@ -60,6 +60,30 @@ const RECORD_BREAKDOWN = [
   { round: 'R3', result: 'Pending', score: '—', opponent: 'xViper_Elite' },
 ];
 
+const COUNTER_PACKAGE_BLITZ = {
+  archetype: 'Blitz Heavy',
+  plays: [
+    { name: 'Shotgun Trips — Slip Screen', why: 'Punish overcommitted edge rushers', confidence: 92 },
+    { name: 'Singleback Ace — Hot Slants', why: 'Quick-game release vs A-gap blitz', confidence: 88 },
+    { name: 'Gun Empty — Mesh Concept', why: 'Rub routes vs man under blitz', confidence: 85 },
+    { name: 'Pistol Strong — Max Protect Shot', why: 'Keep TE+RB in, isolate WR1 deep', confidence: 81 },
+  ],
+  defensiveScheme: 'Cover 1 Robber — single-high safety with hook player to disrupt crossers',
+  preSnapTips: [
+    'Watch the late-rotating safety — Cover 1 reveal',
+    'Count the box: 6+ defenders = blitz cue',
+    'Mike LB walking up = A-gap pressure',
+  ],
+};
+
+const BENCHMARK_BREAKDOWN = [
+  { archetype: 'Aggressive Rush', games: 18, winRate: 67 },
+  { archetype: 'Zone Coverage', games: 22, winRate: 59 },
+  { archetype: 'Blitz Heavy', games: 15, winRate: 48 },
+  { archetype: 'West Coast', games: 11, winRate: 73 },
+  { archetype: 'Spread Option', games: 9, winRate: 56 },
+];
+
 const OPPONENT_QUEUE = [
   { name: 'xViper_Elite', archetype: 'Aggressive Rush', prep: 'ready', winRate: 62 },
   { name: 'ColdRead99', archetype: 'Zone Coverage', prep: 'partial', winRate: 55 },
@@ -138,6 +162,9 @@ export default function TournamentPage() {
   const [countdownLevel, setCountdownLevel] = useState<'normal' | 'warn' | 'critical' | 'live'>('normal');
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showRecordSlideOver, setShowRecordSlideOver] = useState(false);
+  const [showCounterPackage, setShowCounterPackage] = useState(false);
+  const [showBenchmark, setShowBenchmark] = useState(false);
+  const [counterToast, setCounterToast] = useState<string | null>(null);
   const [matchStartTriggered, setMatchStartTriggered] = useState(false);
   const oneMinPulseRef = useRef(false);
   const [checklist, setChecklist] = useState<Record<string, boolean>>(
@@ -427,6 +454,119 @@ export default function TournamentPage() {
         </div>
       )}
 
+      {/* Bracket Intelligence Counter Package slide-over (C5) */}
+      {showCounterPackage && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/60" onClick={() => setShowCounterPackage(false)}>
+          <div className="h-full w-full max-w-lg border-l border-dark-700 bg-dark-900 p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-dark-50">Counter Package</h3>
+                <p className="text-xs text-dark-400 mt-0.5">vs {COUNTER_PACKAGE_BLITZ.archetype}</p>
+              </div>
+              <button onClick={() => setShowCounterPackage(false)} className="text-dark-500 hover:text-dark-200"><X className="h-5 w-5" /></button>
+            </div>
+            <p className="text-xs font-semibold text-dark-300 uppercase mb-2">Plays that beat blitz</p>
+            <div className="space-y-2 mb-5">
+              {COUNTER_PACKAGE_BLITZ.plays.map((p) => (
+                <div key={p.name} className="rounded-lg bg-dark-800/60 p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-dark-100">{p.name}</p>
+                    <span className="text-xs font-bold tabular-nums" style={{ color: confidenceColor(p.confidence) }}>{p.confidence}%</span>
+                  </div>
+                  <p className="text-xs text-dark-400 mt-0.5">{p.why}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs font-semibold text-dark-300 uppercase mb-1">Defensive Recommendation</p>
+            <p className="text-sm text-dark-200 mb-4">{COUNTER_PACKAGE_BLITZ.defensiveScheme}</p>
+            <p className="text-xs font-semibold text-dark-300 uppercase mb-1">Pre-snap Recognition</p>
+            <ul className="space-y-1 mb-5">
+              {COUNTER_PACKAGE_BLITZ.preSnapTips.map((t) => (
+                <li key={t} className="text-xs text-dark-300 flex items-start gap-2">
+                  <ChevronRight className="h-3 w-3 mt-0.5 text-forge-400 flex-shrink-0" />{t}
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-2 pt-3 border-t border-dark-700/50">
+              <button
+                type="button"
+                onClick={() => {
+                  fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001'}/api/v1/gameplans/append`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source: 'tournament-counter-package', plays: COUNTER_PACKAGE_BLITZ.plays.map((p) => p.name) }),
+                  }).catch(() => {});
+                  setCounterToast('Added 4 plays to gameplan');
+                  setShowCounterPackage(false);
+                  setTimeout(() => setCounterToast(null), 3500);
+                }}
+                className="flex-1 rounded-lg bg-forge-500/15 px-3 py-2 text-xs font-semibold text-forge-400 hover:bg-forge-500/25"
+              >
+                Add All to Gameplan
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001'}/api/v1/vault/entries`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      title: `Counter Package — ${COUNTER_PACKAGE_BLITZ.archetype}`,
+                      category: 'Counter Package',
+                      content: JSON.stringify(COUNTER_PACKAGE_BLITZ),
+                    }),
+                  }).catch(() => {});
+                  setCounterToast('Saved to Vault');
+                  setShowCounterPackage(false);
+                  setTimeout(() => setCounterToast(null), 3500);
+                }}
+                className="flex-1 rounded-lg border border-dark-600 bg-dark-800 px-3 py-2 text-xs font-semibold text-dark-200 hover:bg-dark-700"
+              >
+                Save to Vault
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BenchmarkAI win-rate breakdown modal (C5) */}
+      {showBenchmark && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowBenchmark(false)}>
+          <div className="w-full max-w-md rounded-xl border border-dark-700 bg-dark-900 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-bold text-dark-50">BenchmarkAI</h3>
+                <p className="text-xs text-dark-400">Win rate vs each archetype, last 30 days</p>
+              </div>
+              <button onClick={() => setShowBenchmark(false)} className="text-dark-500 hover:text-dark-200"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-2">
+              {BENCHMARK_BREAKDOWN.map((b) => (
+                <div key={b.archetype}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-dark-200 font-medium">{b.archetype}</span>
+                    <span className="text-dark-400">{b.winRate}% &middot; {b.games} games</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-dark-800 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${b.winRate >= 60 ? 'bg-green-500' : b.winRate >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
+                      style={{ width: `${b.winRate}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Counter package toast (C5) */}
+      {counterToast && (
+        <div className="fixed bottom-6 right-6 z-50 rounded-lg border border-forge-500/40 bg-dark-900 px-4 py-3 text-sm text-forge-300 shadow-lg">
+          {counterToast}
+        </div>
+      )}
+
       {/* Task 2C: VoiceForge command bar */}
       {voice.isAvailable && (
         <div className="flex items-center gap-3 rounded-xl border border-dark-700/50 bg-dark-900 px-4 py-3">
@@ -637,10 +777,20 @@ export default function TournamentPage() {
                   <p className="text-xs text-dark-300">
                     Hardest potential matchup: <span className="font-semibold text-dark-100">{hardestOpponent.name}</span>{' '}
                     ({hardestOpponent.archetype}). Your win rate vs {hardestOpponent.archetype}:{' '}
-                    <span className="font-semibold text-amber-300">{hardestOpponent.winRate}%</span>.
-                    Likely encounter: Round 3 or later.
+                    <button
+                      type="button"
+                      onClick={() => setShowBenchmark(true)}
+                      className="font-semibold text-amber-300 underline-offset-2 hover:underline"
+                    >
+                      {hardestOpponent.winRate}%
+                    </button>
+                    . Likely encounter: Round 3 or later.
                   </p>
-                  <button className="mt-2 rounded-lg border border-forge-500/30 bg-forge-500/10 px-3 py-1.5 text-xs font-semibold text-forge-400 hover:bg-forge-500/20 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setShowCounterPackage(true)}
+                    className="mt-2 rounded-lg border border-forge-500/30 bg-forge-500/10 px-3 py-1.5 text-xs font-semibold text-forge-400 hover:bg-forge-500/20 transition-colors"
+                  >
                     View Counter Package &rarr;
                   </button>
                 </>
