@@ -1,7 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye } from 'lucide-react';
+
+const STORAGE_KEY = 'esportsforge_vision_settings';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8001';
 
 type ClipFormat = 'mp4' | 'gif' | 'both';
 type ReplayStorage = '10' | '25' | 'unlimited';
@@ -70,6 +73,35 @@ export default function VisionSettings() {
   const [clipFormat, setClipFormat] = useState<ClipFormat>('mp4');
   const [replayStorage, setReplayStorage] = useState<ReplayStorage>('25');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearStatus, setClearStatus] = useState<string | null>(null);
+
+  // Hydrate
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (typeof d.replayAutoAnalysis === 'boolean') setReplayAutoAnalysis(d.replayAutoAnalysis);
+        if (typeof d.visualInputLab === 'boolean') setVisualInputLab(d.visualInputLab);
+        if (d.clipFormat) setClipFormat(d.clipFormat);
+        if (d.replayStorage) setReplayStorage(d.replayStorage);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // Persist (debounced backend PUT)
+  useEffect(() => {
+    const payload = { replayAutoAnalysis, visualInputLab, clipFormat, replayStorage };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    const t = setTimeout(() => {
+      fetch(`${API_BASE}/api/v1/vision/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+    }, 400);
+    return () => clearTimeout(t);
+  }, [replayAutoAnalysis, visualInputLab, clipFormat, replayStorage]);
 
   const clipFormatOptions: RadioOption<ClipFormat>[] = [
     { value: 'mp4', label: 'MP4' },
@@ -83,9 +115,18 @@ export default function VisionSettings() {
     { value: 'unlimited', label: 'Unlimited' },
   ];
 
-  function handleClearData() {
-    // Clear replay data logic would go here
-    setShowClearConfirm(false);
+  async function handleClearData() {
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/vision/replays`, { method: 'DELETE' });
+      if (res.ok) setClearStatus('All replays deleted.');
+      else setClearStatus('Could not reach server — local cache cleared.');
+    } catch {
+      setClearStatus('Network error — local cache cleared.');
+    } finally {
+      try { localStorage.removeItem('esportsforge_replays_cache'); } catch { /* ignore */ }
+      setShowClearConfirm(false);
+      setTimeout(() => setClearStatus(null), 3500);
+    }
   }
 
   return (
@@ -170,6 +211,9 @@ export default function VisionSettings() {
           )}
         </div>
       </div>
+
+      {/* Clear-data toast */}
+      {clearStatus && <p className="mt-3 text-xs text-forge-400">{clearStatus}</p>}
 
       {/* Anti-cheat note */}
       <p className="mt-6 text-[10px] text-amber-400/80">
