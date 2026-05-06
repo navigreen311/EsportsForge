@@ -65,6 +65,7 @@ function GameplanPageBody() {
 
   const [viewTab, setViewTab] = useState<ViewTab>('all');
   const [side, setSide] = useState<WeaponSide>('offense');
+  const [tendencyFilter, setTendencyFilter] = useState<string | null>(null);
   const session = useSessionStore((s) => s.session);
   const isSessionActive = !!session;
   const titleId = useActiveArsenalTitle();
@@ -96,6 +97,32 @@ function GameplanPageBody() {
     if (key !== 'script' && key !== 'arsenal') {
       setActiveTab(key as PackageTab);
     }
+  };
+
+  // FIX 5: tendency-pill filter — narrows the play list when the player
+  // clicks a tendency pill in the OpponentTendencyPanel.
+  const matchesTendency = (play: Play, pill: string): boolean => {
+    const tags = play.conceptTags ?? [];
+    if (pill === 'cover-2') return tags.includes('zone-beater');
+    if (pill === 'blitzes')
+      return tags.some((t) => t === 'quick-pass' || t === 'screen');
+    if (pill === 'run-first-3rd')
+      return tags.some((t) => t === 'run' || t === 'draw' || t === 'rpo');
+    return true;
+  };
+
+  const tendencyFilteredPlays = tendencyFilter
+    ? filteredPlays.filter((p) => matchesTendency(p, tendencyFilter))
+    : filteredPlays;
+
+  const handleFilterByTendency = (pill: string) => {
+    setTendencyFilter((prev) => (prev === pill ? null : pill));
+  };
+
+  const tendencyDescriptions: Record<string, string> = {
+    'cover-2': 'beat Cover 2',
+    blitzes: 'beat the blitz',
+    'run-first-3rd': 'attack run-first 3rd downs',
   };
 
   const openKillSheet = () => handleTabChange('kill-sheet');
@@ -184,7 +211,10 @@ function GameplanPageBody() {
       <OpponentTendencyHeader opponentName={opponent.name} />
 
       {/* 7. Opponent Tendency Panel */}
-      <OpponentTendencyPanel opponentName={opponent.name} />
+      <OpponentTendencyPanel
+        opponentName={opponent.name}
+        onFilterByTendency={handleFilterByTendency}
+      />
 
       {side === 'defense' && (
         <DefensiveGameplanView
@@ -281,12 +311,33 @@ function GameplanPageBody() {
             <AntiBlitzHealthBanner plays={gameplan.antiBlitzPackage} />
           )}
 
+          {/* Tendency-filter banner (FIX 5) */}
+          {tendencyFilter && (
+            <div className="flex items-center justify-between rounded-lg border border-forge-500/30 bg-forge-500/10 px-3 py-2">
+              <p className="text-xs text-forge-300">
+                Showing{' '}
+                <span className="font-semibold">
+                  {tendencyFilteredPlays.length}
+                </span>{' '}
+                plays that{' '}
+                {tendencyDescriptions[tendencyFilter] ?? tendencyFilter}
+              </p>
+              <button
+                type="button"
+                onClick={() => setTendencyFilter(null)}
+                className="rounded-md border border-forge-500/30 bg-forge-500/10 px-2 py-1 text-[11px] font-medium text-forge-300 transition-colors hover:bg-forge-500/20"
+              >
+                × clear
+              </button>
+            </div>
+          )}
+
           {/* Two-Column Layout */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
             {/* Left: Play List */}
             <div className="lg:col-span-5 xl:col-span-4">
               <GameplanList
-                plays={filteredPlays}
+                plays={tendencyFilteredPlays}
                 selectedPlayId={selectedPlay?.id ?? null}
                 onSelectPlay={selectPlay}
               />
