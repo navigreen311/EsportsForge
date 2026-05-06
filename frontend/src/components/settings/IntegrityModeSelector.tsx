@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Shield, ShieldCheck, ShieldAlert, FlaskConical, Trophy, Swords, Radio, Check, X } from 'lucide-react';
 import type { IntegrityModeSettings, IntegrityEnvironment, IntegrityRestriction } from '@/types/settings';
 
@@ -70,6 +71,8 @@ const antiCheatIcons = {
 
 export default function IntegrityModeSelector({ settings, onUpdate }: IntegrityModeSelectorProps) {
   const StatusIcon = antiCheatIcons[settings.antiCheatStatus];
+  const [pendingEnv, setPendingEnv] = useState<IntegrityEnvironment | null>(null);
+  const [showAntiCheatDetail, setShowAntiCheatDetail] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -85,7 +88,10 @@ export default function IntegrityModeSelector({ settings, onUpdate }: IntegrityM
             return (
               <button
                 key={env.value}
-                onClick={() => onUpdate({ environment: env.value })}
+                onClick={() => {
+                  if (env.value === settings.environment) return;
+                  setPendingEnv(env.value);
+                }}
                 className={`rounded-lg border p-4 text-left transition-all ${
                   isSelected
                     ? `${env.color} ring-1`
@@ -157,16 +163,61 @@ export default function IntegrityModeSelector({ settings, onUpdate }: IntegrityM
         </div>
       </div>
 
-      {/* Anti-Cheat Status */}
-      <div className="rounded-lg border border-dark-700 bg-dark-800 p-4 flex items-center gap-3">
+      {/* Anti-Cheat Status (clickable for detail) */}
+      <button
+        type="button"
+        onClick={() => setShowAntiCheatDetail(true)}
+        className="w-full rounded-lg border border-dark-700 bg-dark-800 p-4 flex items-center gap-3 hover:border-forge-500/40 transition-colors text-left"
+      >
         <StatusIcon className={`w-6 h-6 ${antiCheatColors[settings.antiCheatStatus]}`} />
         <div>
           <p className="text-sm font-medium text-dark-200">Anti-Cheat Status</p>
           <p className={`text-xs font-medium capitalize ${antiCheatColors[settings.antiCheatStatus]}`}>
-            {settings.antiCheatStatus}
+            {settings.antiCheatStatus} — click for details
           </p>
         </div>
-      </div>
+      </button>
+
+      {/* Switch-mode confirm modal */}
+      {pendingEnv && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setPendingEnv(null)}>
+          <div className="w-full max-w-md rounded-xl border border-dark-700 bg-dark-900 p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-dark-50 mb-1">
+              Switch to {environments.find((e) => e.value === pendingEnv)?.label} mode?
+            </h3>
+            <p className="text-sm text-dark-400 mb-5">
+              Some AI features will be {pendingEnv === 'tournament' ? 'restricted' : 'reconfigured'}. Active mode reflects in the TopBar badge.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setPendingEnv(null)} className="rounded-lg border border-dark-600 bg-dark-800 px-4 py-2 text-sm text-dark-200 hover:bg-dark-700">Cancel</button>
+              <button
+                onClick={() => { onUpdate({ environment: pendingEnv }); setPendingEnv(null); }}
+                className="rounded-lg bg-forge-500/15 border border-forge-500/40 px-4 py-2 text-sm font-semibold text-forge-300 hover:bg-forge-500/25"
+              >
+                Switch mode
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Anti-Cheat detail modal */}
+      {showAntiCheatDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowAntiCheatDetail(false)}>
+          <div className="w-full max-w-md rounded-xl border border-dark-700 bg-dark-900 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-3">
+              <h3 className="text-lg font-bold text-dark-50">Anti-Cheat Details</h3>
+              <button onClick={() => setShowAntiCheatDetail(false)} className="text-dark-500 hover:text-dark-200"><X className="w-5 h-5" /></button>
+            </div>
+            <dl className="space-y-2 text-sm">
+              <div className="flex justify-between"><dt className="text-dark-400">Last verification</dt><dd className="text-dark-200">{new Date().toLocaleString()}</dd></div>
+              <div className="flex justify-between"><dt className="text-dark-400">Status</dt><dd className={`font-semibold capitalize ${antiCheatColors[settings.antiCheatStatus]}`}>{settings.antiCheatStatus}</dd></div>
+              <div><dt className="text-dark-400">Active services</dt><dd className="text-dark-200 mt-1 ml-2">&middot; Ricochet (Warzone)<br/>&middot; Easy Anti-Cheat (Fortnite)<br/>&middot; Vanguard (Valorant)</dd></div>
+            </dl>
+            <a href="/legal/anti-cheat" className="block mt-4 text-xs text-forge-400 hover:text-forge-300">View privacy policy &rarr;</a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
