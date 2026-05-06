@@ -380,6 +380,7 @@ export default function VaultPage() {
   const [addOpponent, setAddOpponent] = useState('');
   const [addContent, setAddContent] = useState('');
   const [addTags, setAddTags] = useState('');
+  const [addConfidence, setAddConfidence] = useState(80);
 
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -517,7 +518,7 @@ export default function VaultPage() {
       date: today,
       snippet: addContent.trim().substring(0, 120) + (addContent.trim().length > 120 ? '...' : ''),
       content: addContent.trim(),
-      confidence: 100,
+      confidence: addConfidence,
       relatedIds: [],
       pinned: false,
       tags: addTags
@@ -532,6 +533,7 @@ export default function VaultPage() {
     setAddOpponent('');
     setAddContent('');
     setAddTags('');
+    setAddConfidence(80);
   };
 
   const hasActiveFilters = searchQuery || selectedCategory || selectedOpponent || dateFrom || dateTo;
@@ -1023,6 +1025,31 @@ export default function VaultPage() {
                   rows={5}
                   className="w-full rounded-lg border border-dark-700/50 bg-dark-800 px-3 py-2 text-sm text-dark-200 placeholder-dark-500 focus:border-forge-500/50 focus:outline-none"
                 />
+              </div>
+
+              {/* Confidence slider */}
+              <div>
+                <div className="mb-1 flex items-center justify-between text-xs font-medium text-dark-400">
+                  <label htmlFor="vault-confidence">Confidence</label>
+                  <span className="font-mono text-dark-200">
+                    {addConfidence}%
+                  </span>
+                </div>
+                <input
+                  id="vault-confidence"
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={addConfidence}
+                  onChange={(e) => setAddConfidence(Number(e.target.value))}
+                  className="w-full accent-forge-500"
+                  aria-valuetext={`${addConfidence} percent confidence`}
+                />
+                <div className="mt-1 flex justify-between text-[10px] text-dark-500">
+                  <span>Hunch</span>
+                  <span>Verified</span>
+                </div>
               </div>
 
               {/* Tags */}
