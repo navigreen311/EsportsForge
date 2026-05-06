@@ -317,6 +317,32 @@ export default function TournamentPage() {
   const [notes, setNotes] = useState<{ id: string; time: string; text: string }[]>([]);
   const [noteInput, setNoteInput] = useState('');
   const [failsafeMode, setFailsafeMode] = useState(false);
+  const [connTesting, setConnTesting] = useState(false);
+  const [connResult, setConnResult] = useState<{ status: 'ok' | 'slow' | 'fail'; latencyMs?: number } | null>(null);
+
+  // C13: broadcast failsafe mode so other components can disable live agents
+  useEffect(() => {
+    try { localStorage.setItem('esf:failsafe', failsafeMode ? '1' : '0'); } catch { /* ignore */ }
+    window.dispatchEvent(new CustomEvent('esf:failsafe', { detail: failsafeMode }));
+  }, [failsafeMode]);
+
+  const testConnection = useCallback(async () => {
+    setConnTesting(true);
+    setConnResult(null);
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001';
+    const start = performance.now();
+    try {
+      const res = await fetch(`${apiBase}/api/v1/health`, { cache: 'no-store' });
+      const latency = Math.round(performance.now() - start);
+      if (!res.ok) setConnResult({ status: 'fail' });
+      else if (latency < 100) setConnResult({ status: 'ok', latencyMs: latency });
+      else setConnResult({ status: 'slow', latencyMs: latency });
+    } catch {
+      setConnResult({ status: 'fail' });
+    } finally {
+      setConnTesting(false);
+    }
+  }, []);
   const [tiltStatus, setTiltStatus] = useState<'green' | 'yellow' | 'red'>('green');
   const [fatigue, setFatigue] = useState(28);
   const [breakTimer, setBreakTimer] = useState(12);
@@ -1702,9 +1728,30 @@ export default function TournamentPage() {
           {failsafeMode && (
             <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2">
               <AlertTriangle className="h-4 w-4 text-amber-400 flex-shrink-0" />
-              <p className="text-xs text-amber-300">Failsafe active — using cached data only</p>
+              <p className="text-xs text-amber-300">Offline mode — using cached data. Live MetaBot &amp; opponent scouting paused.</p>
             </div>
           )}
+          <div className="mt-4 flex items-center gap-3 pt-3 border-t border-dark-700/50">
+            <button
+              type="button"
+              onClick={testConnection}
+              disabled={connTesting}
+              className="flex items-center gap-1.5 rounded-lg bg-dark-800 border border-dark-700 px-3 py-1.5 text-xs font-semibold text-dark-200 hover:border-forge-500/30 disabled:opacity-50"
+            >
+              <Wifi className="h-3.5 w-3.5" /> {connTesting ? 'Testing…' : 'Test Connection'}
+            </button>
+            {connResult && (
+              <span className={`text-xs font-medium ${
+                connResult.status === 'ok' ? 'text-green-400' :
+                connResult.status === 'slow' ? 'text-amber-300' :
+                'text-red-400'
+              }`}>
+                {connResult.status === 'fail'
+                  ? 'Backend: failed ✗'
+                  : `Backend: ${connResult.latencyMs}ms ${connResult.status === 'ok' ? '✓' : '⚠'}`}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
