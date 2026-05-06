@@ -121,16 +121,38 @@ export default function DrillRunner({
     }
     setDemoLoading(true);
     try {
-      const data = await animaforgeApi.requestDrillRender({
+      // Try the canonical drill render first — produces a title-specific
+      // demo for drills that have an entry in DRILL_ANIMATION_SPECS
+      // (pre-snap-reads, blitz-timing, ...).
+      const drillData = await animaforgeApi.requestDrillRender({
         title_id: activeTitleId,
         drill_type: drillType,
         drill_name: drill.name,
       });
-      if (data.video_url) {
-        setDemoVideoUrl(data.video_url);
-        if (data.thumbnail_url) setDemoThumbnailUrl(data.thumbnail_url);
-      } else if (data.job_id) {
-        setDemoJobId(data.job_id);
+
+      // Backend returns `{ available: false, reason: "spec-not-found" }` for
+      // any drill_type not in the canonical table — most user-facing drills
+      // identified by uuid/slug fall through this branch. Fall back to the
+      // play endpoint, which is tolerant of unknown ids and produces a
+      // universal-tactic-diagram. Same pattern as SimLab scenario preview.
+      const drillUnavailable =
+        (drillData as { available?: boolean }).available === false;
+      if (drillUnavailable || (!drillData.video_url && !drillData.job_id)) {
+        const fallback = await animaforgeApi.requestPlayRender({
+          play_id: `drill-${drillType}`,
+          title_id: activeTitleId,
+        });
+        if (fallback.video_url) {
+          setDemoVideoUrl(fallback.video_url);
+          if (fallback.thumbnail_url) setDemoThumbnailUrl(fallback.thumbnail_url);
+        } else if (fallback.job_id) {
+          setDemoJobId(fallback.job_id);
+        }
+      } else if (drillData.video_url) {
+        setDemoVideoUrl(drillData.video_url);
+        if (drillData.thumbnail_url) setDemoThumbnailUrl(drillData.thumbnail_url);
+      } else if (drillData.job_id) {
+        setDemoJobId(drillData.job_id);
       }
       setShowDemo(true);
     } catch {
