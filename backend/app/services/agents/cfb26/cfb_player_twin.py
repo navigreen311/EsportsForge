@@ -68,7 +68,7 @@ class CFBPlayerTwin:
         for h in history:
             all_tells.update(h.get("tells_seen", []))
 
-        trick_fails = {}
+        trick_fails: dict[str, int] = {}
         for h in history:
             trick = h.get("trick_type", "unknown")
             if not h.get("defended", False):
@@ -98,7 +98,7 @@ class CFBPlayerTwin:
                 worst_option_defense="triple_option",
             )
 
-        discipline_scores = {"dive": [], "pitch": [], "contain": []}
+        discipline_scores: dict[str, list] = {"dive": [], "pitch": [], "contain": []}
         option_results = {}
         for h in history:
             option_type = h.get("option_type", "unknown")

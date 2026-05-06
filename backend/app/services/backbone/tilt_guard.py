@@ -86,8 +86,8 @@ class TiltGuard:
 
         result = CheckinResult(
             user_id=user_id,
-            mood_score=mood,
-            energy_score=energy,
+            mood_score=int(mood),
+            energy_score=int(energy),
             risk_level=risk,
             recommendation=rec,
         )

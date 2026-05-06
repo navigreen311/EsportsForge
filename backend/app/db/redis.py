@@ -39,11 +39,12 @@ async def init_redis() -> redis.Redis:
 async def close_redis() -> None:
     """Gracefully close the Redis connection pool."""
     global _pool, _client
+    # aclose() is the redis-py >=5 async close; types-redis stubs lag behind.
     if _client is not None:
-        await _client.aclose()
+        await _client.aclose()  # type: ignore[attr-defined]
         _client = None
     if _pool is not None:
-        await _pool.aclose()
+        await _pool.aclose()  # type: ignore[attr-defined]
         _pool = None
     logger.info("redis_disconnected")
 

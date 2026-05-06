@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query
 
 from app.schemas.coach import (
     CoachDashboard,
@@ -46,8 +46,8 @@ async def share_playbook(
     coach_id: str = Query(...),
     title: str = Query(...),
     game_title: str = Query(...),
-    strategies: list[dict[str, Any]] = ...,
-    player_ids: list[str] = ...,
+    strategies: list[dict[str, Any]] = Body(...),
+    player_ids: list[str] = Body(...),
     notes: str = Query(""),
 ) -> SharedPlaybook:
     """Share a playbook with selected players."""

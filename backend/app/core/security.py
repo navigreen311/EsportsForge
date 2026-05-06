@@ -108,10 +108,14 @@ def require_tier(minimum_tier: UserTier):
 
     Tier hierarchy: free < competitive < elite < team
     """
+    from app.core.tier_gating import _as_role
     tier_order = [UserTier.FREE, UserTier.COMPETITIVE, UserTier.ELITE, UserTier.TEAM]
 
     async def _check_tier(current_user: User = Depends(get_current_user)) -> User:
-        user_level = tier_order.index(current_user.tier) if current_user.tier in tier_order else 0
+        try:
+            user_level = tier_order.index(_as_role(current_user.tier))
+        except (ValueError, KeyError):
+            user_level = 0
         required_level = tier_order.index(minimum_tier)
         if user_level < required_level:
             raise HTTPException(
@@ -125,4 +129,5 @@ def require_tier(minimum_tier: UserTier):
 
 def get_user_title_limit(user: User) -> int | None:
     """Return the max number of titles a user can access. None means unlimited."""
-    return TIER_TITLE_LIMITS.get(user.tier)
+    from app.core.tier_gating import _as_role
+    return TIER_TITLE_LIMITS.get(_as_role(user.tier))

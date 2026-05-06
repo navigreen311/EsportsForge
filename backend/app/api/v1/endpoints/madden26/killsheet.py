@@ -35,7 +35,7 @@ _kill_sheets: dict[str, KillSheet] = {}
 async def generate_kill_sheet(request: KillSheetRequest) -> ScoredKillSheet:
     """Generate a kill sheet of 5 plays proven to beat this opponent."""
     try:
-        sheet = _kill_sheet_gen.generate_kill_sheet(
+        sheet = await _kill_sheet_gen.generate_kill_sheet(
             user_id=request.user_id,
             opponent_data=request.opponent_data,
             roster=request.roster,

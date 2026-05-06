@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 # Timing window data by pitch type (ms from pitch release)
 # ---------------------------------------------------------------------------
 
-_TIMING_WINDOWS: dict[str, dict[str, float]] = {
+_TIMING_WINDOWS: dict[str, dict[str, Any]] = {
     "four_seam": {"optimal_ms": 420, "window_ms": 30, "velo_range": "93-98 mph"},
     "two_seam": {"optimal_ms": 430, "window_ms": 32, "velo_range": "91-95 mph"},
     "cutter": {"optimal_ms": 445, "window_ms": 28, "velo_range": "87-92 mph"},

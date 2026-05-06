@@ -464,7 +464,7 @@ class PokerStrategyAI:
             window = values[start_idx:start_idx + 4]
             if len(window) == 4 and window[-1] - window[0] == 3:
                 indices = []
-                used_values = set()
+                used_values: set[int] = set()
                 for v in window:
                     for i, c in enumerate(cards):
                         if _rank_value(c.rank) == v and i not in indices:

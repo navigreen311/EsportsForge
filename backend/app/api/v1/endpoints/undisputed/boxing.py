@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query
 
 from app.schemas.undisputed.boxing import (
     ArchetypeClassification,
@@ -150,8 +150,8 @@ async def jab_economy(
 @router.post("/score/round", response_model=RoundScore, summary="Score a round")
 async def score_round(
     round_num: int = Query(..., ge=1),
-    player_stats: dict = ...,
-    opponent_stats: dict = ...,
+    player_stats: dict = Body(...),
+    opponent_stats: dict = Body(...),
 ) -> RoundScore:
     """Score a single round using the 10-point must system."""
     try:
@@ -188,7 +188,7 @@ async def body_work_roi(
 async def update_damage(
     fight_id: str,
     round_num: int = Query(..., ge=1),
-    punches_absorbed: dict = ...,
+    punches_absorbed: dict = Body(...),
     knockdowns: int = Query(0, ge=0),
 ) -> DamageState:
     """Update damage state after a round."""
