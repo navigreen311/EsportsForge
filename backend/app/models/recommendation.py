@@ -1,9 +1,10 @@
 """ForgeCore recommendation model — AI-generated coaching suggestions."""
 
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
-from sqlalchemy import Boolean, Float, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String
 from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -56,6 +57,11 @@ class Recommendation(UUIDPrimaryKeyMixin, Base):
     )
     outcome_correct: Mapped[Optional[bool]] = mapped_column(
         Boolean, nullable=True, comment="Was the prediction correct?"
+    )
+    feedback_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp when the player submitted follow/dismiss feedback",
     )
 
     # Relationships
