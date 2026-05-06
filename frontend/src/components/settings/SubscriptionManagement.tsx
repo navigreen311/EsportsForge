@@ -185,6 +185,45 @@ export default function SubscriptionManagement({
   const [cancelledUntil, setCancelledUntil] = useState<string | null>(null);
   const [cancellingInProgress, setCancellingInProgress] = useState(false);
 
+  // Promo code state
+  const [promoCode, setPromoCode] = useState('');
+  const [promoStatus, setPromoStatus] = useState<{ tone: 'ok' | 'err'; msg: string } | null>(null);
+  const [promoSubmitting, setPromoSubmitting] = useState(false);
+
+  async function openStripePortal() {
+    try {
+      const res = await fetch('/api/v1/subscriptions/portal-link', { method: 'POST' });
+      if (res.ok) {
+        const { url } = await res.json();
+        if (url) { window.open(url, '_blank'); return; }
+      }
+    } catch { /* ignore */ }
+    alert('Stripe billing portal not configured. Wire STRIPE_SECRET + a portal-link route to enable.');
+  }
+
+  async function applyPromo() {
+    if (!promoCode.trim()) return;
+    setPromoSubmitting(true);
+    setPromoStatus(null);
+    try {
+      const res = await fetch('/api/v1/subscriptions/apply-promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promoCode.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setPromoStatus({ tone: 'ok', msg: data?.message ?? `Promo applied — discount on next bill.` });
+      } else {
+        setPromoStatus({ tone: 'err', msg: 'Invalid or expired code.' });
+      }
+    } catch {
+      setPromoStatus({ tone: 'err', msg: 'Could not reach server.' });
+    } finally {
+      setPromoSubmitting(false);
+    }
+  }
+
   const availableUpgrades = upgradeCards.filter(
     (card) => tierOrder.indexOf(card.tier) > currentIndex
   );
@@ -339,7 +378,10 @@ export default function SubscriptionManagement({
               &bull;&bull;&bull;&bull; 4242 (Visa)
             </span>
           </div>
-          <button className="rounded-lg border border-dark-600 bg-dark-800 px-4 py-2 text-sm font-medium text-dark-200 hover:bg-dark-700 transition-colors">
+          <button
+            onClick={openStripePortal}
+            className="rounded-lg border border-dark-600 bg-dark-800 px-4 py-2 text-sm font-medium text-dark-200 hover:bg-dark-700 transition-colors"
+          >
             Update
           </button>
         </div>
@@ -378,9 +420,36 @@ export default function SubscriptionManagement({
 
         {/* Manage Billing link */}
         <div className="mb-6">
-          <button className="flex items-center gap-1.5 text-sm font-medium text-forge-400 hover:text-forge-300 transition-colors">
+          <button
+            onClick={openStripePortal}
+            className="flex items-center gap-1.5 text-sm font-medium text-forge-400 hover:text-forge-300 transition-colors"
+          >
             Manage Billing <ExternalLink className="w-4 h-4" />
           </button>
+        </div>
+
+        {/* Promo code */}
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-dark-300 mb-2">Promo code</h3>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={promoCode}
+              onChange={(e) => { setPromoCode(e.target.value); setPromoStatus(null); }}
+              placeholder="ENTER CODE"
+              className="flex-1 rounded-lg border border-dark-600 bg-dark-800 px-3 py-2 text-sm uppercase tracking-wider text-dark-100 placeholder-dark-500 focus:border-forge-500 focus:outline-none focus:ring-1 focus:ring-forge-500"
+            />
+            <button
+              onClick={applyPromo}
+              disabled={promoSubmitting || !promoCode.trim()}
+              className="rounded-lg bg-forge-600 px-4 py-2 text-sm font-medium text-white hover:bg-forge-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {promoSubmitting ? 'Applying…' : 'Apply'}
+            </button>
+          </div>
+          {promoStatus && (
+            <p className={`text-xs mt-1.5 ${promoStatus.tone === 'ok' ? 'text-forge-400' : 'text-red-400'}`}>{promoStatus.msg}</p>
+          )}
         </div>
 
         {/* Cancel Subscription */}
