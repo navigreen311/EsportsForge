@@ -1,11 +1,25 @@
 /**
  * ProofAI Panel — Evidence cards with sample size, confidence, and verification status.
  * Shows data-backed proof for AI recommendations.
+ *
+ * Each card is clickable and expands to show WHY/DATA/RISK rationale,
+ * mirroring the "Why?" toggle pattern from RecentRecommendations.
+ *
+ * TODO: Wire WHY/DATA/RISK to real ConfidenceAI output instead of static mock fields.
  */
 
 'use client';
 
-import { ShieldCheck, Database, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import {
+  ShieldCheck,
+  Database,
+  CheckCircle2,
+  ChevronDown,
+  FileText,
+  AlertTriangle,
+} from 'lucide-react';
+import { clsx } from 'clsx';
 import { Card } from '@/components/shared/Card';
 
 interface EvidenceCard {
@@ -14,6 +28,9 @@ interface EvidenceCard {
   confidence: number;
   verified: string;
   icon: 'database' | 'check';
+  why: string;
+  data: string;
+  risk: string;
 }
 
 const mockEvidence: EvidenceCard[] = [
@@ -23,6 +40,9 @@ const mockEvidence: EvidenceCard[] = [
     confidence: 87,
     verified: 'Verified 2 games ago',
     icon: 'database',
+    why: 'Pattern is consistent across recent games vs zone defenses.',
+    data: '14 games sampled, last 21 days. 87% confidence interval.',
+    risk: 'Low — high sample size, recent and stable trend.',
   },
   {
     id: 'ev-2',
@@ -30,6 +50,9 @@ const mockEvidence: EvidenceCard[] = [
     confidence: 79,
     verified: 'Verified last session',
     icon: 'database',
+    why: 'Decision latency increases measurably late in long sessions.',
+    data: 'Compared first 30min vs final 30min across 11 multi-hour sessions.',
+    risk: 'Medium — true effect, but some variance from opponent strength.',
   },
   {
     id: 'ev-3',
@@ -37,6 +60,9 @@ const mockEvidence: EvidenceCard[] = [
     confidence: 91,
     verified: 'Verified 1 game ago',
     icon: 'check',
+    why: 'Play-action concepts consistently outperform straight drop-back inside the 20.',
+    data: '23 red zone snaps with PA vs 31 without; +18% TD rate.',
+    risk: 'Low — recent, repeatable, and effect size is large.',
   },
 ];
 
@@ -47,6 +73,8 @@ function getConfidenceColor(confidence: number) {
 }
 
 export default function ProofAIPanel() {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   return (
     <Card padding="md">
       <div className="space-y-3">
@@ -65,27 +93,68 @@ export default function ProofAIPanel() {
         <div className="space-y-2">
           {mockEvidence.map((ev) => {
             const confColor = getConfidenceColor(ev.confidence);
+            const isExpanded = expandedId === ev.id;
             return (
-              <div
-                key={ev.id}
-                className="flex items-center gap-3 rounded-lg border border-dark-700/50 bg-dark-800/40 px-3 py-2.5"
-              >
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-dark-700/50">
-                  {ev.icon === 'database' ? (
-                    <Database className="h-3.5 w-3.5 text-dark-400" />
-                  ) : (
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-dark-200">{ev.statement}</p>
-                  <p className="text-[10px] text-dark-500">{ev.verified}</p>
-                </div>
-                <span
-                  className={`rounded-md border px-2 py-0.5 text-[11px] font-bold tabular-nums ${confColor}`}
+              <div key={ev.id}>
+                <button
+                  type="button"
+                  onClick={() => setExpandedId(isExpanded ? null : ev.id)}
+                  aria-expanded={isExpanded}
+                  aria-controls={`proof-${ev.id}`}
+                  className="flex w-full items-center gap-3 rounded-lg border border-dark-700/50 bg-dark-800/40 px-3 py-2.5 text-left transition-colors hover:border-dark-600 hover:bg-dark-800/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-forge-500/40"
                 >
-                  {ev.confidence}%
-                </span>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-md bg-dark-700/50">
+                    {ev.icon === 'database' ? (
+                      <Database className="h-3.5 w-3.5 text-dark-400" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-dark-200">{ev.statement}</p>
+                    <p className="text-[10px] text-dark-500">{ev.verified}</p>
+                  </div>
+                  <span
+                    className={`rounded-md border px-2 py-0.5 text-[11px] font-bold tabular-nums ${confColor}`}
+                  >
+                    {ev.confidence}%
+                  </span>
+                  <ChevronDown
+                    className={clsx(
+                      'h-3.5 w-3.5 flex-shrink-0 text-dark-500 transition-transform',
+                      isExpanded && 'rotate-180'
+                    )}
+                  />
+                </button>
+
+                {isExpanded && (
+                  <div
+                    id={`proof-${ev.id}`}
+                    className="mt-2 space-y-1.5 rounded-lg border border-dark-700/50 bg-dark-800/50 px-3 py-2"
+                  >
+                    <div className="flex items-start gap-1.5">
+                      <FileText className="mt-0.5 h-3 w-3 flex-shrink-0 text-dark-500" />
+                      <p className="text-[11px] text-dark-300">
+                        <span className="font-medium text-dark-200">WHY:</span>{' '}
+                        {ev.why}
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-1.5">
+                      <Database className="mt-0.5 h-3 w-3 flex-shrink-0 text-dark-500" />
+                      <p className="text-[11px] text-dark-300">
+                        <span className="font-medium text-dark-200">DATA:</span>{' '}
+                        {ev.data}
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-1.5">
+                      <AlertTriangle className="mt-0.5 h-3 w-3 flex-shrink-0 text-amber-500" />
+                      <p className="text-[11px] text-dark-300">
+                        <span className="font-medium text-amber-400">RISK:</span>{' '}
+                        {ev.risk}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
