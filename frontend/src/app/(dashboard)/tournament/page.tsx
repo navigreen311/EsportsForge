@@ -208,7 +208,7 @@ export default function TournamentPage() {
   useEffect(() => {
     try { localStorage.setItem(WARMUP_STORAGE_KEY, JSON.stringify(checklist)); } catch { /* ignore */ }
   }, [checklist]);
-  const [notes, setNotes] = useState<{ time: string; text: string }[]>([]);
+  const [notes, setNotes] = useState<{ id: string; time: string; text: string }[]>([]);
   const [noteInput, setNoteInput] = useState('');
   const [failsafeMode, setFailsafeMode] = useState(false);
   const [tiltStatus, setTiltStatus] = useState<'green' | 'yellow' | 'red'>('green');
@@ -316,11 +316,49 @@ export default function TournamentPage() {
     return () => clearInterval(interval);
   }, [breathingActive]);
 
-  const addNote = () => {
-    if (!noteInput.trim()) return;
+  const addNote = async () => {
+    const trimmed = noteInput.trim();
+    if (!trimmed) return;
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    setNotes((prev) => [{ time, text: noteInput.trim() }, ...prev]);
+    const localId = `local-${Date.now()}`;
+    setNotes((prev) => [{ id: localId, time, text: trimmed }, ...prev]);
     setNoteInput('');
+    // Persist to vault — best-effort
+    const session = await import('next-auth/react').then((m) => m.getSession());
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001';
+    try {
+      const res = await fetch(`${apiBase}/api/v1/vault/entries`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {}),
+        },
+        body: JSON.stringify({
+          title: `Tournament Note — ${TOURNAMENT.name} — ${time}`,
+          category: 'Tournament Note',
+          tournament_id: TOURNAMENT.name,
+          content: trimmed,
+        }),
+      });
+      if (res.ok) {
+        const body = await res.json().catch(() => null);
+        const remoteId = body?.id || body?.entry_id;
+        if (remoteId) {
+          setNotes((prev) => prev.map((n) => (n.id === localId ? { ...n, id: String(remoteId) } : n)));
+        }
+      }
+    } catch { /* offline / failed — keep local note */ }
+  };
+
+  const deleteNote = async (id: string) => {
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+    if (id.startsWith('local-')) return;
+    const session = await import('next-auth/react').then((m) => m.getSession());
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001';
+    fetch(`${apiBase}/api/v1/vault/entries/${id}`, {
+      method: 'DELETE',
+      headers: { ...(session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {}) },
+    }).catch(() => {});
   };
 
   const resetComplete = resetSteps.every(Boolean);
@@ -1191,10 +1229,18 @@ export default function TournamentPage() {
           </div>
           <div className="space-y-1.5 max-h-32 overflow-y-auto">
             {notes.length === 0 && <p className="text-xs text-dark-500 italic">No notes yet</p>}
-            {notes.map((n, i) => (
-              <div key={i} className="flex gap-2 text-xs">
+            {notes.map((n) => (
+              <div key={n.id} className="group flex gap-2 text-xs items-start">
                 <span className="text-dark-500 font-mono whitespace-nowrap">{n.time}</span>
-                <span className="text-dark-300">{n.text}</span>
+                <span className="text-dark-300 flex-1">{n.text}</span>
+                <button
+                  type="button"
+                  onClick={() => deleteNote(n.id)}
+                  className="text-dark-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Delete note"
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </div>
             ))}
           </div>
