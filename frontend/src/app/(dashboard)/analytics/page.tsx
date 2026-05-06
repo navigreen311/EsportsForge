@@ -22,7 +22,9 @@ import WinConditions from '@/components/analytics/WinConditions';
 import PlayerTwinEvolution from '@/components/analytics/PlayerTwinEvolution';
 import FatigueAnalytics from '@/components/analytics/FatigueAnalytics';
 import SessionLoopAIDetails from '@/components/analytics/SessionLoopAIDetails';
-import AnalyticsFilters from '@/components/analytics/AnalyticsFilters';
+import AnalyticsFilters, {
+  type AnalyticsFilterState,
+} from '@/components/analytics/AnalyticsFilters';
 import ExportDropdown from '@/components/analytics/ExportDropdown';
 import FilmRoom from '@/components/analytics/FilmRoom';
 import DefensiveAnalyticsPanel from '@/components/analytics/DefensiveAnalyticsPanel';
@@ -151,9 +153,53 @@ export default function AnalyticsPage() {
   const [side, setSide] = useState<WeaponSide>('offense');
   const titleId = useActiveArsenalTitle();
 
-  const filteredSessions = situationalFilter
-    ? mockSessions.filter((s) => s.situationalTags.includes(situationalFilter))
-    : mockSessions;
+  // Top-level analytics filters (mode + date range etc.) — drives the
+  // Session History filtering and clips the win-rate trend window.
+  const [analyticsFilters, setAnalyticsFilters] =
+    useState<AnalyticsFilterState>({
+      dateRange: 'Last 30d',
+      mode: 'All Modes',
+      archetype: 'All Archetypes',
+      opponent: 'All Opponents',
+      title: 'Madden 26',
+    });
+
+  // Refs for the four stat-card scroll targets.
+  const winRateChartRef = useRef<HTMLDivElement | null>(null);
+  const sessionHistoryRef = useRef<HTMLDivElement | null>(null);
+  const winConditionsRef = useRef<HTMLDivElement | null>(null);
+  const fatigueRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToRef = (ref: React.MutableRefObject<HTMLDivElement | null>) => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // Filter sessions by mode + situational tag.
+  const modeFilterMap: Record<string, string | null> = {
+    'All Modes': null,
+    Ranked: 'ranked',
+    Tournament: 'tournament',
+    Training: 'training',
+  };
+  const activeModeFilter = modeFilterMap[analyticsFilters.mode] ?? null;
+
+  const filteredSessions = mockSessions.filter((s) => {
+    if (situationalFilter && !s.situationalTags.includes(situationalFilter))
+      return false;
+    if (activeModeFilter && s.mode !== activeModeFilter) return false;
+    return true;
+  });
+
+  // Clip the win-rate trend window to match the date range. Mock data is
+  // 30 ordered points; treat it as the most-recent-30-days slice.
+  const dateRangeMap: Record<string, number> = {
+    'Last 7d': 7,
+    'Last 30d': 30,
+    'Last 90d': 30, // mock cap
+    'All Time': 30, // mock cap
+  };
+  const winRateWindow = dateRangeMap[analyticsFilters.dateRange] ?? 30;
+  const filteredWinRateData = mockWinRateData.slice(-winRateWindow);
 
   // Banner reader: period/skill query params
   const searchParams = useSearchParams();
@@ -262,21 +308,54 @@ export default function AnalyticsPage() {
       <div className="space-y-6">
 
       {/* 8. Analytics Filters Bar */}
-      <AnalyticsFilters />
+      <AnalyticsFilters onFilterChange={setAnalyticsFilters} />
 
-      {/* Top Stats */}
+      {/* Top Stats — clickable to scroll to the relevant detail section */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Overall Win Rate', value: '65%', change: '+3%', positive: true },
-          { label: 'Total Sessions', value: '95', change: '+12', positive: true },
-          { label: 'Current Streak', value: 'W3', change: '', positive: true },
-          { label: 'Avg Score Diff', value: '+7.2', change: '+1.4', positive: true },
+          {
+            label: 'Overall Win Rate',
+            value: '65%',
+            change: '+3%',
+            positive: true,
+            onClick: () => scrollToRef(winRateChartRef),
+            scrollLabel: 'Scroll to Win Rate Trend',
+          },
+          {
+            label: 'Total Sessions',
+            value: '95',
+            change: '+12',
+            positive: true,
+            onClick: () => scrollToRef(sessionHistoryRef),
+            scrollLabel: 'Scroll to Session History',
+          },
+          {
+            label: 'Current Streak',
+            value: 'W3',
+            change: '',
+            positive: true,
+            onClick: () => scrollToRef(fatigueRef),
+            scrollLabel: 'Scroll to Predictive Fatigue',
+          },
+          {
+            label: 'Avg Score Diff',
+            value: '+7.2',
+            change: '+1.4',
+            positive: true,
+            onClick: () => scrollToRef(winConditionsRef),
+            scrollLabel: 'Scroll to Win Conditions',
+          },
         ].map((stat) => (
-          <div
+          <button
             key={stat.label}
-            className="rounded-xl border border-dark-700 bg-dark-900/50 p-4"
+            type="button"
+            onClick={stat.onClick}
+            aria-label={stat.scrollLabel}
+            className="group rounded-xl border border-dark-700 bg-dark-900/50 p-4 text-left transition-all hover:-translate-y-px hover:border-forge-500/40 hover:bg-dark-900"
           >
-            <p className="text-xs text-dark-500 uppercase tracking-wider">{stat.label}</p>
+            <p className="text-xs text-dark-500 uppercase tracking-wider transition-colors group-hover:text-forge-400">
+              {stat.label}
+            </p>
             <div className="flex items-end gap-2 mt-1">
               <span className="text-2xl font-bold font-mono text-dark-50">{stat.value}</span>
               {stat.change && (
@@ -289,7 +368,7 @@ export default function AnalyticsPage() {
                 </span>
               )}
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -297,7 +376,9 @@ export default function AnalyticsPage() {
       <BenchmarkSection />
 
       {/* Win Rate Chart */}
-      <WinRateChart data={mockWinRateData} />
+      <div ref={winRateChartRef} className="scroll-mt-24">
+        <WinRateChart data={filteredWinRateData} />
+      </div>
 
       {/* Performance by Mode */}
       <div className="rounded-xl border border-dark-700 bg-dark-900/50 p-6">
@@ -335,7 +416,9 @@ export default function AnalyticsPage() {
       <SituationalWinRates onFilter={setSituationalFilter} activeFilter={situationalFilter} />
 
       {/* Win Conditions — 6 game states */}
-      <WinConditions />
+      <div ref={winConditionsRef} className="scroll-mt-24">
+        <WinConditions />
+      </div>
 
       {/* 2. TransferAI Lab-to-Live Gap Chart */}
       <TransferGapChart />
@@ -387,7 +470,9 @@ export default function AnalyticsPage() {
       <PlayerTwinEvolution />
 
       {/* 6. Fatigue Analytics */}
-      <FatigueAnalytics />
+      <div ref={fatigueRef} className="scroll-mt-24">
+        <FatigueAnalytics />
+      </div>
 
       {/* Situational Filter Banner */}
       {situationalFilter && (
@@ -406,7 +491,10 @@ export default function AnalyticsPage() {
       )}
 
       {/* Session History with 7. LoopAI columns */}
-      <div className="rounded-xl border border-dark-700 bg-dark-900/50 p-6">
+      <div
+        ref={sessionHistoryRef}
+        className="scroll-mt-24 rounded-xl border border-dark-700 bg-dark-900/50 p-6"
+      >
         <h2 className="text-lg font-bold text-dark-100 mb-4">Session History</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
