@@ -110,10 +110,23 @@ const WARMUP_CHECKLIST_ITEMS = [
 
 const WARMUP_STORAGE_KEY = 'esf:tournament:warmup';
 
-const MEMORY_CARDS: Record<string, string[]> = {
-  'xViper_Elite': ['Runs cover-3 on 1st down 80%', 'Blitzes on 3rd & long from nickel', 'Goes for it on 4th in opponent territory'],
-  'ColdRead99': ['Heavy zone, rarely man', 'Uses Tampa 2 shell in redzone', 'Audibles out of base on motion'],
-  'BlitzKing_': ['Fire zone on 2nd & long', 'Man coverage outside', 'Vulnerable to TE seam routes'],
+type MemoryBullet = { text: string; evidence: string; sampleSize: number; confidence: number };
+const MEMORY_CARDS: Record<string, MemoryBullet[]> = {
+  'xViper_Elite': [
+    { text: 'Runs cover-3 on 1st down 80%', evidence: 'Across 41 1st-down snaps in last 5 sessions', sampleSize: 41, confidence: 92 },
+    { text: 'Blitzes on 3rd & long from nickel', evidence: 'Blitz rate 71% on 3rd & 7+', sampleSize: 24, confidence: 84 },
+    { text: 'Goes for it on 4th in opponent territory', evidence: '7/9 4th-down attempts in opp 40', sampleSize: 9, confidence: 76 },
+  ],
+  'ColdRead99': [
+    { text: 'Heavy zone, rarely man', evidence: 'Zone coverage 89% of dropbacks', sampleSize: 110, confidence: 95 },
+    { text: 'Uses Tampa 2 shell in redzone', evidence: 'Tampa 2 on 6/8 RZ snaps last game', sampleSize: 8, confidence: 65 },
+    { text: 'Audibles out of base on motion', evidence: 'Reacts to motion 78% of the time', sampleSize: 32, confidence: 81 },
+  ],
+  'BlitzKing_': [
+    { text: 'Fire zone on 2nd & long', evidence: 'Fire zone 69% on 2nd & 8+', sampleSize: 29, confidence: 88 },
+    { text: 'Man coverage outside', evidence: 'Outside CB man 73%', sampleSize: 64, confidence: 90 },
+    { text: 'Vulnerable to TE seam routes', evidence: 'Allowed 6 TE seam catches in 4 games', sampleSize: 6, confidence: 72 },
+  ],
 };
 
 // Task 2G: confidence scores added
@@ -169,6 +182,11 @@ export default function TournamentPage() {
   const [showCounterPackage, setShowCounterPackage] = useState(false);
   const [showBenchmark, setShowBenchmark] = useState(false);
   const [counterToast, setCounterToast] = useState<string | null>(null);
+  const [bulletDetail, setBulletDetail] = useState<{ opponent: string; bullet: MemoryBullet } | null>(null);
+  const [showAddMemoryCard, setShowAddMemoryCard] = useState(false);
+  const [newCardOpponent, setNewCardOpponent] = useState<string>(OPPONENT_QUEUE[0].name);
+  const [newCardText, setNewCardText] = useState('');
+  const [customCards, setCustomCards] = useState<Record<string, MemoryBullet[]>>({});
   const [matchStartTriggered, setMatchStartTriggered] = useState(false);
   const oneMinPulseRef = useRef(false);
   const [checklist, setChecklist] = useState<Record<string, boolean>>(
@@ -334,7 +352,7 @@ export default function TournamentPage() {
     const firstOpp = OPPONENT_QUEUE[0];
     const cards = MEMORY_CARDS[firstOpp.name];
     const text = cards
-      ? `Next opponent: ${firstOpp.name}. ${firstOpp.archetype}. ${cards.join('. ')}`
+      ? `Next opponent: ${firstOpp.name}. ${firstOpp.archetype}. ${cards.map((c) => c.text).join('. ')}`
       : `Next opponent: ${firstOpp.name}. ${firstOpp.archetype}.`;
     voice.speak(text);
   }, [voice]);
@@ -644,6 +662,89 @@ export default function TournamentPage() {
         </div>
       )}
 
+      {/* Memory bullet detail modal (C8) */}
+      {bulletDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setBulletDetail(null)}>
+          <div className="w-full max-w-md rounded-xl border border-dark-700 bg-dark-900 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <p className="text-xs text-dark-400">{bulletDetail.opponent}</p>
+                <h3 className="text-base font-semibold text-dark-50">{bulletDetail.bullet.text}</h3>
+              </div>
+              <button onClick={() => setBulletDetail(null)} className="text-dark-500 hover:text-dark-200"><X className="h-5 w-5" /></button>
+            </div>
+            <p className="text-sm text-dark-300 mb-4">{bulletDetail.bullet.evidence}</p>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg bg-dark-800/60 p-3">
+                <p className="text-xs text-dark-400">Sample size</p>
+                <p className="text-lg font-bold text-dark-100">{bulletDetail.bullet.sampleSize}</p>
+              </div>
+              <div className="rounded-lg bg-dark-800/60 p-3">
+                <p className="text-xs text-dark-400">Confidence</p>
+                <p className="text-lg font-bold" style={{ color: confidenceColor(bulletDetail.bullet.confidence) }}>{bulletDetail.bullet.confidence}%</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Memory Card modal (C8) */}
+      {showAddMemoryCard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowAddMemoryCard(false)}>
+          <div className="w-full max-w-md rounded-xl border border-dark-700 bg-dark-900 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-lg font-bold text-dark-50">Add Memory Card</h3>
+              <button onClick={() => setShowAddMemoryCard(false)} className="text-dark-500 hover:text-dark-200"><X className="h-5 w-5" /></button>
+            </div>
+            <label className="block text-xs text-dark-400 mb-1">Opponent</label>
+            <select
+              value={newCardOpponent}
+              onChange={(e) => setNewCardOpponent(e.target.value)}
+              className="w-full rounded-lg border border-dark-700 bg-dark-800 px-3 py-2 text-sm text-dark-100 mb-3"
+            >
+              {OPPONENT_QUEUE.map((o) => <option key={o.name} value={o.name}>{o.name}</option>)}
+            </select>
+            <label className="block text-xs text-dark-400 mb-1">Tendency note</label>
+            <textarea
+              value={newCardText}
+              onChange={(e) => setNewCardText(e.target.value)}
+              rows={3}
+              placeholder="e.g. Drops out of base on motion to trips"
+              className="w-full rounded-lg border border-dark-700 bg-dark-800 px-3 py-2 text-sm text-dark-100 mb-4"
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowAddMemoryCard(false)} className="rounded-lg border border-dark-600 bg-dark-800 px-4 py-2 text-sm text-dark-200 hover:bg-dark-700">Cancel</button>
+              <button
+                disabled={!newCardText.trim()}
+                onClick={() => {
+                  const bullet: MemoryBullet = {
+                    text: newCardText.trim(),
+                    evidence: 'Manually added by player',
+                    sampleSize: 0,
+                    confidence: 50,
+                  };
+                  setCustomCards((prev) => ({ ...prev, [newCardOpponent]: [...(prev[newCardOpponent] ?? []), bullet] }));
+                  // Best-effort persist to opponent dossier
+                  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001';
+                  fetch(`${apiBase}/api/v1/opponents/${slug(newCardOpponent)}/memory-cards`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bullet),
+                  }).catch(() => {});
+                  setNewCardText('');
+                  setShowAddMemoryCard(false);
+                  setWarmupToast('Memory card added');
+                  setTimeout(() => setWarmupToast(null), 3000);
+                }}
+                className="rounded-lg bg-forge-500/15 border border-forge-500/40 px-4 py-2 text-sm font-semibold text-forge-300 hover:bg-forge-500/25 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Save Card
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Task 2C: VoiceForge command bar */}
       {voice.isAvailable && (
         <div className="flex items-center gap-3 rounded-xl border border-dark-700/50 bg-dark-900 px-4 py-3">
@@ -765,7 +866,7 @@ export default function TournamentPage() {
                         {cards.map((item, idx) => (
                           <li key={idx} className="flex items-start gap-2 text-xs text-dark-300">
                             <ChevronRight className="h-3 w-3 text-dark-500 mt-0.5 flex-shrink-0" />
-                            {item}
+                            {item.text}
                           </li>
                         ))}
                       </ul>
@@ -1022,20 +1123,49 @@ export default function TournamentPage() {
             <Zap className="h-4 w-4 text-forge-400" /> Memory Cards
           </h2>
           <div className="space-y-3">
-            {Object.entries(MEMORY_CARDS).map(([opponent, items]) => (
-              <div key={opponent} className="rounded-lg bg-dark-800/60 p-3">
-                <p className="text-xs font-semibold text-forge-400 mb-1">{opponent}</p>
-                <ul className="space-y-1">
-                  {items.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2 text-xs text-dark-300">
-                      <ChevronRight className="h-3 w-3 text-dark-500 mt-0.5 flex-shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+            {Object.entries(MEMORY_CARDS).map(([opponent, items]) => {
+              const opp = OPPONENT_QUEUE.find((o) => o.name === opponent);
+              const wr = opp?.winRate ?? 50;
+              const borderClass = wr >= 60
+                ? 'border border-green-500/30'
+                : wr >= 40
+                ? 'border border-amber-500/30'
+                : 'border border-red-500/30';
+              const merged = [...items, ...(customCards[opponent] ?? [])];
+              return (
+                <div key={opponent} className={`rounded-lg bg-dark-800/60 p-3 ${borderClass}`}>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/opponents/${slug(opponent)}`)}
+                    className="text-xs font-semibold text-forge-400 hover:text-forge-300 mb-1 transition-colors"
+                  >
+                    {opponent}
+                  </button>
+                  <ul className="space-y-1">
+                    {merged.map((item, i) => (
+                      <li key={i}>
+                        <button
+                          type="button"
+                          onClick={() => setBulletDetail({ opponent, bullet: item })}
+                          className="flex items-start gap-2 text-xs text-dark-300 hover:text-dark-100 transition-colors text-left w-full"
+                        >
+                          <ChevronRight className="h-3 w-3 text-dark-500 mt-0.5 flex-shrink-0" />
+                          <span>{item.text}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
           </div>
+          <button
+            type="button"
+            onClick={() => setShowAddMemoryCard(true)}
+            className="mt-3 flex items-center gap-1.5 rounded-lg border border-dashed border-dark-600 px-3 py-2 text-xs text-dark-400 hover:text-forge-300 hover:border-forge-500/40 w-full justify-center transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add Memory Card
+          </button>
         </div>
 
         {/* FAST NOTE ENTRY */}
