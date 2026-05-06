@@ -21,6 +21,14 @@ export interface RecommendationItem {
   outcome: 'followed' | 'ignored' | 'pending';
   timestamp: string;
   proof?: RecommendationProof;
+  /**
+   * Tri-state follow status for the dashboard card:
+   *  - `undefined` / `null`: no action yet → render Follow/Dismiss buttons
+   *  - `true`: player tapped Follow (optimistic or persisted)
+   *  - `false`: player tapped Dismiss (optimistic or persisted)
+   * Independent of `outcome`, which encodes the final logged result.
+   */
+  followed?: boolean | null;
 }
 
 export interface RecommendationProof {
