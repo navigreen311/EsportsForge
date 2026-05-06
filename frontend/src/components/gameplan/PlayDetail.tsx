@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
-import { Target, Lightbulb, Zap } from 'lucide-react';
+import { Target, Lightbulb, Zap, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/shared/Badge';
 import { ConfidenceBar } from '@/components/shared/ConfidenceBar';
 import { Card } from '@/components/shared/Card';
@@ -13,6 +14,8 @@ import ThreeLayerAudible from '@/components/gameplan/ThreeLayerAudible';
 import PlayerTwinBadge, { PLAY_EXECUTION_PCT } from '@/components/gameplan/PlayerTwinBadge';
 import ProofAIEvidence from '@/components/gameplan/ProofAIEvidence';
 import MetaExpiryWarning from '@/components/gameplan/MetaExpiryWarning';
+import { PLAY_META_RISK } from '@/components/gameplan/MetaVersionExpiry';
+import { PLAY_MASTERY } from '@/components/gameplan/MasteryDot';
 import AnimaPlayer from '@/components/animaforge/AnimaPlayer';
 import { useAnimaForgeAvailable } from '@/hooks/useAnimaForge';
 import {
@@ -21,6 +24,52 @@ import {
 } from '@/lib/animaforge/api';
 import type { PlayDiagramRenderResult } from '@/lib/animaforge/types';
 import type { Play } from '@/types/gameplan';
+import { VoiceForgeService } from '@/lib/services/voiceforge';
+
+// Coverage matrix — what a play beats vs what it gets killed by, plus the
+// natural counter when an opponent rotates out of the soft coverage. Keyed by
+// the value of `play.beats`. Falls through to a single-line render when no
+// entry exists.
+const COVERAGE_MATRIX: Record<
+  string,
+  { worksAgainst: string[]; vulnerableTo: string; counter: string }
+> = {
+  'Cover 3': {
+    worksAgainst: ['Cover 3', 'Cover 3 Sky', 'Cover 3 Buzz'],
+    vulnerableTo: 'Cover 2 Man with safety help over the top',
+    counter: 'Inside Zone or Back Shoulder Fade',
+  },
+  'Cover 2': {
+    worksAgainst: ['Cover 2', 'Cover 2 Zone', 'Tampa 2'],
+    vulnerableTo: 'Cover 4 with the corners squeezing routes',
+    counter: 'Mesh Concept or HB Wheel out of the backfield',
+  },
+  'Cover 1': {
+    worksAgainst: ['Cover 1', 'Cover 1 Robber', 'Man-Free'],
+    vulnerableTo: 'Cover 0 / all-out blitz with no safety',
+    counter: 'Hot route Slant or quick Screen to the field',
+  },
+  'Cover 4': {
+    worksAgainst: ['Cover 4', 'Quarters', 'Cover 4 Palms'],
+    vulnerableTo: 'Cover 3 Sky with a robber dropping under',
+    counter: 'PA Crossers or Stick Concept underneath',
+  },
+  'Cover 0': {
+    worksAgainst: ['Cover 0', 'All-Out Blitz', 'Zero Pressure'],
+    vulnerableTo: 'Soft Cover 2 dropping into space',
+    counter: 'Inside Zone or RPO bubble to relieve pressure',
+  },
+  Man: {
+    worksAgainst: ['Cover 1', 'Cover 0', 'Press Man'],
+    vulnerableTo: 'Pattern-match zone with safety help',
+    counter: 'Pick concepts or in-breaking routes from bunch',
+  },
+  Zone: {
+    worksAgainst: ['Cover 2', 'Cover 3', 'Cover 4'],
+    vulnerableTo: 'Disguised man-coverage rotations',
+    counter: 'Iso routes vs the weakest man defender',
+  },
+};
 
 interface PlayDetailProps {
   play: Play | null;
@@ -48,6 +97,33 @@ export default function PlayDetail({
   const animaAvailable = useAnimaForgeAvailable();
   const [animJob, setAnimJob] = useState<PlayDiagramRenderResult | null>(null);
   const [showPlayer, setShowPlayer] = useState(false);
+  const [voiceAvailable, setVoiceAvailable] = useState(false);
+
+  useEffect(() => {
+    setVoiceAvailable(VoiceForgeService.isAvailable());
+  }, []);
+
+  const handleReadPlay = () => {
+    if (!play) return;
+    const audibleText = play.audibleOptions
+      ?.map((a) => `${a.label} when ${a.trigger}`)
+      .join('. ');
+    const situationText = play.situationTags
+      .map((t) => situationLabels[t] ?? t)
+      .join(', ');
+    const beatsText = play.beats ? `This play beats ${play.beats}.` : '';
+    const script = [
+      `${play.name} from ${play.formation}.`,
+      play.description,
+      situationText && `Call when: ${situationText}.`,
+      `Confidence ${Math.round(play.confidenceScore)} percent.`,
+      audibleText && `Audibles: ${audibleText}.`,
+      beatsText,
+    ]
+      .filter(Boolean)
+      .join(' ');
+    VoiceForgeService.speak(script, { interruptCurrent: true });
+  };
 
   // Pre-request the play animation as soon as the panel mounts (or when the
   // selected play / coverage variant changes). This way the render is already
@@ -119,6 +195,16 @@ export default function PlayDetail({
           >
             Test in SimLab
           </a>
+          {voiceAvailable && (
+            <button
+              type="button"
+              onClick={handleReadPlay}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-forge-500/30 bg-forge-500/10 px-3 py-1.5 text-xs font-medium text-forge-400 transition-colors hover:bg-forge-500/20 hover:border-forge-500/50"
+              aria-label="Read this play aloud"
+            >
+              <span aria-hidden="true">🔊</span> Read
+            </button>
+          )}
           {animaAvailable && (
             <button
               type="button"
@@ -144,6 +230,45 @@ export default function PlayDetail({
           <MetaExpiryWarning playId={play.id} />
         </div>
       </div>
+
+      {/* Trending-Countered meta note (FIX 9) — explains *what to do* with the
+          warning badge, not just that it's there. */}
+      {PLAY_META_RISK[play.id] === 'trending-countered' && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-400" />
+            <div className="text-sm text-amber-200">
+              <p className="font-semibold text-amber-300">Meta Note</p>
+              <p className="mt-1 text-amber-200/90">
+                {play.name} is seeing increased defensive recognition this
+                patch. If running it, pair with a complementary call (e.g.
+                Fades or Back Shoulder) so the defender stays honest.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Practice CTA (FIX 10) — surfaces a Drill Lab link for plays the
+          player hasn't mastered yet. */}
+      {(PLAY_MASTERY[play.id] === 'practicing' ||
+        PLAY_MASTERY[play.id] === 'learning') && (
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+          <p className="text-sm text-amber-200/90">
+            You&apos;re still building reps on this play. Confidence will
+            activate in ranked once you hit 80%+ in Drill Lab.
+          </p>
+          <Link
+            href={`/drills?drill=${encodeURIComponent(play.id)}&playName=${encodeURIComponent(
+              play.name
+            )}`}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-300 transition-colors hover:bg-amber-500/25 hover:border-amber-500/60"
+          >
+            <span aria-hidden="true">▶</span>
+            Practice {play.name} in Drill Lab
+          </Link>
+        </div>
+      )}
 
       {/* Concept Breakdown */}
       <div>
@@ -243,15 +368,37 @@ export default function PlayDetail({
         </div>
       )}
 
-      {/* Insight */}
+      {/* Coverage Matrix (FIX 13) — what the play beats, what kills it, and
+          the natural counter when an opponent rotates out. Falls back to the
+          single-line beats when no matrix entry exists. */}
       {play.beats && (
         <div className="rounded-lg border border-forge-800/30 bg-forge-950/20 p-3">
           <div className="flex items-start gap-2">
             <Lightbulb className="mt-0.5 h-4 w-4 flex-shrink-0 text-forge-400" />
-            <p className="text-sm text-forge-300">
-              This play beats{' '}
-              <span className="font-semibold text-forge-400">{play.beats}</span>
-            </p>
+            <div className="space-y-1.5 text-sm">
+              <p className="text-forge-300">
+                This play beats{' '}
+                <span className="font-semibold text-forge-400">
+                  {play.beats}
+                </span>
+              </p>
+              {COVERAGE_MATRIX[play.beats] && (
+                <>
+                  <p className="text-forge-300/90">
+                    <span className="text-forge-400">✓ Works against:</span>{' '}
+                    {COVERAGE_MATRIX[play.beats].worksAgainst.join(', ')}
+                  </p>
+                  <p className="text-forge-300/90">
+                    <span className="text-red-400">✗ Vulnerable to:</span>{' '}
+                    {COVERAGE_MATRIX[play.beats].vulnerableTo}
+                  </p>
+                  <p className="text-forge-300/90">
+                    <span className="text-amber-400">→ Counter with:</span>{' '}
+                    {COVERAGE_MATRIX[play.beats].counter}
+                  </p>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
