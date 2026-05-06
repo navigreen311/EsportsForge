@@ -99,7 +99,7 @@ export default function GameSettings({ settings, onUpdate, tier = 'free' }: Game
             >
               <button
                 onClick={() => onUpdate({ preferredMode: mode.value })}
-                className={`relative rounded-lg border p-3 text-left transition-all cursor-help hover:bg-dark-800/80 ${
+                className={`relative rounded-lg border p-3 text-left transition-all cursor-help hover:bg-dark-800/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forge-500/40 ${
                   settings.preferredMode === mode.value
                     ? 'border-forge-500 bg-forge-500/10 ring-1 ring-forge-500'
                     : 'border-dark-600 bg-dark-800 hover:border-dark-500'

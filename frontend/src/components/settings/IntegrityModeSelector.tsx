@@ -108,7 +108,7 @@ export default function IntegrityModeSelector({ settings, onUpdate }: IntegrityM
                     if (env.value === settings.environment) return;
                     setPendingEnv(env.value);
                   }}
-                  className={`relative rounded-lg border p-4 text-left transition-all cursor-help hover:bg-dark-800/80 ${
+                  className={`relative rounded-lg border p-4 text-left transition-all cursor-help hover:bg-dark-800/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forge-500/40 ${
                     isSelected
                       ? `${env.color} ring-1`
                       : 'border-dark-600 bg-dark-800 hover:border-dark-500'

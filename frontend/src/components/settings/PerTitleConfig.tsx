@@ -140,7 +140,7 @@ export default function PerTitleConfig({ activeTitle }: PerTitleConfigProps) {
                 >
                   <button
                     onClick={() => updateConfig({ preferredMode: mode })}
-                    className={`relative rounded-lg border p-3 text-left text-sm font-medium transition-all cursor-help hover:bg-dark-800/80 ${
+                    className={`relative rounded-lg border p-3 text-left text-sm font-medium transition-all cursor-help hover:bg-dark-800/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forge-500/40 ${
                       current.preferredMode === mode
                         ? 'border-forge-500 bg-forge-500/5 text-forge-400'
                         : 'border-dark-700 bg-dark-800/50 text-dark-200 hover:border-dark-500'

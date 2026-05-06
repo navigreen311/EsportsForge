@@ -428,7 +428,7 @@ export default function IdentityEngine() {
               >
                 <button
                   onClick={() => setDirectness(option.id)}
-                  className={`relative rounded-lg p-4 text-left border transition-all cursor-help hover:bg-dark-800/80 ${
+                  className={`relative rounded-lg p-4 text-left border transition-all cursor-help hover:bg-dark-800/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forge-500/40 ${
                     directness === option.id
                       ? 'border-forge-500 bg-forge-500/5'
                       : 'border-dark-700 bg-dark-800/50 hover:border-dark-500'
@@ -457,7 +457,7 @@ export default function IdentityEngine() {
               >
                 <button
                   onClick={() => setFrequency(option.id)}
-                  className={`relative rounded-lg p-4 text-left border transition-all cursor-help hover:bg-dark-800/80 ${
+                  className={`relative rounded-lg p-4 text-left border transition-all cursor-help hover:bg-dark-800/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forge-500/40 ${
                     frequency === option.id
                       ? 'border-forge-500 bg-forge-500/5'
                       : 'border-dark-700 bg-dark-800/50 hover:border-dark-500'
