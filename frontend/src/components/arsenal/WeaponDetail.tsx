@@ -27,6 +27,7 @@ import {
   Mic,
   ChevronLeft,
   ChevronRight,
+  Film,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useRouter } from 'next/navigation';
@@ -38,6 +39,9 @@ import {
   useRateWeapon,
   type Weapon,
 } from '@/hooks/useArsenal';
+import api from '@/lib/api';
+import { AnimaPlayer } from '@/components/animaforge/AnimaPlayer';
+import { useAnimaForgeAvailable } from '@/hooks/useAnimaForge';
 import { TITLE_TRIGGER_KEYS } from '@/lib/arsenal/titleMeta';
 import { VoiceForgeService } from '@/lib/services/voiceforge';
 import {
@@ -167,6 +171,14 @@ interface WeaponDetailProps {
   startInPracticeMode?: boolean;
 }
 
+interface ArsenalAnimationState {
+  jobId: string | null;
+  videoUrl: string | null;
+  thumbnailUrl: string | null;
+  /** True once the user has explicitly opened/triggered the player. */
+  open: boolean;
+}
+
 export function WeaponDetail({
   weaponId,
   onClose,
@@ -179,10 +191,137 @@ export function WeaponDetail({
   const rate = useRateWeapon();
   const router = useRouter();
   const voice = useArsenalVoice();
+  const animaforge = useAnimaForgeAvailable();
+  const animaforgeAvailable = animaforge.available !== false;
 
   const [mode, setMode] = useState<'view' | 'reading' | 'practice'>('view');
   const [active, setActive] = useState<ActiveSegment | null>(null);
+  const [animation, setAnimation] = useState<ArsenalAnimationState>({
+    jobId: null,
+    videoUrl: null,
+    thumbnailUrl: null,
+    open: false,
+  });
   const cancelRef = useRef(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Reset animation state whenever the active weapon changes.
+  useEffect(() => {
+    setAnimation({
+      jobId: null,
+      videoUrl: null,
+      thumbnailUrl: null,
+      open: false,
+    });
+  }, [weaponId]);
+
+  // On mount (per weapon) — check if a previous render already exists so
+  // the player auto-shows. Silently ignore failures (AnimaForge offline,
+  // unauthenticated, etc).
+  useEffect(() => {
+    if (!weaponId || !animaforgeAvailable) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await api.get('/animaforge/arsenal/status', {
+          params: { weapon_id: weaponId },
+        });
+        if (cancelled || !data) return;
+        const videoUrl: string | undefined = data.video_url;
+        const jobId: string | undefined = data.job_id;
+        const thumbnailUrl: string | undefined = data.thumbnail_url;
+        if (videoUrl) {
+          setAnimation({
+            jobId: null,
+            videoUrl,
+            thumbnailUrl: thumbnailUrl ?? null,
+            open: true,
+          });
+        } else if (jobId) {
+          setAnimation({
+            jobId,
+            videoUrl: null,
+            thumbnailUrl: thumbnailUrl ?? null,
+            open: true,
+          });
+        }
+      } catch {
+        // best-effort — leave animation collapsed
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [weaponId, animaforgeAvailable]);
+
+  const handleWatchAnimation = async () => {
+    if (!weapon) return;
+    if (animation.videoUrl || animation.jobId) {
+      // Already loaded — just open the player.
+      setAnimation((s) => ({ ...s, open: true }));
+      return;
+    }
+    try {
+      const { data } = await api.post('/animaforge/arsenal', {
+        weapon_id: weapon.id,
+      });
+      if (data?.video_url) {
+        setAnimation({
+          jobId: null,
+          videoUrl: data.video_url,
+          thumbnailUrl: data.thumbnail_url ?? null,
+          open: true,
+        });
+      } else if (data?.job_id) {
+        setAnimation({
+          jobId: data.job_id,
+          videoUrl: null,
+          thumbnailUrl: data.thumbnail_url ?? null,
+          open: true,
+        });
+      }
+    } catch {
+      // Fail quietly — UI degrades gracefully (no error toast per contract §1).
+    }
+  };
+
+  // Save to arsenal + fire-and-forget animation render. The toast text is
+  // identical regardless of whether AnimaForge is online (it'll just no-op
+  // on the server when unavailable) — players save weapons either way.
+  const handleSaveAndGenerate = () => {
+    if (!weapon) return;
+    save.mutate(weapon.id);
+    if (animaforgeAvailable) {
+      // Fire-and-forget — do not await.
+      api
+        .post('/animaforge/arsenal', { weapon_id: weapon.id })
+        .then(({ data }) => {
+          if (data?.video_url) {
+            setAnimation((s) => ({
+              ...s,
+              videoUrl: data.video_url,
+              thumbnailUrl: data.thumbnail_url ?? s.thumbnailUrl,
+            }));
+          } else if (data?.job_id) {
+            setAnimation((s) => ({
+              ...s,
+              jobId: data.job_id,
+            }));
+          }
+        })
+        .catch(() => {
+          // Silent — graceful degradation.
+        });
+      showToast('Saved to My Arsenal — animation generating');
+    } else {
+      showToast('Saved to My Arsenal');
+    }
+  };
 
   useEffect(() => {
     if (startInPracticeMode && weapon) setMode('practice');
@@ -295,6 +434,16 @@ export function WeaponDetail({
                     </button>
                   </>
                 )}
+                {animaforgeAvailable && (
+                  <button
+                    onClick={handleWatchAnimation}
+                    title="Watch animated play diagram"
+                    className="inline-flex items-center gap-1 rounded-md border border-purple-500/40 bg-purple-500/10 px-2 py-1 text-[11px] font-bold text-purple-300 hover:bg-purple-500/20"
+                  >
+                    <Film className="h-3.5 w-3.5" />
+                    Watch Animation
+                  </button>
+                )}
               </>
             ) : null}
             <button
@@ -331,7 +480,11 @@ export function WeaponDetail({
           <WeaponDetailBody
             weapon={weapon}
             active={active}
-            onSave={() => save.mutate(weapon.id)}
+            animation={animation}
+            onAnimationReady={(url) =>
+              setAnimation((s) => ({ ...s, videoUrl: url }))
+            }
+            onSave={handleSaveAndGenerate}
             onRemove={() => remove.mutate(weapon.id)}
             onPracticed={() =>
               logUsage.mutate({
@@ -349,6 +502,16 @@ export function WeaponDetail({
             onReadExecution={() => startReading('execution')}
           />
         )}
+
+        {toastMessage && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="pointer-events-none absolute bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-md border border-forge-500/40 bg-dark-800/95 px-3 py-2 text-[12px] font-medium text-forge-200 shadow-lg"
+          >
+            {toastMessage}
+          </div>
+        )}
       </aside>
     </>
   );
@@ -361,6 +524,8 @@ export function WeaponDetail({
 function WeaponDetailBody({
   weapon,
   active,
+  animation,
+  onAnimationReady,
   onSave,
   onRemove,
   onPracticed,
@@ -371,6 +536,8 @@ function WeaponDetailBody({
 }: {
   weapon: Weapon;
   active: ActiveSegment | null;
+  animation: ArsenalAnimationState;
+  onAnimationReady: (videoUrl: string) => void;
   onSave: () => void;
   onRemove: () => void;
   onPracticed: () => void;
@@ -514,6 +681,21 @@ function WeaponDetailBody({
               </li>
             ))}
           </ol>
+        </Section>
+      )}
+
+      {/* AnimaForge animated play diagram — appears once user clicks
+          [Watch Animation] in the header, or auto-shows if a previously
+          rendered job exists for this weapon. */}
+      {animation.open && (animation.videoUrl || animation.jobId) && (
+        <Section title="Animated Play Diagram" icon={Film}>
+          <AnimaPlayer
+            jobId={animation.jobId ?? undefined}
+            videoUrl={animation.videoUrl ?? undefined}
+            thumbnailUrl={animation.thumbnailUrl ?? undefined}
+            type="weapon-diagram"
+            onReady={onAnimationReady}
+          />
         </Section>
       )}
 

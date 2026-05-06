@@ -24,7 +24,11 @@ import {
   Volume2,
   VolumeX,
   Eye,
+  Loader2,
+  X,
 } from 'lucide-react';
+import AnimaPlayer from '@/components/animaforge/AnimaPlayer';
+import { requestPlayRender } from '@/lib/animaforge/api';
 import { VoiceForgeService } from '@/lib/services/voiceforge';
 import { useArsenalVoice, toneSpeed } from '@/lib/arsenal/voiceSettings';
 import {
@@ -247,6 +251,129 @@ function SimLabPageBody() {
     { id: 4, correct: true, timeMs: 2100, scenario: '2-Minute Drill' },
     { id: 5, correct: false, timeMs: 4100, scenario: 'Down 7 Late' },
   ]);
+
+  // ----- AnimaForge preview modal (scenario / correct-call / branch) -----
+  // One shared modal for every "▶ Watch this" surface on the page so the
+  // animation flow stays consistent — same loading state, same Save-to-Vault
+  // button, same close interaction.
+  type PreviewState = {
+    title: string;
+    subtitle?: string;
+    diagramType: 'play-diagram' | 'drill-demo';
+    loading: boolean;
+    jobId?: string;
+    videoUrl?: string;
+    thumbnailUrl?: string;
+    vaultSaved: boolean;
+  };
+  const [preview, setPreview] = useState<PreviewState | null>(null);
+
+  const closePreview = () => setPreview(null);
+
+  const openScenarioPreview = async (s: Scenario) => {
+    setPreview({
+      title: `Scenario preview — ${s.name}`,
+      subtitle: 'Typical defensive look + sample offensive responses',
+      diagramType: 'play-diagram',
+      loading: true,
+      vaultSaved: false,
+    });
+    try {
+      // Routed through /animaforge/play (not /drill) because the drill spec
+      // builder requires an explicit (title, drill) entry in DRILL_ANIMATION_SPECS
+      // and rejects unknown drill_types with spec-not-found. The play endpoint's
+      // _coerce_play_to_spec_params is tolerant of unknown play_ids and falls
+      // back to a universal-tactic-diagram template — exactly what we want for
+      // a "typical scenario look" preview.
+      const res = await requestPlayRender({
+        play_id: `simlab-scenario-${s.id}`,
+        title_id: arsenalTitle,
+      });
+      setPreview((prev) =>
+        prev
+          ? {
+              ...prev,
+              loading: false,
+              jobId: res.jobId ?? res.job_id ?? undefined,
+              videoUrl: res.videoUrl ?? res.video_url ?? undefined,
+              thumbnailUrl:
+                res.thumbnailUrl ?? res.thumbnail_url ?? undefined,
+            }
+          : prev,
+      );
+    } catch {
+      setPreview((prev) =>
+        prev ? { ...prev, loading: false } : prev,
+      );
+    }
+  };
+
+  const openCorrectCall = async (rep: RepResult) => {
+    setPreview({
+      title: 'What you should have called',
+      subtitle: `${rep.scenario} — ideal execution at this look`,
+      diagramType: 'play-diagram',
+      loading: true,
+      vaultSaved: false,
+    });
+    try {
+      // Synthetic play_id keyed off the rep so cache is per-rep — different
+      // failed reps in the same scenario can have distinct correct-call
+      // animations once the spec builder differentiates them.
+      const res = await requestPlayRender({
+        play_id: `simlab-correct-rep-${rep.id}`,
+        title_id: arsenalTitle,
+      });
+      setPreview((prev) =>
+        prev
+          ? {
+              ...prev,
+              loading: false,
+              jobId: res.jobId ?? res.job_id ?? undefined,
+              videoUrl: res.videoUrl ?? res.video_url ?? undefined,
+              thumbnailUrl:
+                res.thumbnailUrl ?? res.thumbnail_url ?? undefined,
+            }
+          : prev,
+      );
+    } catch {
+      setPreview((prev) =>
+        prev ? { ...prev, loading: false } : prev,
+      );
+    }
+  };
+
+  const openBranchAnimation = async (label: string, branchKey: string) => {
+    setPreview({
+      title: label,
+      subtitle: 'Decision tree branch — animated',
+      diagramType: 'play-diagram',
+      loading: true,
+      vaultSaved: false,
+    });
+    try {
+      const res = await requestPlayRender({
+        play_id: `simlab-branch-${branchKey}`,
+        title_id: arsenalTitle,
+      });
+      setPreview((prev) =>
+        prev
+          ? {
+              ...prev,
+              loading: false,
+              jobId: res.jobId ?? res.job_id ?? undefined,
+              videoUrl: res.videoUrl ?? res.video_url ?? undefined,
+              thumbnailUrl:
+                res.thumbnailUrl ?? res.thumbnail_url ?? undefined,
+            }
+          : prev,
+      );
+    } catch {
+      setPreview((prev) =>
+        prev ? { ...prev, loading: false } : prev,
+      );
+    }
+  };
 
   // Custom scenario builder state
   const [customState, setCustomState] = useState({
@@ -562,27 +689,44 @@ function SimLabPageBody() {
                 </p>
               )}
               {scenarioList.map((s) => (
-                <button
+                <div
                   key={s.id}
-                  onClick={() => { setSelectedScenario(s); setShowResult(false); }}
-                  className={`rounded-lg border px-3 py-2.5 text-left transition-all ${
+                  className={`group relative rounded-lg border transition-all ${
                     selectedScenario?.id === s.id
                       ? 'border-forge-500/50 bg-forge-500/10'
                       : 'border-dark-700/50 bg-dark-800/60 hover:border-dark-600'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">{s.icon}</span>
-                    <span className="text-xs font-medium text-dark-200">{s.name}</span>
-                  </div>
-                  <span className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                    s.difficulty === 'easy' ? 'bg-forge-500/15 text-forge-400' :
-                    s.difficulty === 'medium' ? 'bg-amber-500/15 text-amber-400' :
-                    'bg-red-500/15 text-red-400'
-                  }`}>
-                    {s.difficulty}
-                  </span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedScenario(s); setShowResult(false); }}
+                    className="block w-full px-3 py-2.5 text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{s.icon}</span>
+                      <span className="text-xs font-medium text-dark-200">{s.name}</span>
+                    </div>
+                    <span className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                      s.difficulty === 'easy' ? 'bg-forge-500/15 text-forge-400' :
+                      s.difficulty === 'medium' ? 'bg-amber-500/15 text-amber-400' :
+                      'bg-red-500/15 text-red-400'
+                    }`}>
+                      {s.difficulty}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void openScenarioPreview(s);
+                    }}
+                    title={`Preview ${s.name} animation`}
+                    aria-label={`Preview ${s.name} animation`}
+                    className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center rounded-md border border-dark-700 bg-dark-900/80 text-dark-300 opacity-0 shadow-sm transition-opacity hover:border-forge-500/40 hover:bg-forge-500/10 hover:text-forge-300 group-hover:opacity-100 focus:opacity-100"
+                  >
+                    <Play className="h-3 w-3 fill-current" />
+                  </button>
+                </div>
               ))}
             </div>
           </div>
@@ -702,13 +846,43 @@ function SimLabPageBody() {
                   <div className="flex items-center gap-2 mb-2 pl-4">
                     <ChevronRight className="h-3 w-3 text-forge-500" />
                     <span className="text-xs font-medium text-dark-100">{node.action}</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void openBranchAnimation(
+                          node.action,
+                          `top-${i}`,
+                        )
+                      }
+                      title={`Watch ${node.action}`}
+                      aria-label={`Watch ${node.action}`}
+                      className="ml-auto inline-flex h-5 w-5 items-center justify-center rounded-md border border-dark-700 bg-dark-900/80 text-dark-300 transition-colors hover:border-forge-500/40 hover:bg-forge-500/10 hover:text-forge-300"
+                    >
+                      <Play className="h-2.5 w-2.5 fill-current" />
+                    </button>
                   </div>
                   {node.children && (
                     <div className="pl-6 space-y-1.5 border-l border-dark-700/50 ml-1">
                       {node.children.map((child, ci) => (
-                        <div key={ci} className="pl-3">
-                          <p className="text-[10px] text-dark-500">if {child.condition}:</p>
-                          <p className="text-xs text-dark-300">&rarr; {child.action}</p>
+                        <div key={ci} className="flex items-start gap-2 pl-3">
+                          <div className="flex-1">
+                            <p className="text-[10px] text-dark-500">if {child.condition}:</p>
+                            <p className="text-xs text-dark-300">&rarr; {child.action}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void openBranchAnimation(
+                                child.action,
+                                `child-${i}-${ci}`,
+                              )
+                            }
+                            title={`Watch ${child.action}`}
+                            aria-label={`Watch ${child.action}`}
+                            className="mt-0.5 inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border border-dark-700 bg-dark-900/80 text-dark-300 transition-colors hover:border-forge-500/40 hover:bg-forge-500/10 hover:text-forge-300"
+                          >
+                            <Play className="h-2.5 w-2.5 fill-current" />
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -802,6 +976,17 @@ function SimLabPageBody() {
                         {(rep.timeMs / 1000).toFixed(1)}s
                       </span>
                     ) : null}
+                    {!rep.correct && (
+                      <button
+                        type="button"
+                        onClick={() => void openCorrectCall(rep)}
+                        title="See the correct call for this rep"
+                        className="inline-flex flex-shrink-0 items-center gap-1 rounded-md border border-forge-500/40 bg-forge-500/10 px-2 py-1 text-[10px] font-semibold text-forge-300 transition-colors hover:bg-forge-500/20"
+                      >
+                        <Play className="h-3 w-3 fill-current" />
+                        See Correct Call
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -809,6 +994,73 @@ function SimLabPageBody() {
           </div>
         </div>
       </div>
+
+      {/* AnimaForge preview modal — shared by scenario preview, See Correct
+          Call, and Decision Tree branch animations. */}
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={closePreview}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-2xl rounded-xl border border-dark-700 bg-dark-900 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between border-b border-dark-700 px-5 py-3">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-semibold text-dark-50">
+                  {preview.title}
+                </h3>
+                {preview.subtitle && (
+                  <p className="mt-0.5 text-xs text-dark-400">
+                    {preview.subtitle}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={closePreview}
+                className="ml-3 rounded-md p-1 text-dark-400 transition-colors hover:bg-dark-800 hover:text-dark-200"
+                aria-label="Close preview"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-5">
+              {preview.loading ? (
+                <div className="rounded-lg border border-dark-700 bg-dark-900 p-8 text-center">
+                  <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-forge-400" />
+                  <p className="text-sm font-medium text-dark-200">
+                    Requesting animation…
+                  </p>
+                  <p className="mt-1 text-xs text-dark-400">
+                    AnimaForge usually returns a play diagram in 30–60 seconds.
+                  </p>
+                </div>
+              ) : preview.jobId || preview.videoUrl ? (
+                <AnimaPlayer
+                  jobId={preview.jobId}
+                  videoUrl={preview.videoUrl}
+                  thumbnailUrl={preview.thumbnailUrl}
+                  type={preview.diagramType}
+                  onSaveToVault={() => {
+                    setPreview((prev) =>
+                      prev ? { ...prev, vaultSaved: true } : prev,
+                    );
+                  }}
+                  vaultSaved={preview.vaultSaved}
+                />
+              ) : (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+                  Animation service offline — try again later.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -26,6 +26,7 @@ import {
   SideToggle,
   DEFENSE_LABEL_BY_TITLE,
 } from '@/components/shared/SideToggle';
+import { WatchingPageHint } from '@/components/global/WatchingPageHint';
 
 type Tab = 'my' | 'all';
 
@@ -87,11 +88,18 @@ function ArsenalPageBody() {
           </p>
         </div>
 
-        <div className="inline-flex items-center gap-1 rounded-full border border-forge-500/30 bg-forge-500/5 px-3 py-1.5 text-xs">
-          <span className="text-dark-400">Currently showing:</span>
-          <span className="font-semibold text-forge-300">
-            {TITLE_DISPLAY_NAME[titleId]}
-          </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <WatchingPageHint
+            pageName="Arsenal"
+            onHint="Watching Arsenal — triggers fire when scenarios match"
+            offHint="Enable Watching to fire ArsenalAI triggers"
+          />
+          <div className="inline-flex items-center gap-1 rounded-full border border-forge-500/30 bg-forge-500/5 px-3 py-1.5 text-xs">
+            <span className="text-dark-400">Currently showing:</span>
+            <span className="font-semibold text-forge-300">
+              {TITLE_DISPLAY_NAME[titleId]}
+            </span>
+          </div>
         </div>
       </div>
 

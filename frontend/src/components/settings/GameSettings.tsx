@@ -1,13 +1,27 @@
 'use client';
 
-import { Gamepad2, Target, Joystick } from 'lucide-react';
+import { Gamepad2, Target, Joystick, Lock } from 'lucide-react';
 import type { GameSettings as GameSettingsType, GameTitle, GameMode, InputType } from '@/types/settings';
 import { GAME_TITLE_LABELS } from '@/types/settings';
 
 interface GameSettingsProps {
   settings: GameSettingsType;
   onUpdate: (settings: Partial<GameSettingsType>) => void;
+  tier?: 'free' | 'competitive' | 'elite' | 'team';
 }
+
+// Tier gating: free unlocks 2 titles, competitive 5, elite/team all
+const TIER_UNLOCKS: Record<NonNullable<GameSettingsProps['tier']>, number> = {
+  free: 2,
+  competitive: 5,
+  elite: 99,
+  team: 99,
+};
+const TIER_REQUIRED_FOR_INDEX = (idx: number): string => {
+  if (idx < 2) return 'Free';
+  if (idx < 5) return 'Competitive';
+  return 'Elite';
+};
 
 const gameModes: { value: GameMode; label: string; description: string }[] = [
   { value: 'ranked', label: 'Ranked', description: 'Competitive ladder play' },
@@ -22,7 +36,10 @@ const inputTypes: { value: InputType; label: string; icon: typeof Gamepad2 }[] =
   { value: 'fight-stick', label: 'Fight Stick', icon: Joystick },
 ];
 
-export default function GameSettings({ settings, onUpdate }: GameSettingsProps) {
+export default function GameSettings({ settings, onUpdate, tier = 'free' }: GameSettingsProps) {
+  const unlockCount = TIER_UNLOCKS[tier];
+  const titleEntries = Object.entries(GAME_TITLE_LABELS);
+
   return (
     <div className="space-y-6">
       {/* Active Title Selector */}
@@ -32,17 +49,27 @@ export default function GameSettings({ settings, onUpdate }: GameSettingsProps) 
         </label>
         <select
           value={settings.activeTitle}
-          onChange={(e) => onUpdate({ activeTitle: e.target.value as GameTitle })}
+          onChange={(e) => {
+            const idx = titleEntries.findIndex(([v]) => v === e.target.value);
+            if (idx >= unlockCount) {
+              alert(`This title requires ${TIER_REQUIRED_FOR_INDEX(idx)} tier or higher.`);
+              return;
+            }
+            onUpdate({ activeTitle: e.target.value as GameTitle });
+          }}
           className="w-full rounded-lg border border-dark-600 bg-dark-800 px-3 py-2 text-sm text-dark-100 focus:border-forge-500 focus:ring-1 focus:ring-forge-500 focus:outline-none transition-colors"
         >
-          {Object.entries(GAME_TITLE_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
+          {titleEntries.map(([value, label], idx) => {
+            const locked = idx >= unlockCount;
+            return (
+              <option key={value} value={value} disabled={locked}>
+                {locked ? `🔒 ${label} — ${TIER_REQUIRED_FOR_INDEX(idx)} tier` : label}
+              </option>
+            );
+          })}
         </select>
-        <p className="text-xs text-dark-500 mt-1">
-          AI agents and analytics will focus on this title.
+        <p className="text-xs text-dark-500 mt-1 flex items-center gap-1">
+          <Lock className="w-3 h-3" /> Locked titles require an upgraded tier. AI agents and analytics will focus on the active title.
         </p>
       </div>
 

@@ -6,8 +6,15 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.deps import get_current_user, get_db
+from app.models.game_session import GameSession
+from app.models.user import User
+from app.services.animaforge.session_end_hook import fire_share_win_hook
 
 router = APIRouter(tags=["Sessions"])
 
@@ -60,6 +67,20 @@ class SessionListOut(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class SessionDebrief(BaseModel):
+    """LoopAI debrief shape for the dashboard."""
+
+    gameTimestamp: str
+    recommendation: str
+    wasFollowed: bool | None = None
+    outcome: str  # "won" | "lost"
+    loopUpdate: str
+
+
+class LastDebriefResponse(BaseModel):
+    debrief: SessionDebrief | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -140,6 +161,66 @@ async def list_sessions(
 
 
 @router.get(
+    "/last-debrief",
+    response_model=LastDebriefResponse,
+    summary="Most recent session debrief for the authenticated user",
+)
+async def get_last_debrief(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> LastDebriefResponse:
+    """Return the most recent ``GameSession`` row, shaped for the dashboard.
+
+    Returns ``{"debrief": null}`` if the user has no sessions logged.
+    """
+    result = await db.execute(
+        select(GameSession)
+        .where(GameSession.user_id == str(current_user.id))
+        .order_by(GameSession.played_at.desc())
+        .limit(1)
+    )
+    last = result.scalar_one_or_none()
+    if last is None:
+        return LastDebriefResponse(debrief=None)
+
+    # Map result enum → "won" / "lost" (treat draw as "lost" for now).
+    result_value = last.result.value if last.result else "lost"
+    outcome = "won" if result_value == "win" else "lost"
+
+    # Best-effort extraction of textual fields. The GameSession model carries
+    # `recommendations_followed` (dict) + `stats` (dict). We pull a human
+    # description out of those if present, otherwise fall back to neutral copy.
+    recs_followed = last.recommendations_followed or {}
+    stats = last.stats or {}
+
+    recommendation = (
+        recs_followed.get("recommendation")
+        or stats.get("recommendation")
+        or stats.get("loopAIRecommendation")
+        or "Review your last session in the analytics tab for the full breakdown."
+    )
+    was_followed = recs_followed.get("followed")
+    if was_followed is None:
+        was_followed = stats.get("followed")
+    loop_update = (
+        recs_followed.get("loopUpdate")
+        or stats.get("loopUpdate")
+        or stats.get("loopAIOutcome")
+        or "LoopAI is still aggregating signal from this session."
+    )
+
+    return LastDebriefResponse(
+        debrief=SessionDebrief(
+            gameTimestamp=last.played_at.isoformat() if last.played_at else "",
+            recommendation=str(recommendation),
+            wasFollowed=bool(was_followed) if was_followed is not None else None,
+            outcome=outcome,
+            loopUpdate=str(loop_update),
+        )
+    )
+
+
+@router.get(
     "/{session_id}",
     response_model=SessionOut,
     summary="Get session detail",
@@ -172,4 +253,17 @@ async def update_session(session_id: uuid.UUID, payload: SessionUpdate) -> Sessi
     update_data = payload.model_dump(exclude_unset=True)
     session.update(update_data)
     session["updated_at"] = datetime.now(timezone.utc)
+
+    # Session-end → fire share-win triggers (non-blocking, errors swallowed).
+    if "result" in update_data:
+        await fire_share_win_hook(
+            user_id=str(session.get("user_id")),
+            title_id=str(session.get("title", "unknown")),
+            session_data={
+                "mode": session.get("mode"),
+                "result": session.get("result"),
+                **(session.get("stats") or {}),
+            },
+        )
+
     return SessionOut(**session)

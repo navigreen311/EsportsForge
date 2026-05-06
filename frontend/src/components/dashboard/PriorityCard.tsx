@@ -6,6 +6,7 @@
 'use client';
 
 import { Brain, Shield, Swords, Zap, ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
 import { Card } from '@/components/shared/Card';
 import { ConfidenceBar } from '@/components/shared/ConfidenceBar';
@@ -28,6 +29,26 @@ interface PriorityCardProps {
 export default function PriorityCard({ priority }: PriorityCardProps) {
   const cat = categoryConfig[priority.category];
   const CategoryIcon = cat.icon;
+  const router = useRouter();
+
+  const handleStartFixing = () => {
+    const category = (priority?.category ?? '').toLowerCase();
+    if (['mental', 'read-speed', 'recognition'].includes(category)) {
+      router.push(
+        `/drills?priority=${encodeURIComponent(priority.weakness)}`
+      );
+      return;
+    }
+    if (['scheme', 'gameplan', 'coverage', 'defense'].includes(category)) {
+      router.push('/gameplan');
+      return;
+    }
+    if (['execution', 'mechanical', 'offense'].includes(category)) {
+      router.push('/drills/simlab');
+      return;
+    }
+    router.push(`/drills?priority=${encodeURIComponent(priority.weakness)}`);
+  };
 
   return (
     <Card padding="lg" className="relative overflow-hidden">
@@ -116,6 +137,7 @@ export default function PriorityCard({ priority }: PriorityCardProps) {
         {/* CTA */}
         <button
           type="button"
+          onClick={handleStartFixing}
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-forge-500 px-4 py-2.5 text-sm font-bold text-dark-950 transition-colors hover:bg-forge-400 sm:w-auto"
         >
           Start Fixing

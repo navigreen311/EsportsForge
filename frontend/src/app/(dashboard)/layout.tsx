@@ -28,6 +28,8 @@ import { useUIStore } from '@/lib/store';
 import { SearchShortcutsProvider } from '@/components/search/SearchShortcutsProvider';
 import { ActiveSessionBanner } from '@/components/session/ActiveSessionBanner';
 import { SessionEndOrchestrator } from '@/components/session/SessionEndOrchestrator';
+import { ShareWinModalHost } from '@/components/animaforge/ShareWinModal';
+import WatchingWidget from '@/components/global/WatchingWidget';
 import { useSessionStepTracker } from '@/hooks/useSessionStepTracker';
 import { useSessionUIStore } from '@/lib/sessionStore';
 
@@ -124,6 +126,12 @@ export default function DashboardLayout({
 
         {/* Session end summary — listens for global "end requested" signal */}
         <SessionEndOrchestrator />
+
+        {/* AnimaForge — share-win achievement modal (Agent #9) */}
+        <ShareWinModalHost />
+
+        {/* Unified Watching widget — single source of truth for capture state */}
+        <WatchingWidget />
       </div>
     </SearchShortcutsProvider>
   );

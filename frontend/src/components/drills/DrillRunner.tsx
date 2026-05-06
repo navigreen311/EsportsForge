@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DrillRecord } from '@/types/analytics';
 import {
   Play,
@@ -11,12 +11,17 @@ import {
   Gauge,
   Sparkles,
   Volume2,
+  Film,
 } from 'lucide-react';
 import PressureModeToggle, { PressureContext } from '@/components/drills/PressureModeToggle';
 import WhyThisDrill from '@/components/drills/WhyThisDrill';
 import SimLabLaunchButton from '@/components/drills/SimLabLaunchButton';
 import { DrillMasteryDot, DRILL_MASTERY } from '@/components/drills/DrillMasteryDot';
 import { useVoiceForge } from '@/hooks/useVoiceForge';
+import { AnimaPlayer } from '@/components/animaforge/AnimaPlayer';
+import { useAnimaForgeAvailable } from '@/hooks/useAnimaForge';
+import { animaforgeApi } from '@/lib/animaforge/api';
+import { useActiveTitle } from '@/hooks/useActiveTitle';
 
 interface DrillRunnerProps {
   drill: DrillRecord;
@@ -71,6 +76,94 @@ export default function DrillRunner({
   const diffConfig = difficultyConfig[drill.difficulty];
   const mastery = DRILL_MASTERY[drill.id] ?? 'not-started';
   const { speak, stop, isSpeaking, isAvailable: voiceAvailable } = useVoiceForge();
+
+  // === AnimaForge: drill demonstration video =================================
+  const { available: animaAvailable } = useAnimaForgeAvailable();
+  const { activeTitleId } = useActiveTitle();
+  const drillType = drill.id; // shared cache key with backend (sourceId = title:drillType)
+  const [showDemo, setShowDemo] = useState(false);
+  const [demoVideoUrl, setDemoVideoUrl] = useState<string | null>(null);
+  const [demoThumbnailUrl, setDemoThumbnailUrl] = useState<string | null>(null);
+  const [demoJobId, setDemoJobId] = useState<string | null>(null);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoChecked, setDemoChecked] = useState(false);
+
+  // On mount (once): probe cached drill demo so the button knows whether
+  // it can play instantly or has to kick off a render.
+  useEffect(() => {
+    if (animaAvailable !== true || demoChecked) return;
+    let cancelled = false;
+    setDemoChecked(true);
+    animaforgeApi
+      .getDrillStatus({ title_id: activeTitleId, drill_type: drillType })
+      .then((data) => {
+        if (cancelled) return;
+        if (data.video_url) {
+          setDemoVideoUrl(data.video_url);
+          if (data.thumbnail_url) setDemoThumbnailUrl(data.thumbnail_url);
+        } else if (data.job_id) {
+          setDemoJobId(data.job_id);
+        }
+      })
+      .catch(() => {
+        // Silent failure — button will fall back to POST on click.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [animaAvailable, demoChecked, activeTitleId, drillType]);
+
+  const handleWatchDemonstration = async () => {
+    // Already cached → just open the inline player.
+    if (demoVideoUrl) {
+      setShowDemo(true);
+      return;
+    }
+    setDemoLoading(true);
+    try {
+      // Try the canonical drill render first — produces a title-specific
+      // demo for drills that have an entry in DRILL_ANIMATION_SPECS
+      // (pre-snap-reads, blitz-timing, ...).
+      const drillData = await animaforgeApi.requestDrillRender({
+        title_id: activeTitleId,
+        drill_type: drillType,
+        drill_name: drill.name,
+      });
+
+      // Backend returns `{ available: false, reason: "spec-not-found" }` for
+      // any drill_type not in the canonical table — most user-facing drills
+      // identified by uuid/slug fall through this branch. Fall back to the
+      // play endpoint, which is tolerant of unknown ids and produces a
+      // universal-tactic-diagram. Same pattern as SimLab scenario preview.
+      const drillUnavailable =
+        (drillData as { available?: boolean }).available === false;
+      if (drillUnavailable || (!drillData.video_url && !drillData.job_id)) {
+        const fallback = await animaforgeApi.requestPlayRender({
+          play_id: `drill-${drillType}`,
+          title_id: activeTitleId,
+        });
+        if (fallback.video_url) {
+          setDemoVideoUrl(fallback.video_url);
+          if (fallback.thumbnail_url) setDemoThumbnailUrl(fallback.thumbnail_url);
+        } else if (fallback.job_id) {
+          setDemoJobId(fallback.job_id);
+        }
+      } else if (drillData.video_url) {
+        setDemoVideoUrl(drillData.video_url);
+        if (drillData.thumbnail_url) setDemoThumbnailUrl(drillData.thumbnail_url);
+      } else if (drillData.job_id) {
+        setDemoJobId(drillData.job_id);
+      }
+      setShowDemo(true);
+    } catch {
+      // Swallow: stay silent per graceful-degradation contract.
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
+  const showAnimaForgeUI = animaAvailable === true;
+  // ===========================================================================
 
   const speakDrillStart = () => {
     if (!voiceEnabled) return;
@@ -163,6 +256,40 @@ export default function DrillRunner({
 
       {/* Pressure Mode Context */}
       <PressureContext enabled={pressureMode} />
+
+      {/* AnimaForge: drill demonstration (pre-drill brief — before OBJECTIVE) */}
+      {showAnimaForgeUI && !isActive && (
+        <div className="mb-4">
+          <button
+            onClick={handleWatchDemonstration}
+            disabled={demoLoading}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-800 hover:bg-dark-700 border border-forge-700/40 text-dark-100 text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <Film className="w-4 h-4 text-forge-400" />
+            {demoLoading
+              ? 'Loading demonstration…'
+              : demoVideoUrl
+                ? 'Watch Demonstration'
+                : 'Watch Demonstration'}
+          </button>
+          <p className="mt-1.5 text-xs text-dark-500">
+            See exactly what correct execution looks like
+          </p>
+          {showDemo && (demoVideoUrl || demoJobId) && (
+            <div className="mt-3">
+              <AnimaPlayer
+                jobId={demoJobId ?? undefined}
+                videoUrl={demoVideoUrl ?? undefined}
+                thumbnailUrl={demoThumbnailUrl ?? undefined}
+                type="drill-demo"
+                autoPlay
+                loop
+                onReady={(url) => setDemoVideoUrl(url)}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Instructions */}
       <div className="p-4 rounded-lg bg-dark-800/60 border border-dark-700 mb-4">

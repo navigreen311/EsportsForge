@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Shield, Check, ChevronDown } from 'lucide-react';
+import { Shield, Check, ChevronDown, X } from 'lucide-react';
 
 interface TitleStatus {
   title: string;
@@ -39,8 +39,15 @@ const faqItems = [
   },
 ];
 
+const COMPLIANCE_DETAIL: Record<string, { provider: string; lastVerified: string; scope: string }> = {
+  'Warzone': { provider: 'Ricochet (Activision)', lastVerified: '2026-04-22', scope: 'Read-only post-game stats; no kernel hooks; no overlay during ranked.' },
+  'Fortnite': { provider: 'Easy Anti-Cheat (Epic)', lastVerified: '2026-04-30', scope: 'Read-only post-game stats; capture disabled in ranked/tournament.' },
+  'Valorant': { provider: 'Vanguard (Riot)', lastVerified: '2026-05-01', scope: 'Read-only post-game stats; no overlay; no DLL injection.' },
+};
+
 export default function AntiCheatPerTitle() {
   const [faqOpen, setFaqOpen] = useState(false);
+  const [detailTitle, setDetailTitle] = useState<string | null>(null);
 
   return (
     <div className="rounded-xl border border-dark-700 bg-dark-900/50 p-6">
@@ -52,24 +59,29 @@ export default function AntiCheatPerTitle() {
 
       {/* Status Grid */}
       <div className="space-y-2">
-        {titleStatuses.map((item) => (
-          <div
-            key={item.title}
-            className="flex items-center justify-between rounded-lg border border-dark-700 bg-dark-800/50 px-4 py-2.5"
-          >
-            <span className="text-sm text-dark-200">{item.title}</span>
-            <div className="flex items-center gap-1.5">
-              {item.verified ? (
-                <>
-                  <span className="text-sm text-forge-400">{item.status} ✓</span>
-                  <Check className="h-4 w-4 text-forge-400" />
-                </>
-              ) : (
-                <span className="text-sm text-dark-500">{item.status}</span>
-              )}
-            </div>
-          </div>
-        ))}
+        {titleStatuses.map((item) => {
+          const hasDetail = item.verified && Boolean(COMPLIANCE_DETAIL[item.title]);
+          const Wrapper: React.ElementType = hasDetail ? 'button' : 'div';
+          return (
+            <Wrapper
+              key={item.title}
+              {...(hasDetail ? { onClick: () => setDetailTitle(item.title), type: 'button' } : {})}
+              className={`flex items-center justify-between rounded-lg border border-dark-700 bg-dark-800/50 px-4 py-2.5 w-full text-left ${hasDetail ? 'hover:border-forge-500/40 transition-colors' : ''}`}
+            >
+              <span className="text-sm text-dark-200">{item.title}</span>
+              <div className="flex items-center gap-1.5">
+                {item.verified ? (
+                  <>
+                    <span className="text-sm text-forge-400">{item.status} ✓</span>
+                    <Check className="h-4 w-4 text-forge-400" />
+                  </>
+                ) : (
+                  <span className="text-sm text-dark-500">{item.status}</span>
+                )}
+              </div>
+            </Wrapper>
+          );
+        })}
       </div>
 
       {/* Info Text */}
@@ -103,6 +115,23 @@ export default function AntiCheatPerTitle() {
           </div>
         )}
       </div>
+
+      {/* Compliance detail modal */}
+      {detailTitle && COMPLIANCE_DETAIL[detailTitle] && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setDetailTitle(null)}>
+          <div className="w-full max-w-md rounded-xl border border-dark-700 bg-dark-900 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-3">
+              <h3 className="text-lg font-bold text-dark-50">{detailTitle} — Compliance</h3>
+              <button onClick={() => setDetailTitle(null)} className="text-dark-500 hover:text-dark-200"><X className="w-5 h-5" /></button>
+            </div>
+            <dl className="space-y-2 text-sm">
+              <div className="flex justify-between"><dt className="text-dark-400">Provider</dt><dd className="text-dark-100 font-semibold">{COMPLIANCE_DETAIL[detailTitle].provider}</dd></div>
+              <div className="flex justify-between"><dt className="text-dark-400">Last verified</dt><dd className="text-dark-200">{COMPLIANCE_DETAIL[detailTitle].lastVerified}</dd></div>
+              <div><dt className="text-dark-400 mb-1">Scope</dt><dd className="text-dark-200 text-xs">{COMPLIANCE_DETAIL[detailTitle].scope}</dd></div>
+            </dl>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

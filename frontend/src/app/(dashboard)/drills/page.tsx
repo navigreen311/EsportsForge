@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Swords, Shield } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Swords, Shield, X as XIcon, Info } from 'lucide-react';
 import { useDrills } from '@/hooks/useDrills';
 import { useActiveArsenalTitle, type WeaponSide } from '@/hooks/useArsenal';
 import {
@@ -22,6 +23,7 @@ import TransferAIReadiness from '@/components/drills/TransferAIReadiness';
 import DrillStreakWidget from '@/components/drills/DrillStreakWidget';
 import { DrillStreak } from '@/components/drills/DrillStreakTracker';
 import { MonthlyConsistency } from '@/components/drills/DrillStreakTracker';
+import { WatchingPageHint } from '@/components/global/WatchingPageHint';
 
 export default function DrillsPage() {
   const {
@@ -53,6 +55,34 @@ export default function DrillsPage() {
 
   const completedDrillCount = session.completedDrills.length;
 
+  // Banner reader: priority/focus/filter/dailyForgeDrill query params
+  const searchParams = useSearchParams();
+  const priorityParam = searchParams?.get('priority') ?? null;
+  const focusParam = searchParams?.get('focus') ?? null;
+  const filterParam = searchParams?.get('filter') ?? null;
+  const dailyForgeDrill = searchParams?.get('dailyForgeDrill') ?? null;
+
+  let bannerMessage: string | null = null;
+  if (focusParam === 'execution-gap') {
+    bannerMessage =
+      'Closing the gap — Coverage Reads 91% in drills, only 54% in ranked games. These reps build the transfer.';
+  } else if (focusParam === 'transfer-gap') {
+    bannerMessage =
+      'TransferAI: Your skills are not transferring under pressure. These drills simulate live game pressure conditions.';
+  } else if (priorityParam) {
+    bannerMessage = `Fixing: ${priorityParam} — your #1 priority`;
+  } else if (dailyForgeDrill) {
+    bannerMessage = `Today's Daily Forge drill: ${dailyForgeDrill}`;
+  } else if (filterParam) {
+    bannerMessage = `Filter: ${filterParam}`;
+  }
+
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  // Re-show banner if the underlying message changes
+  useEffect(() => {
+    setBannerDismissed(false);
+  }, [bannerMessage]);
+
   useEffect(() => {
     if (lastCompletedDrill) {
       setShowDebrief(true);
@@ -83,6 +113,22 @@ export default function DrillsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Contextual banner — driven by query params */}
+      {bannerMessage && !bannerDismissed && (
+        <div className="flex items-start gap-3 rounded-xl border border-forge-500/30 bg-forge-500/10 px-4 py-3">
+          <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-forge-300" />
+          <p className="flex-1 text-sm text-forge-100">{bannerMessage}</p>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => setBannerDismissed(true)}
+            className="flex-shrink-0 rounded-md p-1 text-forge-300 transition-colors hover:bg-forge-500/20 hover:text-forge-100"
+          >
+            <XIcon className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -95,15 +141,23 @@ export default function DrillsPage() {
           </p>
         </div>
 
-        {/* Session Progress + Streak */}
-        <div className="text-right hidden md:block space-y-1">
-          <p className="text-sm text-dark-400">Session Progress</p>
-          <p className="text-lg font-bold font-mono text-dark-100">
-            {totalReps}/{totalTargetReps}{' '}
-            <span className="text-sm text-dark-500 font-normal">reps</span>
-          </p>
-          {/* 9. Drill Streak */}
-          <DrillStreak />
+        {/* Watching status + Session Progress + Streak */}
+        <div className="flex items-start gap-3">
+          <WatchingPageHint
+            pageName="Drill Lab"
+            onHint="Watching Drill Lab — auto-tracking reps when frames flow"
+            offHint="Enable Watching for auto-rep tracking"
+            className="hidden md:inline-flex"
+          />
+          <div className="text-right hidden md:block space-y-1">
+            <p className="text-sm text-dark-400">Session Progress</p>
+            <p className="text-lg font-bold font-mono text-dark-100">
+              {totalReps}/{totalTargetReps}{' '}
+              <span className="text-sm text-dark-500 font-normal">reps</span>
+            </p>
+            {/* 9. Drill Streak */}
+            <DrillStreak />
+          </div>
         </div>
       </div>
 

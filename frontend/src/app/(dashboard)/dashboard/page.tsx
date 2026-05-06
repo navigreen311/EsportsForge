@@ -9,6 +9,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import {
   LayoutDashboard,
   Flame,
@@ -18,6 +21,7 @@ import {
   Activity,
   Trophy,
   CalendarDays,
+  ArrowRight,
 } from 'lucide-react';
 import { useDashboard } from '@/hooks/useDashboard';
 import { useUIStore } from '@/lib/store';
@@ -62,12 +66,16 @@ type PostGamePhase = 'idle' | 'result' | 'loopai';
 
 export default function DashboardPage() {
   const { data, hasData, statLabels } = useDashboard();
+  const { data: authSession } = useSession();
+  const router = useRouter();
+  const displayName = authSession?.user?.name ?? 'Commander';
   const [mood, setMood] = useState<TiltGuardMood | null>(null);
   const [moodModalOpen, setMoodModalOpen] = useState<boolean | undefined>(undefined);
   const [logMatchOpen, setLogMatchOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [postGamePhase, setPostGamePhase] = useState<PostGamePhase>('idle');
   const [pendingResult, setPendingResult] = useState<SessionGameResult | null>(null);
+  const [visitCount, setVisitCount] = useState(0);
 
   const selectedTitle = useUIStore((s) => s.selectedTitle);
   const titleInfo = getTitleById(selectedTitle);
@@ -85,6 +93,42 @@ export default function DashboardPage() {
     const stored = loadStoredMood();
     if (stored) setMood(stored);
   }, []);
+
+  // First-3-sessions guide: read+increment visit counter from localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const KEY = 'esf-dashboard-visit-count';
+      const raw = window.localStorage.getItem(KEY);
+      const current = raw ? parseInt(raw, 10) : 0;
+      const safe = Number.isFinite(current) && current >= 0 ? current : 0;
+      if (safe < 3) {
+        const next = safe + 1;
+        window.localStorage.setItem(KEY, String(next));
+        setVisitCount(next);
+      } else {
+        setVisitCount(safe);
+      }
+    } catch {
+      // localStorage unavailable; silently ignore
+    }
+  }, []);
+
+  const guideHighlight =
+    visitCount > 0 && visitCount <= 3
+      ? 'ring-2 ring-emerald-500/40 animate-pulse rounded-xl'
+      : '';
+
+  // FIX 10 guard — hide tournament card body if date is in the past
+  const upcomingTournamentDateInPast = (() => {
+    if (!data.upcomingTournament?.date) return false;
+    const tDate = new Date(data.upcomingTournament.date);
+    if (Number.isNaN(tDate.getTime())) return false;
+    tDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return tDate < today;
+  })();
 
   const handleLogMatchSubmit = (payload: MatchLogPayload) => {
     console.info('[match-log]', payload);
@@ -134,12 +178,22 @@ export default function DashboardPage() {
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-bold text-dark-50">
             <LayoutDashboard className="h-8 w-8 text-forge-400" />
-            Welcome back, {data.username}
+            Welcome back, {displayName}
           </h1>
           <p className="mt-1 text-dark-400">
-            {isSessionActive
-              ? 'Competition mode is live. Stay focused.'
-              : "Here's your competitive intelligence briefing."}
+            {isSessionActive ? (
+              'Competition mode is live. Stay focused.'
+            ) : (
+              <>
+                Here&apos;s your competitive intelligence briefing.{' '}
+                <Link
+                  href="/help/dashboard"
+                  className="text-forge-400 hover:text-forge-300 underline-offset-2 hover:underline"
+                >
+                  Learn how to read this &rarr;
+                </Link>
+              </>
+            )}
           </p>
         </div>
 
@@ -169,13 +223,21 @@ export default function DashboardPage() {
         />
       ) : (
         <>
-          <DailyForgeCard />
-          <SessionStartCard onLogMatch={() => setLogMatchOpen(true)} />
+          <div className={guideHighlight}>
+            <DailyForgeCard />
+          </div>
+          <div className={guideHighlight}>
+            <SessionStartCard onLogMatch={() => setLogMatchOpen(true)} />
+          </div>
         </>
       )}
 
       {/* Priority Card — #1 */}
-      {hasData && <PriorityCard priority={data.priority} />}
+      {hasData && (
+        <div className={guideHighlight}>
+          <PriorityCard priority={data.priority} />
+        </div>
+      )}
 
       {/* ProgressionOS Install Roadmap Strip */}
       {hasData && <ProgressionStrip
@@ -244,27 +306,48 @@ export default function DashboardPage() {
 
           {data.upcomingTournament && (
             <Card padding="md">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
-                  <Trophy className="h-5 w-5 text-amber-400" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-dark-100">
-                    {data.upcomingTournament.name}
-                  </p>
-                  <div className="flex items-center gap-2 text-[11px] text-dark-400">
-                    <CalendarDays className="h-3 w-3" />
-                    <span>{data.upcomingTournament.date}</span>
-                    <span className="text-dark-600">|</span>
-                    <span>{data.upcomingTournament.format}</span>
-                    <span className="text-dark-600">|</span>
-                    <span>
-                      {data.upcomingTournament.registeredPlayers} players
-                    </span>
+              {upcomingTournamentDateInPast ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-dark-800">
+                    <Trophy className="h-5 w-5 text-dark-500" />
                   </div>
+                  <p className="text-sm text-dark-400">
+                    No upcoming tournaments &mdash; check back soon
+                  </p>
                 </div>
-                <Badge variant="warning" size="sm">Upcoming</Badge>
-              </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
+                      <Trophy className="h-5 w-5 text-amber-400" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-dark-100">
+                        {data.upcomingTournament.name}
+                      </p>
+                      <div className="flex items-center gap-2 text-[11px] text-dark-400">
+                        <CalendarDays className="h-3 w-3" />
+                        <span>{data.upcomingTournament.date}</span>
+                        <span className="text-dark-600">|</span>
+                        <span>{data.upcomingTournament.format}</span>
+                        <span className="text-dark-600">|</span>
+                        <span>
+                          {data.upcomingTournament.registeredPlayers} players
+                        </span>
+                      </div>
+                    </div>
+                    <Badge variant="warning" size="sm">Upcoming</Badge>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/tournament')}
+                    className="inline-flex items-center justify-center gap-1.5 self-start rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-300 transition-colors hover:bg-amber-500/20"
+                  >
+                    <ArrowRight className="h-3.5 w-3.5" />
+                    View Tournament
+                  </button>
+                </div>
+              )}
             </Card>
           )}
         </div>

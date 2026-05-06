@@ -42,6 +42,7 @@ _mount("app.api.v1.endpoints.two_factor",      prefix="/2fa",             tags=[
 _mount("app.api.v1.endpoints.users",           prefix="/users",           tags=["Users"])
 _mount("app.api.v1.endpoints.onboarding",      prefix="/onboarding",      tags=["Onboarding"])
 _mount("app.api.v1.endpoints.sessions",        prefix="/sessions",        tags=["Sessions"])
+_mount("app.api.v1.endpoints.daily_forge",     prefix="/daily-forge",     tags=["DailyForge"])
 _mount("app.api.v1.endpoints.subscriptions",   prefix="/subscriptions",   tags=["Subscriptions"])
 _mount("app.api.v1.endpoints.titles",          prefix="/titles",          tags=["Titles"])
 
@@ -85,6 +86,10 @@ _mount("app.api.v1.endpoints.simulation",      prefix="/simulation",      tags=[
 _mount("app.api.v1.endpoints.tournament",      prefix="/tournament",      tags=["Tournament"])
 _mount("app.api.v1.endpoints.streamer",        prefix="/streamer",        tags=["Streamer"])
 _mount("app.api.v1.endpoints.gameplans",       prefix="/gameplans",       tags=["Gameplans"])
+# Mount the action-shaped follow/dismiss endpoint *before* the legacy
+# recommendations router so its compact `{"action": ...}` POST handler wins
+# the route match against the structured-feedback handler.
+_mount("app.api.v1.endpoints.recommendation_feedback", prefix="/recommendations", tags=["Recommendations"])
 _mount("app.api.v1.endpoints.recommendations", prefix="/recommendations", tags=["Recommendations"])
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -210,6 +215,19 @@ _mount("app.api.v1.endpoints.referrals",       prefix="/referrals",       tags=[
 _mount("app.api.v1.endpoints.push",            prefix="/push",            tags=["Push"])
 _mount("app.api.v1.endpoints.certifications",  prefix="/certifications",  tags=["Certifications"])
 _mount("app.api.v1.endpoints.leaderboard",     prefix="/leaderboard",     tags=["Leaderboard"])
+
+# ═══════════════════════════════════════════════════════════════════════════
+# AnimaForge
+# ═══════════════════════════════════════════════════════════════════════════
+# All endpoint files declare absolute route paths (e.g. @router.post("/arsenal")),
+# so they all mount at the same /animaforge prefix.
+_mount("app.api.v1.endpoints.animaforge_core",     prefix="/animaforge", tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_webhook",  prefix="/animaforge", tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_arsenal",  prefix="/animaforge", tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_drill",    prefix="/animaforge", tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_play",     prefix="/animaforge", tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_share",    prefix="/animaforge", tags=["AnimaForge"])
+_mount("app.api.v1.endpoints.animaforge_settings", prefix="/animaforge", tags=["AnimaForge"])
 
 
 # Backwards-compatible alias — tests/integration/conftest.py imports

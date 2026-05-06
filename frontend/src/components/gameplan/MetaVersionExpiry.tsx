@@ -32,7 +32,10 @@ export default function MetaVersionExpiry({ playId }: MetaVersionExpiryProps) {
 
   if (risk === "trending-countered") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+      <span
+        className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-400"
+        title="This play is being countered by the community in the current patch. Use sparingly — treat as a change-up, not a primary weapon."
+      >
         <TrendingDown className="h-3 w-3" />
         Trending Countered
       </span>
@@ -41,7 +44,10 @@ export default function MetaVersionExpiry({ playId }: MetaVersionExpiryProps) {
 
   // risk === "expiry-risk"
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-red-500/30 bg-red-500/20 px-2 py-0.5 text-[10px] font-medium text-red-400">
+    <span
+      className="inline-flex items-center gap-1 rounded-full border border-red-500/30 bg-red-500/20 px-2 py-0.5 text-[10px] font-medium text-red-400"
+      title="Defensive recognition is climbing fast on this play. Expect it to fall off in the next patch — rotate it out of your primary calls."
+    >
       <AlertOctagon className="h-3 w-3" />
       Expiry Risk
     </span>

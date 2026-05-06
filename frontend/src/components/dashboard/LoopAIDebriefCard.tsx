@@ -1,20 +1,77 @@
 /**
- * LoopAI Last Game Debrief card — shows what happened, was advice followed, outcome.
+ * LoopAI Last Game Debrief card — fetches `/sessions/last-debrief` and renders
+ * the user's most recent ranked-game debrief. When no session exists, shows
+ * an empty-state prompt to log a game.
  */
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import { RefreshCw, Check, X, Trophy, Skull } from 'lucide-react';
 import { clsx } from 'clsx';
+import api from '@/lib/api';
 import { Card } from '@/components/shared/Card';
 import { Badge } from '@/components/shared/Badge';
 import type { LoopAIDebrief } from '@/types/dashboard';
 
 interface LoopAIDebriefCardProps {
+  /**
+   * Optional pre-fetched debrief — if omitted (the typical case for the
+   * dashboard now), the component will fetch on mount.
+   */
+  debrief?: LoopAIDebrief | null;
+}
+
+interface LastDebriefResponse {
   debrief: LoopAIDebrief | null;
 }
 
-export default function LoopAIDebriefCard({ debrief }: LoopAIDebriefCardProps) {
+export default function LoopAIDebriefCard({ debrief: initialDebrief }: LoopAIDebriefCardProps) {
+  const [debrief, setDebrief] = useState<LoopAIDebrief | null>(
+    initialDebrief ?? null,
+  );
+  const [loading, setLoading] = useState<boolean>(initialDebrief === undefined);
+  const [errored, setErrored] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    api
+      .get<LastDebriefResponse>('/sessions/last-debrief')
+      .then((res) => {
+        if (cancelled) return;
+        setDebrief(res.data.debrief ?? null);
+        setErrored(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setErrored(true);
+        setDebrief(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <Card padding="md">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-dark-800">
+            <RefreshCw className="h-5 w-5 animate-spin text-dark-500" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-dark-300">Last Game Debrief</p>
+            <p className="text-xs text-dark-500">Loading…</p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
   if (!debrief) {
     return (
       <Card padding="md">
@@ -25,7 +82,9 @@ export default function LoopAIDebriefCard({ debrief }: LoopAIDebriefCardProps) {
           <div>
             <p className="text-sm font-bold text-dark-300">Last Game Debrief</p>
             <p className="text-xs text-dark-500">
-              Log your next game to activate LoopAI feedback
+              {errored
+                ? 'Could not load your last debrief — try again later.'
+                : 'Play a ranked game and log your result to see your debrief here'}
             </p>
           </div>
         </div>

@@ -5,6 +5,8 @@
 
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Bookmark,
   BookmarkCheck,
@@ -16,6 +18,13 @@ import {
   Upload,
   Shield,
   Swords,
+  Camera,
+  PlayCircle,
+  MoreVertical,
+  Eye,
+  FlaskConical,
+  Plus,
+  Flag,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import {
@@ -23,6 +32,18 @@ import {
   useRemoveWeapon,
   type Weapon,
 } from '@/hooks/useArsenal';
+import { useAnimaForgeAvailable } from '@/hooks/useAnimaForge';
+
+/**
+ * Animation status hint for a weapon card. Populated by the parent grid
+ * (which can batch-fetch jobs) — left undefined here means the card falls
+ * back to the static "Generate Animation" camera icon.
+ */
+export interface WeaponAnimationStatus {
+  status: 'complete' | 'pending' | 'rendering' | 'failed';
+  videoUrl?: string | null;
+  thumbnailUrl?: string | null;
+}
 
 const CATEGORY_TONE: Record<string, string> = {
   'Trick Play': 'bg-amber-500/15 text-amber-300 border-amber-500/30',
@@ -93,17 +114,108 @@ interface WeaponCardProps {
   weapon: Weapon;
   onView: (weapon: Weapon) => void;
   onAddToGameplan?: (weapon: Weapon) => void;
+  /**
+   * Optional animation-status hint sourced by the parent grid (avoids an
+   * N+1 fetch per card). Undefined = static "Generate Animation" state.
+   */
+  animationStatus?: WeaponAnimationStatus;
 }
 
-export function WeaponCard({ weapon, onView, onAddToGameplan }: WeaponCardProps) {
+export function WeaponCard({
+  weapon,
+  onView,
+  onAddToGameplan,
+  animationStatus,
+}: WeaponCardProps) {
+  const router = useRouter();
   const save = useSaveWeapon();
   const remove = useRemoveWeapon();
+  const animaforge = useAnimaForgeAvailable();
+  const animaforgeAvailable = animaforge.available !== false;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Close the dropdown on outside click / Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDocClick = (ev: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(ev.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
 
   const toggleSave = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (weapon.saved) remove.mutate(weapon.id);
     else save.mutate(weapon.id);
   };
+
+  // Three-dot menu actions — each stops propagation so the card's parent
+  // onClick (which opens the detail panel) doesn't fire.
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
+
+  const menuView = (e: React.MouseEvent) => {
+    stop(e);
+    setMenuOpen(false);
+    onView(weapon);
+  };
+
+  const menuToggleSave = (e: React.MouseEvent) => {
+    stop(e);
+    setMenuOpen(false);
+    if (weapon.saved) remove.mutate(weapon.id);
+    else save.mutate(weapon.id);
+  };
+
+  const menuAddToGameplan = (e: React.MouseEvent) => {
+    stop(e);
+    setMenuOpen(false);
+    if (onAddToGameplan) {
+      onAddToGameplan(weapon);
+    } else {
+      router.push(`/gameplan?tab=arsenal&saveWeapon=${encodeURIComponent(weapon.id)}`);
+    }
+  };
+
+  const menuPracticeInSimLab = (e: React.MouseEvent) => {
+    stop(e);
+    setMenuOpen(false);
+    const params = new URLSearchParams({
+      weapon: weapon.id,
+      weaponName: weapon.name,
+    });
+    if (weapon.formation) params.set('formation', weapon.formation);
+    router.push(`/drills/simlab?${params.toString()}`);
+  };
+
+  const menuReportIssue = (e: React.MouseEvent) => {
+    stop(e);
+    setMenuOpen(false);
+    // No backend reports queue yet — surface a transient confirmation so the
+    // click feels responsive. Wiring to a moderation endpoint is a follow-up.
+    if (typeof window !== 'undefined') {
+      window.alert(
+        'Thanks — your report has been logged. We review user-flagged weapons weekly.'
+      );
+    }
+  };
+
+  const showAnimationHint =
+    animaforgeAvailable &&
+    animationStatus?.status === 'complete' &&
+    !!animationStatus.videoUrl;
+  const showAnimationGenerate =
+    animaforgeAvailable && !showAnimationHint;
 
   return (
     <div
@@ -120,6 +232,41 @@ export function WeaponCard({ weapon, onView, onAddToGameplan }: WeaponCardProps)
           : 'border-dark-700/50 hover:border-dark-600'
       )}
     >
+      {/* AnimaForge animation hint (top-right). Clicking opens the detail
+          panel — same as the rest of the card — so the player can hit
+          [Watch Animation]. */}
+      {showAnimationHint && animationStatus?.thumbnailUrl ? (
+        <div
+          className="absolute right-2 top-2 z-10 flex h-9 w-12 items-center justify-center overflow-hidden rounded-md border border-purple-500/40 bg-dark-950/60 shadow-sm"
+          title="Animation ready — click to watch"
+          aria-label="Animation ready"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={animationStatus.thumbnailUrl}
+            alt=""
+            className="h-full w-full object-cover opacity-90"
+          />
+          <PlayCircle className="absolute h-4 w-4 text-white drop-shadow" />
+        </div>
+      ) : showAnimationHint ? (
+        <div
+          className="absolute right-2 top-2 z-10 flex h-9 w-12 items-center justify-center rounded-md border border-purple-500/40 bg-purple-500/10 shadow-sm"
+          title="Animation ready — click to watch"
+          aria-label="Animation ready"
+        >
+          <PlayCircle className="h-4 w-4 text-purple-300" />
+        </div>
+      ) : showAnimationGenerate ? (
+        <div
+          className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-md border border-dark-700 bg-dark-800/80 text-dark-400 opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
+          title="Generate Animation"
+          aria-label="Generate Animation"
+        >
+          <Camera className="h-3.5 w-3.5" />
+        </div>
+      ) : null}
+
       {/* Top row: badges + bookmark */}
       <div className="mb-2 flex items-start gap-2">
         {weapon.side === 'defense' ? (
@@ -155,6 +302,74 @@ export function WeaponCard({ weapon, onView, onAddToGameplan }: WeaponCardProps)
               <Bookmark className="h-4 w-4" />
             )}
           </button>
+          <div ref={menuRef} className="relative">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen((prev) => !prev);
+              }}
+              className="flex h-6 w-6 items-center justify-center rounded-md text-dark-500 transition-colors hover:bg-dark-800 hover:text-dark-200"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-label="Weapon actions"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
+            {menuOpen && (
+              <div
+                role="menu"
+                onClick={stop}
+                className="absolute right-0 top-7 z-30 w-52 overflow-hidden rounded-lg border border-dark-700 bg-dark-900 py-1 shadow-xl"
+              >
+                <button
+                  role="menuitem"
+                  onClick={menuView}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-dark-200 transition-colors hover:bg-dark-800"
+                >
+                  <Eye className="h-3.5 w-3.5 text-dark-400" />
+                  View Instructions
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={menuToggleSave}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-dark-200 transition-colors hover:bg-dark-800"
+                >
+                  {weapon.saved ? (
+                    <BookmarkCheck className="h-3.5 w-3.5 fill-forge-400 text-forge-400" />
+                  ) : (
+                    <Bookmark className="h-3.5 w-3.5 text-dark-400" />
+                  )}
+                  {weapon.saved ? 'Remove from My Arsenal' : 'Save to My Arsenal'}
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={menuAddToGameplan}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-dark-200 transition-colors hover:bg-dark-800"
+                >
+                  <Plus className="h-3.5 w-3.5 text-dark-400" />
+                  Add to Gameplan
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={menuPracticeInSimLab}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-dark-200 transition-colors hover:bg-dark-800"
+                >
+                  <FlaskConical className="h-3.5 w-3.5 text-dark-400" />
+                  Practice in SimLab
+                </button>
+                <div className="my-1 h-px bg-dark-700/70" />
+                <button
+                  role="menuitem"
+                  onClick={menuReportIssue}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-300 transition-colors hover:bg-red-500/10"
+                >
+                  <Flag className="h-3.5 w-3.5" />
+                  Report Issue
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

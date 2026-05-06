@@ -1,12 +1,16 @@
-"""Detailed health check endpoint — DB, Redis, version, uptime."""
+"""Detailed health check endpoint — DB, Redis, AnimaForge, version, uptime."""
 
 from __future__ import annotations
 
+import logging
 import time
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import APIRouter
 from pydantic import BaseModel
+
+logger = logging.getLogger("esportsforge.health")
 
 router = APIRouter(tags=["Health"])
 
@@ -39,6 +43,10 @@ class HealthResponse(BaseModel):
     started_at: str
     database: ServiceHealth
     redis: ServiceHealth
+    # AnimaForge integration — Agent #10. "online" or "offline" only; this is a
+    # simple flag the frontend reads to gate AnimaForge UI when the service is
+    # unreachable.
+    animaforge: str = "offline"
 
 
 # ---------------------------------------------------------------------------
@@ -69,6 +77,26 @@ async def _check_redis() -> ServiceHealth:
     )
 
 
+async def _check_animaforge() -> str:
+    """Return "online" if AnimaForge responds, else "offline".
+
+    Defensive: ``AnimaForgeService`` lives on a sibling branch (Agent #1) and
+    may not be present yet. We import lazily and treat any failure as offline
+    so /health stays a fast, never-erroring liveness probe.
+    """
+    try:
+        from app.services.animaforge.client import AnimaForgeService
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("AnimaForge client unavailable: %s", exc)
+        return "offline"
+    try:
+        available = bool(await AnimaForgeService.is_available())
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("AnimaForge availability probe failed: %s", exc)
+        return "offline"
+    return "online" if available else "offline"
+
+
 # ---------------------------------------------------------------------------
 # Endpoint
 # ---------------------------------------------------------------------------
@@ -79,9 +107,10 @@ async def _check_redis() -> ServiceHealth:
     summary="Detailed health check",
 )
 async def detailed_health() -> HealthResponse:
-    """Return DB connectivity, Redis connectivity, API version, and uptime."""
+    """Return DB connectivity, Redis connectivity, API version, uptime, and AnimaForge status."""
     db_health = await _check_db()
     redis_health = await _check_redis()
+    animaforge_status = await _check_animaforge()
 
     overall = "healthy"
     if db_health.status != "healthy" or redis_health.status != "healthy":
@@ -94,4 +123,5 @@ async def detailed_health() -> HealthResponse:
         started_at=_STARTUP_UTC.isoformat(),
         database=db_health,
         redis=redis_health,
+        animaforge=animaforge_status,
     )
