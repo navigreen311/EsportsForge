@@ -262,6 +262,37 @@ export default function TournamentPage() {
   const activeClockIndex = drillModeActive
     ? CLOCK_TREE.findIndex((n, i) => drillModeRemaining <= n.seconds && (i === CLOCK_TREE.length - 1 || drillModeRemaining > CLOCK_TREE[i + 1].seconds))
     : -1;
+
+  // C12: real-time fatigue + break timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFatigue((f) => Math.min(100, f + 1));
+      setBreakTimer((b) => {
+        if (b <= 0) return 0;
+        const next = b - 1;
+        if (next === 0) setShowBreakOverlay(true);
+        return next;
+      });
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // C12: break-lock countdown (locks UI when Start Break is pressed)
+  useEffect(() => {
+    if (!breakLockedUntil) return;
+    const tick = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((breakLockedUntil - Date.now()) / 1000));
+      setBreakLockRemaining(remaining);
+      if (remaining <= 0) {
+        clearInterval(tick);
+        setBreakLockedUntil(null);
+        setBreakTimer(12);
+        setFatigue((f) => Math.max(0, f - 15));
+        setShowBreakOverlay(false);
+      }
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [breakLockedUntil]);
   const [matchStartTriggered, setMatchStartTriggered] = useState(false);
   const oneMinPulseRef = useRef(false);
   const [checklist, setChecklist] = useState<Record<string, boolean>>(
@@ -289,6 +320,10 @@ export default function TournamentPage() {
   const [tiltStatus, setTiltStatus] = useState<'green' | 'yellow' | 'red'>('green');
   const [fatigue, setFatigue] = useState(28);
   const [breakTimer, setBreakTimer] = useState(12);
+  const [showMoodUpdate, setShowMoodUpdate] = useState(false);
+  const [showBreakOverlay, setShowBreakOverlay] = useState(false);
+  const [breakLockedUntil, setBreakLockedUntil] = useState<number | null>(null);
+  const [breakLockRemaining, setBreakLockRemaining] = useState(0);
 
   // Task 2A: expanded opponent in queue
   const [expandedOpponent, setExpandedOpponent] = useState<string | null>(null);
@@ -797,6 +832,87 @@ export default function TournamentPage() {
                 <p className="text-lg font-bold" style={{ color: confidenceColor(bulletDetail.bullet.confidence) }}>{bulletDetail.bullet.confidence}%</p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mood update modal (C12) */}
+      {showMoodUpdate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowMoodUpdate(false)}>
+          <div className="w-full max-w-sm rounded-xl border border-dark-700 bg-dark-900 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-3">
+              <h3 className="text-lg font-bold text-dark-50">How are you feeling?</h3>
+              <button onClick={() => setShowMoodUpdate(false)} className="text-dark-500 hover:text-dark-200"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { id: 'green', label: 'Locked In', color: 'bg-forge-500/15 border-forge-500/40 text-forge-300' },
+                { id: 'yellow', label: 'Wobbly', color: 'bg-amber-500/15 border-amber-500/40 text-amber-300' },
+                { id: 'red', label: 'Tilted', color: 'bg-red-500/15 border-red-500/40 text-red-300' },
+              ] as const).map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => {
+                    setTiltStatus(m.id);
+                    setShowMoodUpdate(false);
+                    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001';
+                    fetch(`${apiBase}/api/v1/tiltguard/mood`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ mood: m.id }),
+                    }).catch(() => {});
+                  }}
+                  className={`rounded-lg border px-3 py-3 text-xs font-semibold ${m.color} hover:brightness-110`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Break overlay (C12) */}
+      {showBreakOverlay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-md rounded-xl border border-amber-500/30 bg-dark-900 p-6 text-center">
+            {breakLockedUntil ? (
+              <>
+                <p className="text-xs text-amber-300 uppercase font-semibold">Break in progress</p>
+                <p className="text-5xl font-bold text-amber-300 font-mono mt-3">
+                  {Math.floor(breakLockRemaining / 60)}:{(breakLockRemaining % 60).toString().padStart(2, '0')}
+                </p>
+                <ul className="text-sm text-dark-300 mt-5 space-y-1">
+                  <li>&middot; Drink water</li>
+                  <li>&middot; Stand up, stretch hands &amp; shoulders</li>
+                  <li>&middot; Look at something 20 feet away for 20 seconds</li>
+                </ul>
+                <p className="text-xs text-dark-500 mt-4">UI is locked until the break ends.</p>
+              </>
+            ) : (
+              <>
+                <Droplets className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+                <h3 className="text-xl font-bold text-dark-50">Recommended break — 5 minutes</h3>
+                <p className="text-sm text-dark-300 mt-2">Hydrate. Stretch. Reset.</p>
+                <div className="mt-5 flex gap-2 justify-center">
+                  <button
+                    onClick={() => setShowBreakOverlay(false)}
+                    className="rounded-lg border border-dark-600 bg-dark-800 px-4 py-2 text-sm text-dark-200 hover:bg-dark-700"
+                  >
+                    Skip
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBreakLockedUntil(Date.now() + 5 * 60 * 1000);
+                      setBreakLockRemaining(5 * 60);
+                    }}
+                    className="rounded-lg bg-amber-500/15 border border-amber-500/40 px-4 py-2 text-sm font-semibold text-amber-300 hover:bg-amber-500/25"
+                  >
+                    Start Break
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -1525,8 +1641,12 @@ export default function TournamentPage() {
             <Activity className="h-4 w-4 text-forge-400" /> Session Health
           </h2>
           <div className="space-y-4">
-            {/* TiltGuard Status */}
-            <div className="flex items-center justify-between">
+            {/* TiltGuard Status — clickable opens mood update */}
+            <button
+              type="button"
+              onClick={() => setShowMoodUpdate(true)}
+              className="flex items-center justify-between w-full hover:bg-dark-800/40 -mx-2 px-2 py-1 rounded transition-colors"
+            >
               <span className="text-xs text-dark-400">TiltGuard</span>
               <div className="flex items-center gap-2">
                 <span className={`h-2.5 w-2.5 rounded-full ${
@@ -1534,7 +1654,7 @@ export default function TournamentPage() {
                 }`} />
                 <span className="text-xs font-medium text-dark-200 capitalize">{tiltStatus}</span>
               </div>
-            </div>
+            </button>
             {/* Fatigue */}
             <div>
               <div className="flex items-center justify-between mb-1">
