@@ -187,6 +187,8 @@ export default function TournamentPage() {
   const [newCardOpponent, setNewCardOpponent] = useState<string>(OPPONENT_QUEUE[0].name);
   const [newCardText, setNewCardText] = useState('');
   const [customCards, setCustomCards] = useState<Record<string, MemoryBullet[]>>({});
+  const [playDetail, setPlayDetail] = useState<typeof GAMEPLAN[number] | null>(null);
+  const [gameplanFilter, setGameplanFilter] = useState<'all' | 'cover3' | 'redzone' | '3rd' | '2min'>('all');
   const [matchStartTriggered, setMatchStartTriggered] = useState(false);
   const oneMinPulseRef = useRef(false);
   const [checklist, setChecklist] = useState<Record<string, boolean>>(
@@ -726,6 +728,38 @@ export default function TournamentPage() {
         </div>
       )}
 
+      {/* Play detail slide-over (C10) */}
+      {playDetail && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/60" onClick={() => setPlayDetail(null)}>
+          <div className="h-full w-full max-w-md border-l border-dark-700 bg-dark-900 p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <p className="text-xs text-dark-400">Play #{playDetail.id} &middot; {playDetail.situation}</p>
+                <h3 className="text-lg font-bold text-dark-50">{playDetail.play}</h3>
+              </div>
+              <button onClick={() => setPlayDetail(null)} className="text-dark-500 hover:text-dark-200"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="rounded-lg bg-dark-800/60 p-3 mb-4">
+              <p className="text-xs text-dark-400 mb-1">Why it&apos;s in the gameplan</p>
+              <p className="text-sm text-dark-200">{playDetail.note}</p>
+            </div>
+            <div className="flex items-center gap-2 mb-5">
+              <span className="text-xs text-dark-400">Confidence</span>
+              <div className="flex-1 h-1.5 rounded-full bg-dark-800 overflow-hidden">
+                <div className="h-full" style={{ width: `${playDetail.confidence}%`, backgroundColor: confidenceColor(playDetail.confidence) }} />
+              </div>
+              <span className="text-sm font-bold tabular-nums" style={{ color: confidenceColor(playDetail.confidence) }}>{playDetail.confidence}%</span>
+            </div>
+            <a
+              href={`/gameplan?opponent=${slug(TOURNAMENT.nextOpponent)}&play=${playDetail.id}`}
+              className="block w-full text-center rounded-lg bg-forge-500/15 border border-forge-500/30 px-4 py-2 text-sm font-semibold text-forge-300 hover:bg-forge-500/25"
+            >
+              Open in Gameplan &rarr;
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* Add Memory Card modal (C8) */}
       {showAddMemoryCard && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowAddMemoryCard(false)}>
@@ -1246,14 +1280,50 @@ export default function TournamentPage() {
           </div>
         </div>
 
-        {/* CURRENT GAMEPLAN — Task 2G */}
+        {/* CURRENT GAMEPLAN — Task 2G + C10 */}
         <div className="rounded-xl border border-dark-700/50 bg-dark-900 p-5 xl:col-span-2">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-dark-200 mb-4">
             <Gamepad2 className="h-4 w-4 text-forge-400" /> Active Gameplan (15 Plays)
           </h2>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {([
+              { id: 'all', label: 'All' },
+              { id: 'cover3', label: 'vs Cover 3' },
+              { id: 'redzone', label: 'Red Zone' },
+              { id: '3rd', label: '3rd Down' },
+              { id: '2min', label: '2-Min' },
+            ] as const).map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setGameplanFilter(f.id)}
+                className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${
+                  gameplanFilter === f.id
+                    ? 'bg-forge-500/20 text-forge-300 border border-forge-500/40'
+                    : 'bg-dark-800 text-dark-400 border border-dark-700 hover:border-forge-500/30 hover:text-forge-300'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {GAMEPLAN.map((play) => (
-              <div key={play.id} className="flex items-center gap-2 rounded-lg bg-dark-800/60 px-3 py-2">
+            {GAMEPLAN.filter((play) => {
+              const blob = `${play.situation} ${play.note}`.toLowerCase();
+              switch (gameplanFilter) {
+                case 'cover3': return blob.includes('cover 3') || blob.includes('zone');
+                case 'redzone': return blob.includes('red zone') || blob.includes('redzone');
+                case '3rd': return blob.includes('3rd');
+                case '2min': return blob.includes('2-min') || blob.includes('desperation');
+                default: return true;
+              }
+            }).map((play) => (
+              <button
+                key={play.id}
+                type="button"
+                onClick={() => setPlayDetail(play)}
+                className="flex items-center gap-2 rounded-lg bg-dark-800/60 px-3 py-2 hover:bg-dark-800 hover:ring-1 hover:ring-forge-500/30 transition-all text-left"
+              >
                 <span className="text-xs font-bold text-dark-500 w-5">{play.id}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-dark-100 truncate">{play.play}</p>
@@ -1265,11 +1335,14 @@ export default function TournamentPage() {
                 >
                   {play.confidence}%
                 </span>
-              </div>
+              </button>
             ))}
           </div>
           <div className="mt-3 pt-3 border-t border-dark-700/50">
-            <a href="/gameplan" className="text-xs text-forge-400 hover:text-forge-300 transition-colors">
+            <a
+              href={`/gameplan?opponent=${slug(TOURNAMENT.nextOpponent)}&tab=killsheet`}
+              className="text-xs text-forge-400 hover:text-forge-300 transition-colors"
+            >
               View full kill sheet &rarr;
             </a>
           </div>
