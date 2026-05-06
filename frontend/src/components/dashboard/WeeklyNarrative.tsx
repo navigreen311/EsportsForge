@@ -46,7 +46,7 @@ export default function WeeklyNarrative({ narrative }: WeeklyNarrativeProps) {
 
       {/* Link */}
       <Link
-        href="/analytics"
+        href="/analytics?period=this-week"
         className="inline-flex items-center gap-1.5 text-sm font-medium text-forge-400 transition-colors hover:text-forge-300"
       >
         View Full Report
