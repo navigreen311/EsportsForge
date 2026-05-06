@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
-import { Target, Lightbulb, Zap, AlertTriangle } from 'lucide-react';
+import { Target, Lightbulb, Zap, AlertTriangle, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/shared/Badge';
 import { ConfidenceBar } from '@/components/shared/ConfidenceBar';
 import { Card } from '@/components/shared/Card';
@@ -97,6 +97,8 @@ export default function PlayDetail({
   const animaAvailable = useAnimaForgeAvailable();
   const [animJob, setAnimJob] = useState<PlayDiagramRenderResult | null>(null);
   const [showPlayer, setShowPlayer] = useState(false);
+  const [animLoading, setAnimLoading] = useState(false);
+  const [animError, setAnimError] = useState<string | null>(null);
   const [voiceAvailable, setVoiceAvailable] = useState(false);
 
   useEffect(() => {
@@ -127,7 +129,10 @@ export default function PlayDetail({
 
   // Pre-request the play animation as soon as the panel mounts (or when the
   // selected play / coverage variant changes). This way the render is already
-  // in flight by the time the user clicks Watch.
+  // in flight by the time the user clicks Watch. The pre-fetch is best-effort:
+  // if it fails (e.g. AnimaForge can probe healthy but the render submission
+  // bombs because the service isn't really there), `animJob` stays null and
+  // `handleWatch` will retry on demand and surface the failure.
   useEffect(() => {
     if (!play || !animaAvailable) return;
     let cancelled = false;
@@ -136,10 +141,11 @@ export default function PlayDetail({
     // Reset previous variant's state when the selection changes.
     setAnimJob(null);
     setShowPlayer(false);
+    setAnimLoading(false);
+    setAnimError(null);
 
     (async () => {
       try {
-        // Cheap status check first to avoid duplicate render submissions.
         const existing = await getPlayDiagramStatus(play.id, coverageKey);
         if (cancelled) return;
         if (existing?.videoUrl || existing?.jobId) {
@@ -152,7 +158,7 @@ export default function PlayDetail({
         });
         if (!cancelled) setAnimJob(fresh);
       } catch {
-        // Service offline — leave animJob null; gating hook hides UI.
+        // Pre-fetch failed silently — handleWatch will retry on click.
       }
     })();
 
@@ -160,6 +166,36 @@ export default function PlayDetail({
       cancelled = true;
     };
   }, [play?.id, opponentCoverage, animaAvailable]);
+
+  // Click handler for the [Watch] button. Always gives feedback: if a job is
+  // already in hand from the pre-fetch we just open the player; otherwise we
+  // fire a fresh render with a loading state on the button and a graceful
+  // inline error if AnimaForge is unreachable.
+  const handleWatch = async () => {
+    if (!play) return;
+    setAnimError(null);
+
+    if (animJob?.jobId || animJob?.videoUrl) {
+      setShowPlayer(true);
+      return;
+    }
+
+    setAnimLoading(true);
+    setShowPlayer(true);
+    try {
+      const coverageKey = opponentCoverage ?? 'none';
+      const fresh = await renderPlayDiagram({
+        play_id: play.id,
+        opponent_coverage: coverageKey,
+      });
+      setAnimJob(fresh);
+    } catch {
+      setAnimError('Animation service offline — try again later.');
+      setShowPlayer(false);
+    } finally {
+      setAnimLoading(false);
+    }
+  };
 
   if (!play) {
     return (
@@ -208,11 +244,21 @@ export default function PlayDetail({
           {animaAvailable && (
             <button
               type="button"
-              onClick={() => setShowPlayer(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-forge-500/30 bg-forge-500/10 px-3 py-1.5 text-xs font-medium text-forge-400 transition-colors hover:bg-forge-500/20 hover:border-forge-500/50"
+              onClick={handleWatch}
+              disabled={animLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-forge-500/30 bg-forge-500/10 px-3 py-1.5 text-xs font-medium text-forge-400 transition-colors hover:bg-forge-500/20 hover:border-forge-500/50 disabled:cursor-not-allowed disabled:opacity-60"
               aria-label="Watch animated play diagram"
             >
-              <span aria-hidden="true">🎬</span> Watch
+              {animLoading ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Loading…</span>
+                </>
+              ) : (
+                <>
+                  <span aria-hidden="true">🎬</span> Watch
+                </>
+              )}
             </button>
           )}
         </div>
@@ -286,8 +332,10 @@ export default function PlayDetail({
         </div>
       </div>
 
-      {/* AnimaForge animated play diagram (only mounted after [Watch]). */}
-      {animaAvailable && showPlayer && (animJob?.jobId || animJob?.videoUrl) && (
+      {/* AnimaForge animated play diagram. Mounted any time [Watch] is open;
+          renders an internal pending state when the render hasn't returned a
+          jobId/videoUrl yet so the user always sees feedback. */}
+      {animaAvailable && showPlayer && (
         <div>
           <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-dark-200">
             <span aria-hidden="true">🎬</span>
@@ -298,15 +346,35 @@ export default function PlayDetail({
               </Badge>
             )}
           </h3>
-          <AnimaPlayer
-            jobId={animJob.jobId}
-            videoUrl={animJob.videoUrl}
-            thumbnailUrl={animJob.thumbnailUrl}
-            type="play-diagram"
-            onReady={(url) =>
-              setAnimJob((prev) => ({ ...(prev ?? {}), videoUrl: url }))
-            }
-          />
+          {animJob?.jobId || animJob?.videoUrl ? (
+            <AnimaPlayer
+              jobId={animJob.jobId ?? undefined}
+              videoUrl={animJob.videoUrl ?? undefined}
+              thumbnailUrl={animJob.thumbnailUrl ?? undefined}
+              type="play-diagram"
+              onReady={(url) =>
+                setAnimJob((prev) => ({ ...(prev ?? {}), videoUrl: url }))
+              }
+            />
+          ) : (
+            <div className="rounded-lg border border-dark-700 bg-dark-900 p-6 text-center">
+              <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-forge-400" />
+              <p className="text-sm font-medium text-dark-200">
+                Starting render…
+              </p>
+              <p className="mt-1 text-xs text-dark-400">
+                AnimaForge usually returns a play diagram in 30–60 seconds.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Inline error when the on-demand render fails — e.g. AnimaForge is
+          probing healthy but the actual /render endpoint isn't reachable. */}
+      {animError && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+          {animError}
         </div>
       )}
 
