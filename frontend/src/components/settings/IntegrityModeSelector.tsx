@@ -1,8 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { Shield, ShieldCheck, ShieldAlert, FlaskConical, Trophy, Swords, Radio, Check, X } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldAlert, FlaskConical, Trophy, Swords, Radio, Check, X, Info } from 'lucide-react';
 import type { IntegrityModeSettings, IntegrityEnvironment, IntegrityRestriction } from '@/types/settings';
+import InfoTooltip from '@/components/global/InfoTooltip';
+
+const ENVIRONMENT_TOOLTIPS: Record<IntegrityEnvironment, string> = {
+  'offline-lab':
+    'Full AI access, no restrictions. Experiment freely with every tool — live play prediction, auto-audible AI, screen capture, replay analysis. Use for training, scrim, and skill development. Cannot be used for ranked or tournament play.',
+  ranked:
+    'Standard competitive ladder mode. Most features active. Restricted: live play prediction, auto-audible AI. Allowed: opponent scouting, gameplan builder, kill sheets, post-game analysis, drill recommendations. Anti-cheat verified.',
+  tournament:
+    'Strict competitive mode for sanctioned brackets. Only pre-approved AI tools allowed. Restricted: real-time AI suggestions, opponent scouting during matches, kill sheets. Allowed: gameplan builder, post-game analysis, drill recommendations. Required by most tournament organizers.',
+  broadcast:
+    'Streaming-safe mode. Overlay-compatible with OBS and Streamlabs. No opponent data shown on stream — protects opponent privacy and prevents stream sniping. Allowed: post-game analysis, drill recommendations. Restricted: everything else.',
+};
 
 interface IntegrityModeSelectorProps {
   settings: IntegrityModeSettings;
@@ -86,34 +98,40 @@ export default function IntegrityModeSelector({ settings, onUpdate }: IntegrityM
             const Icon = env.icon;
             const isSelected = settings.environment === env.value;
             return (
-              <button
+              <InfoTooltip
                 key={env.value}
-                onClick={() => {
-                  if (env.value === settings.environment) return;
-                  setPendingEnv(env.value);
-                }}
-                className={`rounded-lg border p-4 text-left transition-all ${
-                  isSelected
-                    ? `${env.color} ring-1`
-                    : 'border-dark-600 bg-dark-800 hover:border-dark-500'
-                }`}
+                content={ENVIRONMENT_TOOLTIPS[env.value]}
+                mobileTitle={env.label}
               >
-                <div className="flex items-center gap-2.5 mb-1.5">
-                  <Icon
-                    className={`w-5 h-5 ${
-                      isSelected ? '' : 'text-dark-400'
-                    }`}
-                  />
-                  <span
-                    className={`text-sm font-bold ${
-                      isSelected ? '' : 'text-dark-200'
-                    }`}
-                  >
-                    {env.label}
-                  </span>
-                </div>
-                <p className="text-xs text-dark-400">{env.description}</p>
-              </button>
+                <button
+                  onClick={() => {
+                    if (env.value === settings.environment) return;
+                    setPendingEnv(env.value);
+                  }}
+                  className={`relative rounded-lg border p-4 text-left transition-all cursor-help hover:bg-dark-800/80 ${
+                    isSelected
+                      ? `${env.color} ring-1`
+                      : 'border-dark-600 bg-dark-800 hover:border-dark-500'
+                  }`}
+                >
+                  <Info className="absolute top-2 right-2 h-3 w-3 text-dark-500 hover:text-dark-300 transition-colors" />
+                  <div className="flex items-center gap-2.5 mb-1.5 pr-4">
+                    <Icon
+                      className={`w-5 h-5 ${
+                        isSelected ? '' : 'text-dark-400'
+                      }`}
+                    />
+                    <span
+                      className={`text-sm font-bold ${
+                        isSelected ? '' : 'text-dark-200'
+                      }`}
+                    >
+                      {env.label}
+                    </span>
+                  </div>
+                  <p className="text-xs text-dark-400">{env.description}</p>
+                </button>
+              </InfoTooltip>
             );
           })}
         </div>
