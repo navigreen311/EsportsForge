@@ -242,6 +242,13 @@ export default function TournamentPage() {
   const [clockNodeDetail, setClockNodeDetail] = useState<ClockNode | null>(null);
   const [drillModeActive, setDrillModeActive] = useState(false);
   const [drillModeRemaining, setDrillModeRemaining] = useState(120);
+  const [tiltStatus, setTiltStatus] = useState<'green' | 'yellow' | 'red'>('green');
+  const [fatigue, setFatigue] = useState(28);
+  const [breakTimer, setBreakTimer] = useState(12);
+  const [showMoodUpdate, setShowMoodUpdate] = useState(false);
+  const [showBreakOverlay, setShowBreakOverlay] = useState(false);
+  const [breakLockedUntil, setBreakLockedUntil] = useState<number | null>(null);
+  const [breakLockRemaining, setBreakLockRemaining] = useState(0);
 
   // C11: 2-Minute Drill Mode timer
   useEffect(() => {
@@ -343,14 +350,6 @@ export default function TournamentPage() {
       setConnTesting(false);
     }
   }, []);
-  const [tiltStatus, setTiltStatus] = useState<'green' | 'yellow' | 'red'>('green');
-  const [fatigue, setFatigue] = useState(28);
-  const [breakTimer, setBreakTimer] = useState(12);
-  const [showMoodUpdate, setShowMoodUpdate] = useState(false);
-  const [showBreakOverlay, setShowBreakOverlay] = useState(false);
-  const [breakLockedUntil, setBreakLockedUntil] = useState<number | null>(null);
-  const [breakLockRemaining, setBreakLockRemaining] = useState(0);
-
   // Task 2A: expanded opponent in queue
   const [expandedOpponent, setExpandedOpponent] = useState<string | null>(null);
 
