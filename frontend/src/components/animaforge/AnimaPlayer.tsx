@@ -18,6 +18,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Bookmark, BookmarkCheck } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAnimaForgeAvailable, useAnimaForgeJob } from '@/hooks/useAnimaForge';
 import type { AnimaPlayerType } from '@/lib/animaforge/types';
@@ -45,6 +46,15 @@ export interface AnimaPlayerProps {
   pollIntervalMs?: number;
   /** Optional extra class on the outer wrapper. */
   className?: string;
+  /**
+   * Save-to-Vault callback. When provided, a small bookmark button is
+   * surfaced under the video in the COMPLETE state. The parent owns the
+   * actual save (Vault entry write, toast, etc.) — AnimaPlayer just exposes
+   * the click. Provide `vaultSaved` to reflect persisted state visually.
+   */
+  onSaveToVault?: () => void;
+  /** Visual hint that the player has already been saved (filled bookmark). */
+  vaultSaved?: boolean;
 }
 
 export function AnimaPlayer({
@@ -58,6 +68,8 @@ export function AnimaPlayer({
   onError,
   pollIntervalMs,
   className,
+  onSaveToVault,
+  vaultSaved,
 }: AnimaPlayerProps) {
   // -------------------------------------------------------------------------
   // Availability gate — silent when AnimaForge is offline (contract §1).
@@ -174,6 +186,30 @@ export function AnimaPlayer({
             preload="metadata"
             className="block h-auto w-full"
           />
+          {onSaveToVault && (
+            <div className="flex items-center justify-end gap-2 border-t border-dark-700 bg-dark-900/80 px-3 py-2">
+              <button
+                type="button"
+                onClick={onSaveToVault}
+                disabled={vaultSaved}
+                className={clsx(
+                  'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                  vaultSaved
+                    ? 'border-forge-500/40 bg-forge-500/15 text-forge-300'
+                    : 'border-dark-700 bg-dark-800 text-dark-200 hover:border-dark-500 hover:bg-dark-700',
+                  vaultSaved && 'cursor-default'
+                )}
+                aria-label={vaultSaved ? 'Saved to Vault' : 'Save to Vault'}
+              >
+                {vaultSaved ? (
+                  <BookmarkCheck className="h-3.5 w-3.5 fill-forge-400 text-forge-400" />
+                ) : (
+                  <Bookmark className="h-3.5 w-3.5" />
+                )}
+                {vaultSaved ? 'Saved to Vault' : 'Save to Vault'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
