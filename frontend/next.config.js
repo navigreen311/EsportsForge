@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Emit a self-contained .next/standalone bundle so the Dockerfile's COPY
+  // from /app/.next/standalone resolves and the runtime image stays minimal.
+  output: 'standalone',
   async rewrites() {
     return [
       {
