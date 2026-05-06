@@ -2,7 +2,15 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Gamepad2, ChevronDown, Sparkles, Loader2, Volume2 } from 'lucide-react';
+import {
+  Gamepad2,
+  ChevronDown,
+  Sparkles,
+  Loader2,
+  Volume2,
+  AlertTriangle,
+  RotateCcw,
+} from 'lucide-react';
 import { clsx } from 'clsx';
 import { useGameplan } from '@/hooks/useGameplan';
 import { useSessionStore } from '@/lib/sessionStore';
@@ -124,6 +132,18 @@ function GameplanPageBody() {
     blitzes: 'beat the blitz',
     'run-first-3rd': 'attack run-first 3rd downs',
   };
+
+  // FIX 4: stale-gameplan staleness check — compute days since metaStatus
+  // was last updated. Warning surfaces above the export row when older than
+  // 14 days; stronger amber message when older than 30 days.
+  const daysSinceUpdate = (() => {
+    const iso = gameplan.metaStatus?.lastUpdated;
+    if (!iso) return 0;
+    const ms = Date.now() - new Date(iso).getTime();
+    return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
+  })();
+  const isVeryStale = daysSinceUpdate >= 30;
+  const isStale = daysSinceUpdate >= 14;
 
   const openKillSheet = () => handleTabChange('kill-sheet');
 
@@ -349,6 +369,55 @@ function GameplanPageBody() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Stale-gameplan warning (FIX 4) */}
+      {isStale && (
+        <div
+          className={clsx(
+            'flex flex-col gap-3 rounded-lg border px-4 py-3 sm:flex-row sm:items-center sm:justify-between',
+            isVeryStale
+              ? 'border-amber-500/40 bg-amber-500/10'
+              : 'border-yellow-500/30 bg-yellow-500/10'
+          )}
+        >
+          <div className="flex items-start gap-2">
+            <AlertTriangle
+              className={clsx(
+                'mt-0.5 h-4 w-4 flex-shrink-0',
+                isVeryStale ? 'text-amber-400' : 'text-yellow-400'
+              )}
+            />
+            <p
+              className={clsx(
+                'text-sm',
+                isVeryStale ? 'text-amber-200' : 'text-yellow-200/90'
+              )}
+            >
+              {isVeryStale
+                ? `This gameplan is ${daysSinceUpdate} days old. The meta may have changed since Patch ${gameplan.metaStatus.patchVersion}.`
+                : `Updated ${daysSinceUpdate}d ago — meta may have shifted since.`}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={generateGameplan}
+            disabled={isGenerating}
+            className={clsx(
+              'inline-flex items-center gap-1.5 self-start rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 sm:self-auto',
+              isVeryStale
+                ? 'border-amber-500/40 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25'
+                : 'border-yellow-500/40 bg-yellow-500/15 text-yellow-300 hover:bg-yellow-500/25'
+            )}
+          >
+            {isGenerating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RotateCcw className="h-3.5 w-3.5" />
+            )}
+            Regenerate
+          </button>
+        </div>
       )}
 
       {/* Export Controls */}
