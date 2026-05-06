@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Settings,
   User,
@@ -38,19 +39,44 @@ import NotificationPreferences from '@/components/settings/NotificationPreferenc
 import SubscriptionCard from '@/components/settings/SubscriptionCard';
 import SubscriptionManagement from '@/components/settings/SubscriptionManagement';
 
-const tabs: { id: SettingsTab; label: string; icon: typeof Settings }[] = [
-  { id: 'profile', label: 'Profile', icon: User },
-  { id: 'identity', label: 'Identity', icon: Fingerprint },
-  { id: 'playertwin', label: 'PlayerTwin', icon: Brain },
-  { id: 'game', label: 'Game Settings', icon: Gamepad2 },
-  { id: 'integrity', label: 'Integrity Mode', icon: Shield },
-  { id: 'privacy', label: 'Privacy', icon: Lock },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'subscription', label: 'Subscription', icon: CreditCard },
+const tabs: { id: SettingsTab; label: string; icon: typeof Settings; saveLabel: string }[] = [
+  { id: 'profile', label: 'Profile', icon: User, saveLabel: 'Save Profile' },
+  { id: 'identity', label: 'Identity', icon: Fingerprint, saveLabel: 'Save Identity' },
+  { id: 'playertwin', label: 'PlayerTwin', icon: Brain, saveLabel: 'Save Twin Settings' },
+  { id: 'game', label: 'Game Settings', icon: Gamepad2, saveLabel: 'Save Game Settings' },
+  { id: 'integrity', label: 'Integrity Mode', icon: Shield, saveLabel: 'Save Integrity Mode' },
+  { id: 'privacy', label: 'Privacy', icon: Lock, saveLabel: 'Save Privacy' },
+  { id: 'notifications', label: 'Notifications', icon: Bell, saveLabel: 'Save Notification Preferences' },
+  { id: 'subscription', label: 'Subscription', icon: CreditCard, saveLabel: 'Save Subscription' },
 ];
+const validTabs = new Set(tabs.map((t) => t.id));
 
-export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+function SettingsPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const initialTab = (tabParam && validTabs.has(tabParam as SettingsTab) ? tabParam : 'profile') as SettingsTab;
+
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Sync tab → URL (replaceState so back/forward work)
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('tab') !== activeTab) {
+      url.searchParams.set('tab', activeTab);
+      router.replace(`${url.pathname}?${url.searchParams.toString()}`);
+    }
+  }, [activeTab, router]);
+
+  // Sync URL → tab (browser back/forward)
+  useEffect(() => {
+    const param = searchParams.get('tab');
+    if (param && validTabs.has(param as SettingsTab) && param !== activeTab) {
+      setActiveTab(param as SettingsTab);
+    }
+  }, [searchParams, activeTab]);
+
   const {
     settings,
     isSaving,
@@ -62,6 +88,22 @@ export default function SettingsPage() {
     updateNotifications,
     saveSettings,
   } = useSettings();
+
+  // Mark dirty whenever a child fires an update
+  const wrap = <T,>(fn: (v: T) => void) => (v: T) => { fn(v); setHasChanges(true); };
+  const handleProfile = wrap(updateProfile);
+  const handleGame = wrap(updateGame);
+  const handleIntegrity = wrap(updateIntegrity);
+  const handlePrivacy = wrap(updatePrivacy);
+  const handleNotifications = wrap(updateNotifications);
+
+  const onSave = async () => {
+    await saveSettings();
+    setHasChanges(false);
+  };
+
+  const activeTabMeta = tabs.find((t) => t.id === activeTab) ?? tabs[0];
+  const saveLabel = isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : activeTabMeta.saveLabel;
 
   return (
     <div className="space-y-6">
@@ -75,8 +117,8 @@ export default function SettingsPage() {
           <p className="text-dark-400 mt-1">Manage your account, preferences, and subscriptions</p>
         </div>
         <button
-          onClick={saveSettings}
-          disabled={isSaving}
+          onClick={onSave}
+          disabled={isSaving || (!hasChanges && !saveSuccess)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-forge-600 text-white text-sm font-medium hover:bg-forge-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isSaving ? (
@@ -86,7 +128,7 @@ export default function SettingsPage() {
           ) : (
             <Save className="w-4 h-4" />
           )}
-          {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save Changes'}
+          {saveLabel}
         </button>
       </div>
 
@@ -117,7 +159,7 @@ export default function SettingsPage() {
       {/* Tab Content */}
       <div className="min-h-[400px]">
         {activeTab === 'profile' && (
-          <ProfileForm profile={settings.profile} onUpdate={updateProfile} />
+          <ProfileForm profile={settings.profile} onUpdate={handleProfile} />
         )}
 
         {/* 1. Identity Engine Tab */}
@@ -133,7 +175,7 @@ export default function SettingsPage() {
         {/* Game Settings + 3. Per-Title + 4. InputLab + 8. TiltGuard + 9. ProgressionOS */}
         {activeTab === 'game' && (
           <div className="space-y-6">
-            <GameSettings settings={settings.game} onUpdate={updateGame} />
+            <GameSettings settings={settings.game} onUpdate={handleGame} />
             <PerTitleConfig activeTitle={settings.game.activeTitle} />
             <InputLabCalibration inputType={settings.game.inputType} />
             <TiltGuardConfig />
@@ -149,7 +191,7 @@ export default function SettingsPage() {
         {/* Integrity Mode + 7. Anti-Cheat Per-Title */}
         {activeTab === 'integrity' && (
           <div className="space-y-6">
-            <IntegrityModeSelector settings={settings.integrity} onUpdate={updateIntegrity} />
+            <IntegrityModeSelector settings={settings.integrity} onUpdate={handleIntegrity} />
             <AntiCheatPerTitle />
           </div>
         )}
@@ -157,7 +199,7 @@ export default function SettingsPage() {
         {/* Privacy + 5. Trust Layer */}
         {activeTab === 'privacy' && (
           <div className="space-y-6">
-            <PrivacyControls settings={settings.privacy} onUpdate={updatePrivacy} />
+            <PrivacyControls settings={settings.privacy} onUpdate={handlePrivacy} />
             <PrivacyTrustLayer />
           </div>
         )}
@@ -165,7 +207,7 @@ export default function SettingsPage() {
         {activeTab === 'notifications' && (
           <NotificationPreferences
             preferences={settings.notifications}
-            onUpdate={updateNotifications}
+            onUpdate={handleNotifications}
           />
         )}
 
@@ -178,5 +220,13 @@ export default function SettingsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div className="text-dark-400">Loading settings…</div>}>
+      <SettingsPageInner />
+    </Suspense>
   );
 }
