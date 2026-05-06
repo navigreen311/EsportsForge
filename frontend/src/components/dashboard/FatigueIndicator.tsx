@@ -11,17 +11,44 @@ import type { FatigueIndicator as FatigueData } from '@/types/dashboard';
 
 const statusConfig = {
   fresh: { label: 'Fresh', color: 'text-forge-400', bar: 'bg-forge-500', icon: BatteryCharging },
-  peak: { label: 'Peak', color: 'text-forge-400', bar: 'bg-forge-500', icon: Battery },
+  peak: { label: 'In Window', color: 'text-forge-400', bar: 'bg-forge-500', icon: Battery },
   fading: { label: 'Fading', color: 'text-amber-400', bar: 'bg-amber-500', icon: Battery },
-  fatigued: { label: 'Fatigued', color: 'text-red-400', bar: 'bg-red-500', icon: BatteryLow },
+  fatigued: { label: 'Fatigued', color: 'text-amber-400', bar: 'bg-amber-500', icon: BatteryLow },
+  'at-risk': { label: 'At Risk', color: 'text-red-400', bar: 'bg-red-500', icon: BatteryLow },
 } as const;
+
+type DerivedStatus = keyof typeof statusConfig;
 
 interface FatigueIndicatorProps {
   data: FatigueData;
+  /** When true, TiltGuard has flagged the user — overrides status to "At Risk". */
+  tiltGuard?: boolean;
 }
 
-export default function FatigueIndicatorCard({ data }: FatigueIndicatorProps) {
-  const config = statusConfig[data.status];
+/**
+ * Derive a session-health status from elapsed minutes + tilt flag.
+ *
+ *   tiltGuard=true → 'at-risk'
+ *   no session     → 'fresh'
+ *   0–75 min       → 'peak'
+ *   75–120 min     → 'fading'
+ *   >120 min       → 'fatigued'
+ */
+function deriveStatus(
+  data: FatigueData,
+  tiltGuard: boolean | undefined,
+): DerivedStatus {
+  if (tiltGuard) return 'at-risk';
+  const minutes = data.currentSessionMinutes;
+  if (minutes === null || minutes === undefined) return 'fresh';
+  if (minutes < 75) return 'peak';
+  if (minutes < 120) return 'fading';
+  return 'fatigued';
+}
+
+export default function FatigueIndicatorCard({ data, tiltGuard }: FatigueIndicatorProps) {
+  const derived = deriveStatus(data, tiltGuard);
+  const config = statusConfig[derived];
   const StatusIcon = config.icon;
   const hasSession = data.currentSessionMinutes !== null;
   const progress = hasSession
