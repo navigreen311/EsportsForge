@@ -49,11 +49,19 @@ export default function ProgressionPreferences() {
     } catch {}
   }, []);
 
-  // Save to localStorage on change
+  // Save to localStorage + best-effort backend persist on change
   useEffect(() => {
-    localStorage.setItem(PROGRESSION_STORAGE_KEY, JSON.stringify({
-      pace, focus, throttle, threshold,
-    }));
+    const payload = { pace, focus, throttle, threshold };
+    localStorage.setItem(PROGRESSION_STORAGE_KEY, JSON.stringify(payload));
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8001';
+    const t = setTimeout(() => {
+      fetch(`${apiBase}/api/v1/progression/preferences`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+    }, 400);
+    return () => clearTimeout(t);
   }, [pace, focus, throttle, threshold]);
 
   const cardClass = (selected: boolean) =>

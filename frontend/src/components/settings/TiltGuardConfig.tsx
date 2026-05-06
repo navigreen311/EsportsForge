@@ -69,11 +69,19 @@ export default function TiltGuardConfig() {
     } catch {}
   }, []);
 
-  // Save to localStorage on change
+  // Save to localStorage + best-effort backend persist on change
   useEffect(() => {
-    localStorage.setItem(TILTGUARD_STORAGE_KEY, JSON.stringify({
-      checkIn, sensitivity, moodOptions, warningContext, sessionEndReflection,
-    }));
+    const payload = { checkIn, sensitivity, moodOptions, warningContext, sessionEndReflection };
+    localStorage.setItem(TILTGUARD_STORAGE_KEY, JSON.stringify(payload));
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8001';
+    const t = setTimeout(() => {
+      fetch(`${apiBase}/api/v1/tiltguard/config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+    }, 400); // debounce
+    return () => clearTimeout(t);
   }, [checkIn, sensitivity, moodOptions, warningContext, sessionEndReflection]);
 
   const checkInOptions: RadioOption<CheckInPrompt>[] = [
