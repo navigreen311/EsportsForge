@@ -175,7 +175,7 @@ function SettingsPageInner() {
         {/* Game Settings + 3. Per-Title + 4. InputLab + 8. TiltGuard + 9. ProgressionOS */}
         {activeTab === 'game' && (
           <div className="space-y-6">
-            <GameSettings settings={settings.game} onUpdate={handleGame} />
+            <GameSettings settings={settings.game} onUpdate={handleGame} tier={settings.subscription} />
             <PerTitleConfig activeTitle={settings.game.activeTitle} />
             <InputLabCalibration inputType={settings.game.inputType} />
             <TiltGuardConfig />

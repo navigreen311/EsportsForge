@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { X } from 'lucide-react';
 
 interface InputLabCalibrationProps {
   inputType: 'controller' | 'kbm' | 'fight-stick';
@@ -40,6 +41,38 @@ export default function InputLabCalibration({ inputType }: InputLabCalibrationPr
   // Fight stick state
   const [bufferWindow, setBufferWindow] = useState(3);
   const [motionLeniency, setMotionLeniency] = useState(5);
+
+  // Test Calibration modal (C18)
+  const [showTest, setShowTest] = useState(false);
+  const [stickPos, setStickPos] = useState({ lx: 0, ly: 0, rx: 0, ry: 0 });
+  const [triggers, setTriggers] = useState({ lt: 0, rt: 0 });
+  const [drift, setDrift] = useState<string | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!showTest) return;
+    const poll = () => {
+      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+      const pad = Array.from(pads).find((p) => p) as Gamepad | undefined;
+      if (pad) {
+        const lx = pad.axes[0] ?? 0;
+        const ly = pad.axes[1] ?? 0;
+        const rx = pad.axes[2] ?? 0;
+        const ry = pad.axes[3] ?? 0;
+        setStickPos({ lx, ly, rx, ry });
+        setTriggers({ lt: pad.buttons[6]?.value ?? 0, rt: pad.buttons[7]?.value ?? 0 });
+        // Drift detection: stick value > 0.05 at rest after 2s of monitoring
+        const lDrift = Math.hypot(lx, ly);
+        const rDrift = Math.hypot(rx, ry);
+        if (lDrift > 0.08) setDrift('Drift detected on left stick — recommend hardware check.');
+        else if (rDrift > 0.08) setDrift('Drift detected on right stick — recommend hardware check.');
+        else setDrift(null);
+      }
+      rafRef.current = requestAnimationFrame(poll);
+    };
+    rafRef.current = requestAnimationFrame(poll);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [showTest]);
 
   return (
     <div className="rounded-xl border border-dark-700 bg-dark-900/50 p-6">
@@ -271,10 +304,63 @@ export default function InputLabCalibration({ inputType }: InputLabCalibrationPr
 
       {/* Test Calibration Button */}
       <div className="mt-6">
-        <button className="rounded-lg border border-forge-500 px-4 py-2 text-sm font-medium text-forge-400 transition-colors hover:bg-forge-500/10">
+        <button
+          type="button"
+          onClick={() => setShowTest(true)}
+          className="rounded-lg border border-forge-500 px-4 py-2 text-sm font-medium text-forge-400 transition-colors hover:bg-forge-500/10"
+        >
           Test Calibration
         </button>
       </div>
+
+      {/* Test Calibration modal (C18) */}
+      {showTest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowTest(false)}>
+          <div className="w-full max-w-md rounded-xl border border-dark-700 bg-dark-900 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-lg font-bold text-dark-50">Calibration Test</h3>
+              <button onClick={() => setShowTest(false)} className="text-dark-500 hover:text-dark-200"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-xs text-dark-400 mb-4">Move both sticks and pull the triggers. Web Gamepad API only — connect a controller and press a button to wake it.</p>
+
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              {(['l', 'r'] as const).map((side) => {
+                const x = side === 'l' ? stickPos.lx : stickPos.rx;
+                const y = side === 'l' ? stickPos.ly : stickPos.ry;
+                return (
+                  <div key={side} className="rounded-lg bg-dark-800/60 p-3">
+                    <p className="text-xs text-dark-400 uppercase mb-1">{side === 'l' ? 'Left Stick' : 'Right Stick'}</p>
+                    <div className="relative h-20 w-20 mx-auto rounded-full border border-dark-700 bg-dark-900">
+                      <div
+                        className="absolute h-3 w-3 rounded-full bg-forge-400"
+                        style={{
+                          left: `calc(50% + ${x * 36}px - 6px)`,
+                          top: `calc(50% + ${y * 36}px - 6px)`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-center text-dark-500 mt-1">{x.toFixed(2)}, {y.toFixed(2)}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              {(['lt', 'rt'] as const).map((t) => (
+                <div key={t}>
+                  <p className="text-xs text-dark-400 uppercase mb-1">{t === 'lt' ? 'L Trigger' : 'R Trigger'}</p>
+                  <div className="h-2 rounded-full bg-dark-800">
+                    <div className="h-full rounded-full bg-forge-400" style={{ width: `${triggers[t] * 100}%` }} />
+                  </div>
+                  <p className="text-[10px] text-dark-500 mt-1">{(triggers[t] * 100).toFixed(0)}%</p>
+                </div>
+              ))}
+            </div>
+
+            {drift && <p className="text-xs text-red-300 mt-3">{drift}</p>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
