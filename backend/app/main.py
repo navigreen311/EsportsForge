@@ -2,8 +2,11 @@
 
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security import SecurityHeadersMiddleware
+import logging
 import time
 from contextlib import asynccontextmanager
+
+logger = logging.getLogger("esportsforge.main")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -69,7 +72,10 @@ async def health_check():
     try:
         async with engine.begin() as conn:
             await conn.execute(text("SELECT 1"))
-    except Exception:
+    except Exception as exc:
+        # Log so CI / ops can see *why* the probe failed instead of staring at
+        # an unexplained "degraded" status.
+        logger.warning("health_check: database probe failed: %s", exc)
         db_status = "disconnected"
 
     api_key = settings.anthropic_api_key
