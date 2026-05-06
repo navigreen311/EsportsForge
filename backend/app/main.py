@@ -25,8 +25,10 @@ _start_time: float = 0.0
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _start_time
-    # Import all models so Base.metadata knows about them
-    import app.models  # noqa: F401
+    # Import all models so Base.metadata knows about them.
+    # Use importlib to avoid shadowing the `app: FastAPI` lifespan parameter.
+    import importlib
+    importlib.import_module("app.models")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     validate_config(settings)

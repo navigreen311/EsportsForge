@@ -1,5 +1,7 @@
 """Structured logging configuration for EsportsForge."""
 import logging
+from typing import Any
+
 import structlog
 
 
@@ -7,7 +9,7 @@ def setup_logging(log_level: str = "INFO", json_format: bool = False):
     """Configure structured logging."""
     logging.basicConfig(level=getattr(logging, log_level.upper(), logging.INFO))
 
-    processors = [
+    processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),

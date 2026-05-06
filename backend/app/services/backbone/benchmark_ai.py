@@ -94,13 +94,20 @@ def record_dimension_snapshot(
     scores: dict[str, float],
 ) -> DimensionScores:
     """Record a point-in-time dimension score snapshot for a user."""
-    snapshot = {
-        "read_speed": scores.get("read_speed", 0.5),
-        "user_defense": scores.get("user_defense", 0.5),
-        "clutch": scores.get("clutch", 0.5),
-        "anti_meta": scores.get("anti_meta", 0.5),
-        "execution": scores.get("execution", 0.5),
-        "mental": scores.get("mental", 0.5),
+    read_speed = scores.get("read_speed", 0.5)
+    user_defense = scores.get("user_defense", 0.5)
+    clutch = scores.get("clutch", 0.5)
+    anti_meta = scores.get("anti_meta", 0.5)
+    execution = scores.get("execution", 0.5)
+    mental = scores.get("mental", 0.5)
+
+    snapshot: dict[str, Any] = {
+        "read_speed": read_speed,
+        "user_defense": user_defense,
+        "clutch": clutch,
+        "anti_meta": anti_meta,
+        "execution": execution,
+        "mental": mental,
         "timestamp": _now().isoformat(),
     }
     _score_history.setdefault(user_id, {}).setdefault(title, []).append(snapshot)
@@ -108,7 +115,12 @@ def record_dimension_snapshot(
     return DimensionScores(
         user_id=user_id,
         title=title,
-        **{k: v for k, v in snapshot.items() if k != "timestamp"},
+        read_speed=read_speed,
+        user_defense=user_defense,
+        clutch=clutch,
+        anti_meta=anti_meta,
+        execution=execution,
+        mental=mental,
         computed_at=_now(),
     )
 

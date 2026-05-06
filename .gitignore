@@ -42,3 +42,7 @@ coverage/
 *.pid
 *.seed
 .claude/worktrees/
+
+# SQLite test/dev databases
+*.db
+*.db-journal

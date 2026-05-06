@@ -73,7 +73,9 @@ class HomeFieldManager:
 
     def get_crowd_adjustment(self, home_away: str, stadium: str) -> CrowdAdjustment:
         profile = STADIUM_DB.get(stadium, STADIUM_DB["default"])
-        noise = profile["noise_rating"] if home_away == "away" else profile["noise_rating"] * 0.3
+        # STADIUM_DB stores mixed value types; noise_rating is always numeric.
+        rating = float(profile["noise_rating"])  # type: ignore[arg-type]
+        noise = rating if home_away == "away" else rating * 0.3
 
         adjustments = []
         if noise >= 8.0:

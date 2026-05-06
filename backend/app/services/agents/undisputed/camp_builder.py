@@ -117,7 +117,8 @@ class CampBuilder:
         Distributes available points across priority tiers to maximize
         effectiveness in the chosen style.
         """
-        tree = _ATTRIBUTE_TREES.get(target_archetype, _ATTRIBUTE_TREES[BoxingArchetype.BALANCED])
+        # BoxingArchetype has no BALANCED variant — fall back to the well-rounded BOXER_PUNCHER style
+        tree = _ATTRIBUTE_TREES.get(target_archetype, _ATTRIBUTE_TREES[BoxingArchetype.BOXER_PUNCHER])
 
         # Allocate points: 50% to P1, 30% to P2, 20% to P3
         p1_points = int(available_points * 0.50)

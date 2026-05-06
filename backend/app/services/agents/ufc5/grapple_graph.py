@@ -234,7 +234,7 @@ _POSITION_SUBMISSIONS: dict[GrapplePositionType, list[SubmissionType]] = {
     GrapplePositionType.MOUNT_TOP: [
         SubmissionType.ARMBAR,
         SubmissionType.ARM_TRIANGLE,
-        SubmissionType.AMERICANA,
+        SubmissionType.AMERICANA,  # type: ignore[attr-defined]
     ] if hasattr(SubmissionType, "AMERICANA") else [
         SubmissionType.ARMBAR,
         SubmissionType.ARM_TRIANGLE,

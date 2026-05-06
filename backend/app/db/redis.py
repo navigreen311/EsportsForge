@@ -112,8 +112,10 @@ class RedisClient:
 
     async def hset_json(self, key: str, mapping: dict[str, Any], ttl: int | None = None) -> None:
         """Store a dict as a Redis hash with JSON-encoded values."""
-        encoded = {k: json.dumps(v, default=str) for k, v in mapping.items()}
-        await self._r.hset(key, mapping=encoded)
+        encoded: dict[str, str] = {k: json.dumps(v, default=str) for k, v in mapping.items()}
+        # hset expects Mapping[str | bytes, bytes | float | int | str] — dict is invariant,
+        # so the str-only narrowing isn't accepted. Values are str at runtime.
+        await self._r.hset(key, mapping=encoded)  # type: ignore[arg-type]
         if ttl:
             await self._r.expire(key, ttl)
 
