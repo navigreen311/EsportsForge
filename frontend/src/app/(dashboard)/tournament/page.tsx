@@ -26,8 +26,16 @@ import {
   Target,
   Mic,
   Droplets,
+  X,
+  Plus,
+  Wifi,
+  Play,
+  Pause,
 } from 'lucide-react';
 import { useVoiceForge } from '@/hooks/useVoiceForge';
+
+// --- Helpers ---
+const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 // --- Mock Data ---
 
@@ -39,7 +47,18 @@ const TOURNAMENT = {
   nextMatchTime: new Date(Date.now() + 42 * 60 * 1000), // 42 min from now
   seed: 3,
   totalPlayers: 32,
+  prizePool: '$5,000',
+  structure: 'Double Elimination',
+  matchTimeLimit: '12 minutes per quarter',
+  bannedPlays: ['QB Spy Glitch', 'Trips TE Bunch Cheese'],
+  rulesUrl: '/rules/friday-night-lights',
 };
+
+const RECORD_BREAKDOWN = [
+  { round: 'R1', result: 'Won', score: '28-14', opponent: 'Player16' },
+  { round: 'R2', result: 'Won', score: '21-17', opponent: 'ColdRead99' },
+  { round: 'R3', result: 'Pending', score: '—', opponent: 'xViper_Elite' },
+];
 
 const OPPONENT_QUEUE = [
   { name: 'xViper_Elite', archetype: 'Aggressive Rush', prep: 'ready', winRate: 62 },
@@ -116,6 +135,11 @@ export default function TournamentPage() {
   const voice = useVoiceForge();
 
   const [countdown, setCountdown] = useState('');
+  const [countdownLevel, setCountdownLevel] = useState<'normal' | 'warn' | 'critical' | 'live'>('normal');
+  const [showRulesModal, setShowRulesModal] = useState(false);
+  const [showRecordSlideOver, setShowRecordSlideOver] = useState(false);
+  const [matchStartTriggered, setMatchStartTriggered] = useState(false);
+  const oneMinPulseRef = useRef(false);
   const [checklist, setChecklist] = useState<Record<string, boolean>>(
     Object.fromEntries(WARMUP_CHECKLIST_ITEMS.map((i) => [i.id, i.default]))
   );
@@ -141,24 +165,52 @@ export default function TournamentPage() {
 
   const resetSectionRef = useRef<HTMLDivElement>(null);
 
-  // Countdown timer + hydration (Task 2E)
+  // Countdown timer + hydration + auto-nav at 0:00 (Task 2E + C1)
   useEffect(() => {
+    const playTone = () => {
+      try {
+        const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 880; gain.gain.value = 0.05;
+        osc.start(); osc.stop(ctx.currentTime + 0.2);
+      } catch { /* audio unavailable */ }
+    };
+
     const interval = setInterval(() => {
       const diff = TOURNAMENT.nextMatchTime.getTime() - Date.now();
       if (diff <= 0) {
         setCountdown('LIVE NOW');
+        setCountdownLevel('live');
         if (!hydrationShown.current) {
           setShowHydration(true);
           hydrationShown.current = true;
+        }
+        if (!matchStartTriggered) {
+          setMatchStartTriggered(true);
+          // Match start — auto-navigate to war room with the next opponent
+          router.push(`/war-room?opponent=${slug(TOURNAMENT.nextOpponent)}`);
         }
       } else {
         const m = Math.floor(diff / 60000);
         const s = Math.floor((diff % 60000) / 1000);
         setCountdown(`${m}:${s.toString().padStart(2, '0')}`);
+        if (diff <= 60_000) {
+          setCountdownLevel('critical');
+          if (!oneMinPulseRef.current) {
+            oneMinPulseRef.current = true;
+            playTone();
+          }
+        } else if (diff <= 5 * 60_000) {
+          setCountdownLevel('warn');
+        } else {
+          setCountdownLevel('normal');
+        }
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [router, matchStartTriggered]);
 
   // Task 2E: auto-dismiss hydration after 8s
   useEffect(() => {
@@ -248,24 +300,121 @@ export default function TournamentPage() {
               <Trophy className="h-6 w-6 text-forge-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-dark-50">{TOURNAMENT.name}</h1>
+              <button
+                type="button"
+                onClick={() => setShowRulesModal(true)}
+                className="text-2xl font-bold text-dark-50 hover:text-forge-300 transition-colors text-left"
+              >
+                {TOURNAMENT.name}
+              </button>
               <p className="text-sm text-dark-400">
-                {TOURNAMENT.bracketPosition} &middot; Record: {TOURNAMENT.record} &middot; Seed #{TOURNAMENT.seed}
+                {TOURNAMENT.bracketPosition} &middot; Record:{' '}
+                <button
+                  type="button"
+                  onClick={() => setShowRecordSlideOver(true)}
+                  className="text-dark-200 hover:text-forge-400 underline-offset-2 hover:underline transition-colors"
+                >
+                  {TOURNAMENT.record}
+                </button>{' '}
+                &middot; Seed #{TOURNAMENT.seed}
               </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-4">
-            <div className="rounded-lg bg-dark-800 px-4 py-2">
+            <button
+              type="button"
+              onClick={() => router.push(`/opponents/${slug(TOURNAMENT.nextOpponent)}`)}
+              className="rounded-lg bg-dark-800 px-4 py-2 text-left hover:bg-dark-700 transition-colors"
+            >
               <p className="text-xs text-dark-400">Next Opponent</p>
-              <p className="text-sm font-semibold text-dark-50">{TOURNAMENT.nextOpponent}</p>
-            </div>
-            <div className="rounded-lg bg-forge-500/10 px-4 py-2 border border-forge-500/20">
-              <p className="text-xs text-forge-400">Countdown</p>
-              <p className="text-lg font-bold text-forge-400 font-mono">{countdown || '--:--'}</p>
+              <p className="text-sm font-semibold text-dark-50 hover:text-forge-300">{TOURNAMENT.nextOpponent}</p>
+            </button>
+            <div
+              className={`rounded-lg px-4 py-2 border transition-colors ${
+                countdownLevel === 'critical'
+                  ? 'bg-red-500/10 border-red-500/40 animate-pulse'
+                  : countdownLevel === 'warn'
+                  ? 'bg-amber-500/10 border-amber-500/30'
+                  : countdownLevel === 'live'
+                  ? 'bg-green-500/15 border-green-500/40'
+                  : 'bg-forge-500/10 border-forge-500/20'
+              }`}
+            >
+              <p className={`text-xs ${
+                countdownLevel === 'critical' ? 'text-red-400' :
+                countdownLevel === 'warn' ? 'text-amber-400' :
+                countdownLevel === 'live' ? 'text-green-400' :
+                'text-forge-400'
+              }`}>Countdown</p>
+              <p className={`text-lg font-bold font-mono ${
+                countdownLevel === 'critical' ? 'text-red-400' :
+                countdownLevel === 'warn' ? 'text-amber-400' :
+                countdownLevel === 'live' ? 'text-green-400' :
+                'text-forge-400'
+              }`}>{countdown || '--:--'}</p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Tournament rules modal (C1) */}
+      {showRulesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowRulesModal(false)}>
+          <div className="w-full max-w-lg rounded-xl border border-dark-700 bg-dark-900 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-lg font-bold text-dark-50">{TOURNAMENT.name}</h3>
+              <button onClick={() => setShowRulesModal(false)} className="text-dark-500 hover:text-dark-200"><X className="h-5 w-5" /></button>
+            </div>
+            <dl className="grid grid-cols-2 gap-3 text-sm">
+              <dt className="text-dark-400">Prize Pool</dt><dd className="text-dark-100 font-semibold">{TOURNAMENT.prizePool}</dd>
+              <dt className="text-dark-400">Bracket Structure</dt><dd className="text-dark-100">{TOURNAMENT.structure}</dd>
+              <dt className="text-dark-400">Time Limit</dt><dd className="text-dark-100">{TOURNAMENT.matchTimeLimit}</dd>
+              <dt className="text-dark-400">Players</dt><dd className="text-dark-100">{TOURNAMENT.totalPlayers}</dd>
+            </dl>
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-dark-300 mb-1">Banned Plays / Exploits</p>
+              <ul className="text-xs text-dark-400 space-y-0.5">
+                {TOURNAMENT.bannedPlays.map((p) => <li key={p}>&middot; {p}</li>)}
+              </ul>
+            </div>
+            <div className="mt-5 flex justify-end">
+              <a
+                href={TOURNAMENT.rulesUrl}
+                className="rounded-lg border border-forge-500/40 bg-forge-500/10 px-4 py-2 text-sm font-semibold text-forge-400 hover:bg-forge-500/20"
+              >
+                View Full Tournament Rules &rarr;
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Round-by-round record slide-over (C1) */}
+      {showRecordSlideOver && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/60" onClick={() => setShowRecordSlideOver(false)}>
+          <div className="h-full w-full max-w-md border-l border-dark-700 bg-dark-900 p-6 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-lg font-bold text-dark-50">Round-by-round Record</h3>
+              <button onClick={() => setShowRecordSlideOver(false)} className="text-dark-500 hover:text-dark-200"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-2">
+              {RECORD_BREAKDOWN.map((r) => (
+                <div key={r.round} className="flex items-center justify-between rounded-lg bg-dark-800/60 p-3">
+                  <div>
+                    <p className="text-sm font-semibold text-dark-100">{r.round}: {r.result === 'Won' ? `Won ${r.score}` : r.result}</p>
+                    <p className="text-xs text-dark-400">vs {r.opponent}</p>
+                  </div>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                    r.result === 'Won' ? 'bg-green-500/15 text-green-400' :
+                    r.result === 'Lost' ? 'bg-red-500/15 text-red-400' :
+                    'bg-amber-500/15 text-amber-400'
+                  }`}>{r.result}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Task 2C: VoiceForge command bar */}
       {voice.isAvailable && (
