@@ -28,10 +28,7 @@ import {
   X,
 } from 'lucide-react';
 import AnimaPlayer from '@/components/animaforge/AnimaPlayer';
-import {
-  requestDrillRender,
-  requestPlayRender,
-} from '@/lib/animaforge/api';
+import { requestPlayRender } from '@/lib/animaforge/api';
 import { VoiceForgeService } from '@/lib/services/voiceforge';
 import { useArsenalVoice, toneSpeed } from '@/lib/arsenal/voiceSettings';
 import {
@@ -277,15 +274,20 @@ function SimLabPageBody() {
     setPreview({
       title: `Scenario preview — ${s.name}`,
       subtitle: 'Typical defensive look + sample offensive responses',
-      diagramType: 'drill-demo',
+      diagramType: 'play-diagram',
       loading: true,
       vaultSaved: false,
     });
     try {
-      const res = await requestDrillRender({
+      // Routed through /animaforge/play (not /drill) because the drill spec
+      // builder requires an explicit (title, drill) entry in DRILL_ANIMATION_SPECS
+      // and rejects unknown drill_types with spec-not-found. The play endpoint's
+      // _coerce_play_to_spec_params is tolerant of unknown play_ids and falls
+      // back to a universal-tactic-diagram template — exactly what we want for
+      // a "typical scenario look" preview.
+      const res = await requestPlayRender({
+        play_id: `simlab-scenario-${s.id}`,
         title_id: arsenalTitle,
-        drill_type: `simlab-scenario-${s.id}`,
-        drill_name: s.name,
       });
       setPreview((prev) =>
         prev
