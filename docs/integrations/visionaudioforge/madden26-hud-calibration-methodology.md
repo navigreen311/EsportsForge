@@ -1,0 +1,147 @@
+# HUD Region Calibration Methodology
+
+- **Status:** v1 — established during M4.5 (Phase 0 remainder, 2026-05-07).
+- **Audience:** future title-adapter authors (CFB 26, NBA 2K26, EAFC 26, MLB 26, Warzone, Fortnite, UFC 5, Undisputed, PGA 2K25, Video Poker).
+- **Reference adapter:** `services/visionaudioforge/app/adapters/madden26/`. Read the Madden adapter as the worked example while applying this methodology to a new title.
+- **Cross-references:** [docs/specs/02-visionaudioforge-core.md §"OCR pipeline"](../../specs/02-visionaudioforge-core.md), [docs/specs/04-madden26-adapter-spec.md](../../specs/04-madden26-adapter-spec.md), [Forge architecture pattern](../../FORGE_ARCHITECTURE_PATTERN.md) Rule 5 (adapters added without core changes).
+
+## Why this exists
+
+Phase 0's `hud_regions.json` was derived from the spec, not from measured frames. Real Madden 26 footage revealed three problems:
+
+1. The HUD coordinate system was **wrong** — Madden 26 ships its HUD in a bottom band, not a top band.
+2. Several subregions overlapped the wrong content (e.g., the spec's "team_home_abbr" bbox hit the helmet logo rather than the team-abbreviation text).
+3. There was no reproducible procedure for measuring real coords, so the next title would repeat the same error.
+
+This methodology fixes (3) so that calibration becomes a one-day deterministic exercise per title rather than a guessing game.
+
+## Prerequisites
+
+- A representative video clip of the title at the target capture resolution (1920×1080 by default; methodology scales — see "Resolution scaling" below).
+- The clip must contain at least 10 frames showing the persistent gameplay HUD (i.e., not menu screens, not replays, not intro/outro slates).
+- Python venv active (per the service's README; for VAF, `services/visionaudioforge/.venv`).
+- OpenCV available (`opencv-python-headless`) — already in `requirements.txt`.
+
+## Step 1 — Sample frames across game states
+
+Goal: sample ≥ 12 frames spread across three states of the title's UI:
+
+- **Pre-action / pre-snap / pre-pitch / lobby** — HUD elements at rest.
+- **Mid-action / mid-play** — HUD updating (e.g., game clock advancing, kill-feed flashing).
+- **Menu / post-action** — pause menu or score recap or replay overlay (any state where the HUD differs from gameplay).
+
+Use the sampler pattern at `scripts/hud_calibration/sample_frames.py` (uniform percentile sampling across the clip). For titles where uniform sampling misses the gameplay window — e.g., a clip with a long facecam intro — also use `scripts/hud_calibration/sample_dense_gameplay.py` as a template for index-range sampling once you've identified the gameplay window.
+
+Save all sampled frames to `scripts/hud_calibration/frames/<title>/frame_<idx>.png`. The 6-digit zero-padded frame index in the filename is the cross-reference to the source video.
+
+## Step 2 — Identify HUD-bearing frames
+
+Open each sampled PNG. By eye, classify each frame:
+
+- ✅ **HUD-bearing gameplay** — the production HUD overlay is visible. These frames feed the calibration.
+- ❌ **HUD-absent gameplay** — gameplay action with no HUD overlay (some content creators disable HUD; we cannot calibrate from these).
+- ❌ **Menu / cutscene / replay** — different UI; calibrate separately if the OCR pipeline needs to read these too.
+
+You need at least 5 HUD-bearing gameplay frames spread across pre-snap/post-snap/etc. If the clip yields fewer than 5, source another clip — calibration on too few frames is unreliable.
+
+For Madden 26 in M4.5, the calibration set was: frames 4400, 4538, 6100, 6421, 7049 from `agents/capture/fixtures/real/madden26.mp4`.
+
+## Step 3 — Extract HUD strip(s)
+
+Use `scripts/hud_calibration/extract_hud_strip.py` (template) to crop the HUD region from each calibration frame and save as standalone PNG strips. The strip width is the full frame width (1920 px); the strip height is the HUD band's height (typically 60–120 px).
+
+The strips are the calibration substrate. They are the right resolution for measuring sub-element pixel coordinates without scaling artifacts.
+
+For Madden 26: the bottom band runs from y=1006 to y=1080 (74 px tall) and spans the full width.
+
+## Step 4 — Measure subregion bboxes iteratively
+
+Use `scripts/hud_calibration/annotate_bboxes.py` (template) to:
+
+1. Define **candidate bboxes** in the script's `CANDIDATES` dict — `[x, y, w, h]` per subregion. First pass is allowed to be rough.
+2. Run the script against one calibration frame. The script:
+   - Saves an annotated PNG with each bbox drawn as a coloured rectangle + label.
+   - Saves each subregion's crop as a separate PNG.
+3. Open each subregion crop. Verify the bbox tightly bounds the intended element. Adjust coords. Re-run.
+4. Once tight on the first frame, re-run against the remaining calibration frames. Bboxes must produce the same content category on each frame (e.g., `team_home_abbr` reads "LAC" on every frame). If a bbox drifts across frames, the layout is not stable and the title's HUD requires per-state regions instead of a single fixed region.
+
+Iteration is normal — the M4.5 calibration took two passes to converge.
+
+**Iteration tactic:** when a candidate bbox is clearly off, look at the saved crop PNG and use the visual offset to pick the correction. "Crop showed the helmet, I wanted the abbreviation → shift x right by ~150 px."
+
+## Step 5 — Validate via OCR
+
+Use `scripts/hud_calibration/validate_ocr.py` (template) to:
+
+1. Hand-label expected ground truth per HUD element per frame (in the `GROUND_TRUTH` dict). For each calibration frame, write out the expected score, clock, abbreviation, etc. by looking at the frame.
+2. Mark each frame's **state**: `play`, `kickoff`, `menu`, etc. Some elements only render meaningfully in certain states (e.g., Madden's `down` and `distance` panels show "KICKOFF" / "+35" during kickoff frames, not numeric values).
+3. Run the validator. It runs the production OCR pipeline against each frame, compares each subregion read to ground truth, and reports per-element success rate.
+4. **Acceptance: ≥ 80% per HUD element on the calibrated frames in their primary state.** State-dependent elements are scored against frames in their target state (e.g., `down` is scored against play-state frames, not kickoff-state frames).
+
+If an element scores below 80%:
+- Re-inspect the bbox in step 4.
+- Check OCR allowlist (digits-only allowlist on a digit field; alpha allowlist on team abbreviations).
+- Check resolution scaling (see below).
+
+## Step 6 — Commit the calibration
+
+Bundle into a single commit:
+
+- `services/visionaudioforge/app/adapters/<title>/hud_regions.json` — calibrated coords, with a `calibration` block listing source clip, date, milestone, calibrated frame indices, and notes on state-dependent regions.
+- `scripts/hud_calibration/<helpers>` — sampler / strip extractor / annotator / validator. Each script can be templated from Madden's M4.5 work.
+- `agents/capture/fixtures/<title>/m45_ocr_validation.json` — validator output as evidence.
+- The methodology doc (this file) updated only if the new title surfaces a methodology gap.
+
+Commit message references the milestone and the title's adapter spec section.
+
+## Resolution scaling
+
+Calibration coords are stored at 1920×1080. The `_crop` helper in `services/visionaudioforge/app/adapters/madden26/ocr_pipeline.py` scales coords to the actual frame resolution at read time:
+
+```python
+if (h_full, w_full) != (1080, 1920):
+    sx, sy = w_full / 1920.0, h_full / 1080.0
+    x, y, w, h = int(x * sx), int(y * sy), int(w * sx), int(h * sy)
+```
+
+For titles whose HUD doesn't scale linearly across resolutions (e.g., a HUD that reflows at narrower aspect ratios), record the calibration resolution per resolution bucket in `hud_regions.json` instead of trusting linear scaling.
+
+## State-dependent regions
+
+Some HUD subregions render different content based on game state:
+
+- **Madden 26**: `down` and `distance` show numeric values during play; show "KICKOFF" / "PUNT" / "EXTRA POINT" during transition states.
+- **Likely-similar titles**: CFB 26 (same engine), NBA 2K26 (period vs free-throw vs replay), EA FC 26 (in-play vs goal celebration vs replay).
+
+Strategy: keep the bbox stable; let the OCR pipeline classify state by reading multiple regions and applying state-specific allowlists. Document state branches in the title's adapter spec.
+
+## What goes wrong
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| OCR returns null on a region | Bbox is wrong; allowlist is wrong; image is too small (< ~30 px tall after upscale) | Re-inspect the cropped PNG. Check allowlist. The `_read_text` helper upscales 3× — that may not be enough for very small text. |
+| OCR returns garbage characters | Allowlist too permissive; region overlaps a graphic element | Restrict allowlist; tighten the bbox |
+| Bbox works on frame 1 but fails on frame 100 | HUD reflows on an event boundary (e.g., during replay) | Multi-state bboxes — record per-state regions in `hud_regions.json` |
+| Calibration appears correct but downstream events look wrong | OCR cadence: per-frame OCR is too slow on real footage; cache per-snap | OCR cadence reform — see Phase 0 milestone breakdown |
+| Bboxes correct for the dev clip, wrong for production capture | Resolution scaling assumption is broken | Record per-resolution calibration; add to `hud_regions.json` |
+
+## Next titles' calibration order
+
+Per the integration spec, the calibration order matches the adapter rollout:
+
+1. Madden 26 (Phase 0 — done, 2026-05-07)
+2. CFB 26 (Phase 2 — same EA Sports engine, expect ~50% bbox reuse)
+3. NBA 2K26
+4. EA FC 26
+5. MLB 26
+6. Warzone / Fortnite / UFC 5 / Undisputed / PGA 2K25 / Video Poker — each separate
+
+Each new title's M-x.5 milestone reads this doc, copies the helper scripts to `scripts/hud_calibration/<title>/`, and produces its own `hud_regions.json` + validation report.
+
+## Forge rule alignment
+
+Per [FORGE_ARCHITECTURE_PATTERN.md](../../FORGE_ARCHITECTURE_PATTERN.md):
+
+- **Rule 5** (adapters added without core changes): calibration changes only `services/visionaudioforge/app/adapters/<title>/hud_regions.json`. The dispatcher, integrity gate, and event envelope contract do not change.
+- **Rule 4** (events are structured and canonical): OCR readings flow into the same `EventEnvelope` shape; consumers don't see calibration details, they see typed payload fields.
+- **Rule 1** (multi-dimensional from day one): the calibration is per-title; adding a new title's calibration does not touch other titles' calibrations.

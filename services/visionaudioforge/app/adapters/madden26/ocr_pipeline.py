@@ -54,6 +54,7 @@ class OCRSnapshot:
     score_away: int | None
     quarter: int | None
     clock: str | None
+    play_clock: str | None
     down: int | None
     distance: int | None
     field_position: str | None
@@ -62,8 +63,200 @@ class OCRSnapshot:
     confidence_overall: float
 
 
-# Field-position pattern: "OWN 35", "OPP 22", "MIDFIELD".
-_FIELD_POS_RE = re.compile(r"^(OWN|OPP|MIDFIELD)(?:\s+(\d{1,2}))?$")
+# Madden 26 displays ordinals ("1ST", "2ND", "3RD", "4TH") in quarter
+# and down panels — not bare digits. Map ordinal text → int.
+# After _normalise_ocr_chars, "IST" → "1ST", "2ND" stays "2ND" (no I/L/O).
+_ORDINAL_MAP = {
+    "1ST": 1, "2ND": 2, "3RD": 3, "4TH": 4, "5TH": 5,
+    # Common EasyOCR misreads on the same panels
+    "1S": 1, "2N": 2, "3R": 3, "4T": 4,
+}
+
+# Madden 26 field-position panel renders "▲<yards>" with a triangle
+# arrow indicator pointing toward the team's own end zone. EasyOCR
+# typically reads the triangle as a "4" / "▲" / extra digit, so we
+# anchor on the TRAILING 1-2 digits of the read (the actual yard
+# number is always rightmost).
+_FIELD_POS_DIGITS_RE = re.compile(r"(\d{1,2})\s*$")
+# Madden 26 down/distance panel renders "1ST & 10" / "2ND & 7" /
+# "KICKOFF" / "PUNT". Distance is the digits after "&" / "AND".
+_DISTANCE_RE = re.compile(r"(?:&|AND)\s*(\d{1,2})")
+
+
+def _parse_ordinal_to_int(text: str, lo: int, hi: int) -> int | None:
+    """Map '1ST', '2ND', etc. to int. Madden's HUD font confuses '1'
+    with '7' and 'I'/'L' under EasyOCR; try multiple substitution
+    variants and accept the first that parses to an in-range value.
+
+    Variants tried, in order:
+      1. Raw text as-is.
+      2. Normalised: I/L→1, O/Q→0.
+      3. Normalised + 7→1 (Madden's '1' often reads as '7').
+    Then fall back to: leading digit, then trailing digit.
+    """
+    if not text:
+        return None
+    variants = [
+        text,
+        _normalise_ocr_chars(text),
+        _normalise_ocr_chars(text).replace("7", "1"),
+    ]
+    for variant in variants:
+        upper = re.sub(r"\s+", "", variant.upper())
+        if upper in _ORDINAL_MAP and lo <= _ORDINAL_MAP[upper] <= hi:
+            return _ORDINAL_MAP[upper]
+        # Leading-digit fallback (e.g., "1ST" → "1")
+        m_lead = re.match(r"^(\d)", upper)
+        if m_lead:
+            try:
+                v = int(m_lead.group(1))
+            except ValueError:
+                v = None
+            if v is not None and lo <= v <= hi:
+                return v
+        # Trailing-digit fallback (e.g., "751" → "1" after 7→1 fails to
+        # produce "1ST" but the trailing "1" is what we want).
+        m_trail = re.search(r"(\d)$", upper)
+        if m_trail:
+            try:
+                v = int(m_trail.group(1))
+            except ValueError:
+                v = None
+            if v is not None and lo <= v <= hi:
+                return v
+    return None
+
+
+def _parse_distance(text: str) -> int | None:
+    """Extract digits after '&' or 'AND'. Returns None on KICKOFF/PUNT.
+
+    Madden's digit-confusion (1↔7, 0↔8) means '& 10' often reads as
+    '7 870' or similar. Tries variant substitutions, accepts the
+    first in-range result. Realistic distance is 1–25 yards.
+    """
+    if not text:
+        return None
+    variants = [
+        text.upper(),
+        text.upper().replace("7", "1"),
+        text.upper().replace("8", "0"),
+        text.upper().replace("7", "1").replace("8", "0"),
+    ]
+    for variant in variants:
+        m = _DISTANCE_RE.search(variant)
+        if m:
+            try:
+                v = int(m.group(1))
+            except ValueError:
+                continue
+            if 0 <= v <= 99:
+                return v
+        # Madden's distance often reads with the '&' lost — try trailing
+        # digits after a space or as a standalone digit pair.
+        trailing = re.search(r"(\d{1,2})\s*$", variant)
+        if trailing:
+            try:
+                v = int(trailing.group(1))
+            except ValueError:
+                continue
+            if 1 <= v <= 25:  # tighter range for "trailing digit"
+                return v
+    return None
+
+
+def _parse_clock(text: str) -> str | None:
+    """Parse 'M:SS' or 'MM:SS' clock. Tolerates 1↔7 and missing colon.
+
+    Variants:
+      1. As-is.
+      2. 7→1 substitution.
+      3. Digits-only (insert colon between minute and seconds).
+    """
+    if not text:
+        return None
+    candidates = [
+        text.strip(),
+        text.strip().replace("7", "1"),
+    ]
+    # NFL quarter is 15 minutes max, so reject reads with mins > 15.
+    for variant in candidates:
+        m = re.match(r"(\d{1,2}):(\d{2})", variant)
+        if m:
+            mins, secs = int(m.group(1)), int(m.group(2))
+            if 0 <= mins <= 15 and 0 <= secs <= 59:
+                return f"{mins}:{secs:02d}"
+    # No colon? EasyOCR sometimes drops the colon AND inserts a stray
+    # digit. Take first-digit-as-minute + last-2-digits-as-seconds —
+    # works even when the OCR returns 4 digits "MXSS" where X is noise.
+    for variant in candidates:
+        digits = re.sub(r"[^0-9]", "", variant)
+        if len(digits) >= 3:
+            mins_s = digits[0]
+            secs_s = digits[-2:]
+            try:
+                mins, secs = int(mins_s), int(secs_s)
+            except ValueError:
+                continue
+            if 0 <= mins <= 15 and 0 <= secs <= 59:
+                return f"{mins}:{secs:02d}"
+    return None
+
+
+def _parse_play_clock(text: str) -> str | None:
+    """Parse Madden play clock — typically '00'-'40', or '--' pre-snap.
+
+    Variants:
+      1. Digits only as-is.
+      2. With 7→1 substitution.
+      3. With 8→0 substitution.
+      4. Both substitutions.
+    Falls back to trailing 1-2 digits (Madden HUD often picks up the
+    leading panel boundary as a stray digit).
+    """
+    if not text:
+        return None
+    # Prefer 7→1 first (Madden's '1' often reads as '7'), then raw.
+    # Skip single-digit fallback — Madden play clock is always 2-digit
+    # display, so a 1-digit read is unreliable.
+    sub_variants = [
+        text.replace("7", "1"),
+        text,
+    ]
+    for var in sub_variants:
+        digits = re.sub(r"[^0-9]", "", var)
+        if len(digits) < 2:
+            continue
+        # Trailing 2 digits: "812" → "12", "828" → "28".
+        tail = digits[-2:]
+        try:
+            v = int(tail)
+            if 0 <= v <= 40:
+                return str(v)
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_field_position(text: str) -> str | None:
+    """Madden 26 numeric format. Returns '+<n>' on a successful read.
+
+    EasyOCR commonly reads the triangle glyph as a leading digit (e.g.,
+    "▲47" → "447"), so we anchor on the trailing 1–2 digits. The
+    yard number itself is always 0–50 (own/opp halves of the field).
+    """
+    if not text:
+        return None
+    cleaned = text.strip().upper()
+    m = _FIELD_POS_DIGITS_RE.search(cleaned)
+    if m:
+        try:
+            v = int(m.group(1))
+        except ValueError:
+            return None
+        # Madden 26 displays 0-99 (own end zone = 0, opponent = 99).
+        if 0 <= v <= 99:
+            return f"+{v}"
+    return None
 
 
 def _crop(frame: np.ndarray, bbox: list[int]) -> np.ndarray:
@@ -78,12 +271,28 @@ def _crop(frame: np.ndarray, bbox: list[int]) -> np.ndarray:
 
 
 def _read_text(img: np.ndarray, allowlist: str | None = None) -> tuple[str, float]:
-    """Run EasyOCR on a region. Returns (concatenated text, mean confidence)."""
+    """Run EasyOCR on a region. Returns (concatenated text, mean confidence).
+
+    Preprocessing pipeline (per M4.5 calibration findings):
+      1. Convert to grayscale.
+      2. CLAHE contrast enhancement — preserves stroke shape (which Otsu
+         threshold mangled — "1" became "7"-like after binarization).
+      3. Invert if the text is light-on-dark (HUD panels typically are).
+      4. Upscale 5× via cubic interpolation. EasyOCR struggles below
+         ~150 px-tall text; 5× of a 40 px crop = 200 px which gives
+         the digit recognizer enough strokes to disambiguate "1" / "7" / "I".
+    """
     if img.size == 0:
         return ("", 0.0)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img.ndim == 3 else img
+    # Invert if dark-text-on-light isn't the natural orientation.
+    if gray.mean() < 127:
+        gray = cv2.bitwise_not(gray)
+    # CLAHE contrast enhancement keeps stroke detail, unlike threshold.
+    clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(4, 4))
+    enhanced = clahe.apply(gray)
+    scaled = cv2.resize(enhanced, None, fx=5.0, fy=5.0, interpolation=cv2.INTER_CUBIC)
     reader = _get_reader()
-    # Upscale 3x — EasyOCR handles small text better with more pixels.
-    scaled = cv2.resize(img, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_CUBIC)
     results = reader.readtext(
         scaled,
         allowlist=allowlist,
@@ -98,6 +307,21 @@ def _read_text(img: np.ndarray, allowlist: str | None = None) -> tuple[str, floa
         texts.append(str(text).strip())
         confs.append(float(conf))
     return (" ".join(texts).strip(), sum(confs) / len(confs))
+
+
+def _normalise_ocr_chars(text: str) -> str:
+    """Map common EasyOCR character confusions back to expected chars.
+    Applied before ordinal/digit parsing — e.g., '1ST' frequently reads
+    as 'IST' or 'lST' on small HUD crops."""
+    if not text:
+        return text
+    return (
+        text.upper()
+        .replace("I", "1")
+        .replace("L", "1")
+        .replace("O", "0")
+        .replace("Q", "0")
+    )
 
 
 def _parse_int(text: str, lo: int, hi: int) -> tuple[int | None, float]:
@@ -126,41 +350,50 @@ class OCRPipeline:
             self.regions: dict[str, Any] = json.load(f)["regions"]
 
     def read_frame(self, frame: np.ndarray) -> OCRSnapshot:
-        """Read every HUD region. Returns a snapshot."""
+        """Read every HUD region. Returns a snapshot.
+
+        Per M4.5 calibration:
+          - quarter/down panels render ordinals ("1ST", "2ND") not bare
+            digits. Read without an allowlist; map via _parse_ordinal_to_int.
+          - distance panel renders "& <n>". Allowlist permits "&" + digits;
+            extracted via _parse_distance.
+          - field_position panel renders "▲<n>" or "<n>". Read freely;
+            extracted via _parse_field_position.
+          - play_clock panel renders "<n>" or "--" (pre-snap). Parsed
+            same way as score numbers.
+        """
         scoreboard = self.regions["scoreboard"]["subregions"]
         dnd = self.regions["down_distance"]["subregions"]
 
-        # Numeric reads.
+        # Score / clock — digit-only or digit+colon allowlist.
         s_home_text, s_home_conf = _read_text(_crop(frame, scoreboard["score_home"]), "0123456789")
         s_away_text, s_away_conf = _read_text(_crop(frame, scoreboard["score_away"]), "0123456789")
-        q_text, q_conf = _read_text(_crop(frame, scoreboard["quarter"]), "0123456789")
         clock_text, clock_conf = _read_text(_crop(frame, scoreboard["clock"]), "0123456789:")
-        down_text, down_conf = _read_text(_crop(frame, dnd["down"]), "0123456789")
-        dist_text, dist_conf = _read_text(_crop(frame, dnd["distance"]), "0123456789&")
+
+        # Quarter / down — ordinal text. No allowlist (EasyOCR drops
+        # results when allowlist excludes letters in "1ST"/"2ND" etc.).
+        q_text, q_conf = _read_text(_crop(frame, scoreboard["quarter"]))
+        down_text, down_conf = _read_text(_crop(frame, dnd["down"]))
+
+        # Distance — read freely; regex pulls digits after "&"/"AND".
+        dist_text, dist_conf = _read_text(_crop(frame, dnd["distance"]))
+
+        # Play clock — digit-only; can be "--" → null.
+        pc_text, pc_conf = _read_text(_crop(frame, dnd["play_clock"]), "0123456789")
+
+        # Field position — Madden 26 numeric form, possibly preceded by
+        # an arrow glyph. Read freely so EasyOCR captures the glyph as
+        # noise and our regex pulls the digits.
+        fp_text, fp_conf = _read_text(_crop(frame, dnd["field_position"]))
 
         score_home_v, _ = _parse_int(s_home_text, 0, 199)
         score_away_v, _ = _parse_int(s_away_text, 0, 199)
-        quarter_v, _ = _parse_int(q_text, 1, 5)
-        down_v, _ = _parse_int(down_text, 1, 4)
-        # Distance can be e.g. "& 7" — strip & and space.
-        dist_clean = re.sub(r"[^0-9]", "", dist_text)
-        distance_v, _ = _parse_int(dist_clean, 0, 99)
-
-        # Clock — accept "M:SS" or "MM:SS".
-        clock_v: str | None = None
-        m = re.match(r"(\d{1,2}):(\d{2})", clock_text.strip())
-        if m:
-            mins, secs = int(m.group(1)), int(m.group(2))
-            if 0 <= mins <= 99 and 0 <= secs <= 59:
-                clock_v = f"{mins}:{secs:02d}"
-
-        # Field position.
-        fp_text, fp_conf = _read_text(_crop(frame, dnd["field_position"]))
-        fp_v: str | None = None
-        m = _FIELD_POS_RE.match(fp_text.upper().strip())
-        if m:
-            label, num = m.group(1), m.group(2)
-            fp_v = label if num is None else f"{label}_{num}"
+        quarter_v = _parse_ordinal_to_int(q_text, 1, 5)
+        down_v = _parse_ordinal_to_int(down_text, 1, 4)
+        distance_v = _parse_distance(dist_text)
+        play_clock_v = _parse_play_clock(pc_text)
+        clock_v = _parse_clock(clock_text)
+        fp_v = _parse_field_position(fp_text)
 
         # Team abbreviations.
         ha_text, ha_conf = _read_text(
@@ -174,10 +407,11 @@ class OCRPipeline:
         home_abbr = ha_text.upper().strip() or None
         away_abbr = aa_text.upper().strip() or None
 
-        # Aggregate confidence — average of the per-region confidences. Used
-        # by the assembler as the event-level confidence floor.
+        # Aggregate confidence — average of the per-region confidences.
         confs = [
-            c for c in [s_home_conf, s_away_conf, q_conf, clock_conf, down_conf, fp_conf]
+            c for c in [s_home_conf, s_away_conf, q_conf, clock_conf,
+                        down_conf, dist_conf, pc_conf, fp_conf,
+                        ha_conf, aa_conf]
             if c > 0
         ]
         overall = sum(confs) / len(confs) if confs else 0.0
@@ -187,6 +421,7 @@ class OCRPipeline:
             score_away=score_away_v,
             quarter=quarter_v,
             clock=clock_v,
+            play_clock=play_clock_v,
             down=down_v,
             distance=distance_v,
             field_position=fp_v,

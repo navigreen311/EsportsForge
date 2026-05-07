@@ -65,6 +65,42 @@ The ADR 0006 80 ms per-frame budget is **not** revised. The original budget was 
 - Unit test enforcing region validity.
 - Day-3 harness output snippet pasted into the M4.5 PR comment showing OCR success rate.
 
+### M4.5 status — actual numbers (2026-05-07)
+
+10 HUD-bearing frames calibrated (3 kickoff, 7 play). OCR success rate per element on play-state frames:
+
+| Element | Success rate (play state) | vs. 80% bar |
+| --- | --- | --- |
+| `team_home_abbr` | **100%** (7/7) | ✅ |
+| `team_away_abbr` | **100%** (7/7) | ✅ |
+| `score_home` | **100%** (7/7) | ✅ |
+| `score_away` | **100%** (7/7) | ✅ |
+| `quarter` | **100%** (7/7) | ✅ |
+| `clock` | **85.7%** (6/7) | ✅ |
+| `play_clock` | **85.7%** (6/7) | ✅ |
+| `down` | **100%** (7/7) | ✅ |
+| `distance` | **100%** (7/7) | ✅ |
+| `field_position` | **71.4%** (5/7) | ❌ — below 80% |
+
+**9 of 10 elements meet the M4.5 acceptance threshold.** One (`field_position`) is at 71.4% — below the 80% bar.
+
+**Why field_position misses:** EasyOCR systematically reads Madden 26's stylized `1` digit as `7` in two of seven play-state frames (5900: `+41` reads as `+47`; 7000: `+10` reads as `+70`). The wrong reading is itself a valid yard-line value (47 and 70 are both legal field positions), so no parser variant logic can recover the correct value. The same digit confusion affected `clock` and `play_clock` on frame 5900 (recovered for clock and play_clock by the variant fallbacks; `field_position` has no equivalent fallback because its valid range covers all confusion outcomes).
+
+**Path forward (M5c-adjacent):**
+
+1. **Multi-frame temporal consistency** — field_position changes ≤1 yard per real-time second. Aggregating reads across consecutive frames + rejecting outliers (median filter) would catch the 1↔7 flips. Adds ~50 lines to `Madden26Adapter.process_frame`. Recommended for M5c.
+2. **Custom digit classifier** — train a 10-class CNN on Madden's stylized digits. ~1 day if labels are bootstrapped from the calibration frames (currently labeled). Higher-quality fix; addresses similar issues in other adapter HUDs.
+
+**Recommendation:** treat M4.5 as 9/10 complete. Land this commit. Open a status-check question to user: accept 71.4% on field_position with the M5c temporal-consistency follow-up, or block on a custom digit classifier before M5c kicks off.
+
+Other M4.5 deliverables done:
+- `hud_regions.json` v2.0.0 with measured Madden 26 bottom-band coordinates (was at top in v1.0.0 spec).
+- 10 calibration frames committed at `scripts/hud_calibration/frames/frame_*.png`.
+- `scripts/hud_calibration/{sample_frames,sample_dense_gameplay,extract_hud_strip,annotate_bboxes,validate_ocr}.py` — reusable templates for the next title's calibration.
+- `agents/capture/fixtures/real/m45_ocr_validation.json` — full per-frame, per-element evidence.
+- `docs/integrations/visionaudioforge/madden26-hud-calibration-methodology.md` — methodology for CFB 26, NBA 2K26, etc.
+- OCR pipeline updates: parser variant chains for Madden's "1↔7" font confusion, CLAHE+5× preprocessing, ordinal text handling, play_clock plumbing, field_position regex anchored to trailing digits.
+
 ---
 
 ## Milestone 2 — M5c: Real formation classifier training

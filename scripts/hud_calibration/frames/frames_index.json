@@ -1,0 +1,72 @@
+{
+  "source_video": "capture/fixtures/real/madden26.mp4",
+  "source_resolution": [
+    1920,
+    1080
+  ],
+  "source_fps": 59.94005994005994,
+  "source_frame_count": 7193,
+  "sample_count": 12,
+  "samples": [
+    {
+      "frame_idx": 143,
+      "ts_sec": 2.386,
+      "path": "scripts/hud_calibration/frames/frame_000143.png"
+    },
+    {
+      "frame_idx": 771,
+      "ts_sec": 12.863,
+      "path": "scripts/hud_calibration/frames/frame_000771.png"
+    },
+    {
+      "frame_idx": 1399,
+      "ts_sec": 23.34,
+      "path": "scripts/hud_calibration/frames/frame_001399.png"
+    },
+    {
+      "frame_idx": 2027,
+      "ts_sec": 33.817,
+      "path": "scripts/hud_calibration/frames/frame_002027.png"
+    },
+    {
+      "frame_idx": 2654,
+      "ts_sec": 44.278,
+      "path": "scripts/hud_calibration/frames/frame_002654.png"
+    },
+    {
+      "frame_idx": 3282,
+      "ts_sec": 54.755,
+      "path": "scripts/hud_calibration/frames/frame_003282.png"
+    },
+    {
+      "frame_idx": 3910,
+      "ts_sec": 65.232,
+      "path": "scripts/hud_calibration/frames/frame_003910.png"
+    },
+    {
+      "frame_idx": 4538,
+      "ts_sec": 75.709,
+      "path": "scripts/hud_calibration/frames/frame_004538.png"
+    },
+    {
+      "frame_idx": 5165,
+      "ts_sec": 86.169,
+      "path": "scripts/hud_calibration/frames/frame_005165.png"
+    },
+    {
+      "frame_idx": 5793,
+      "ts_sec": 96.647,
+      "path": "scripts/hud_calibration/frames/frame_005793.png"
+    },
+    {
+      "frame_idx": 6421,
+      "ts_sec": 107.124,
+      "path": "scripts/hud_calibration/frames/frame_006421.png"
+    },
+    {
+      "frame_idx": 7049,
+      "ts_sec": 117.601,
+      "path": "scripts/hud_calibration/frames/frame_007049.png"
+    }
+  ]
+}

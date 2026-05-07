@@ -1,33 +1,51 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "2.0.0",
   "title": "madden26",
   "resolution": [1920, 1080],
+  "calibration": {
+    "source_clip": "agents/capture/fixtures/real/madden26.mp4",
+    "calibration_date": "2026-05-07",
+    "milestone": "M4.5",
+    "methodology": "docs/integrations/visionaudioforge/madden26-hud-calibration-methodology.md",
+    "calibrated_frames": [
+      "scripts/hud_calibration/frames/frame_004400.png",
+      "scripts/hud_calibration/frames/frame_004538.png",
+      "scripts/hud_calibration/frames/frame_006100.png",
+      "scripts/hud_calibration/frames/frame_006421.png",
+      "scripts/hud_calibration/frames/frame_007049.png"
+    ],
+    "notes": [
+      "Madden 26's HUD lives in a bottom band (y=1006-1080), not at the top as the original spec assumed. v1.0.0 of this file used spec-derived coords that did not align with real Madden 26 footage.",
+      "On kickoff/punt frames, the 'distance' bbox renders 'KICKOFF' / 'PUNT' / 'EXTRA POINT' instead of '& <yards>'. The bbox is stable; OCR pipeline state-classifies the result.",
+      "team_home is the LEFT-positioned team in the HUD (helmet + abbrev cluster on left of band). team_away is RIGHT-positioned. Whether 'home' equals the literal NFL home team depends on the broadcast — Madden's HUD always shows the away team's helmet on the left of NFL telecasts."
+    ]
+  },
   "regions": {
     "scoreboard": {
-      "bbox": [40, 30, 380, 90],
+      "bbox": [0, 1006, 1190, 74],
       "subregions": {
-        "team_home_abbr": [60, 50, 55, 30],
-        "score_home":     [120, 50, 60, 30],
-        "team_away_abbr": [205, 50, 55, 30],
-        "score_away":     [265, 50, 60, 30],
-        "quarter":        [60, 75, 60, 25],
-        "clock":          [125, 75, 100, 25]
+        "team_home_logo":  [80, 1014, 280, 60],
+        "team_home_abbr":  [460, 1024, 145, 40],
+        "score_home":      [640, 1018, 90, 50],
+        "score_away":      [770, 1018, 80, 50],
+        "team_away_abbr":  [870, 1024, 130, 40],
+        "team_away_logo":  [990, 1014, 200, 60],
+        "quarter":         [1265, 1024, 80, 40],
+        "clock":           [1350, 1024, 110, 40]
       }
     },
     "down_distance": {
-      "bbox": [800, 30, 320, 60],
+      "bbox": [1465, 1006, 455, 74],
       "subregions": {
-        "down":           [810, 35, 50, 50],
-        "distance":       [870, 35, 110, 50],
-        "field_position": [1010, 35, 100, 50]
+        "play_clock":      [1455, 1020, 100, 48],
+        "down":            [1545, 1024, 95, 40],
+        "distance":        [1640, 1024, 100, 40],
+        "field_position":  [1790, 1024, 110, 40]
       }
     },
-    "play_clock": {
-      "bbox": [1750, 50, 80, 80]
-    },
     "formation_overlay_pre_snap": {
-      "bbox": [400, 900, 1120, 150],
-      "appears": "during pre-snap, fades after motion or snap"
+      "bbox": [400, 700, 1120, 80],
+      "appears": "M4.5 deferred — Madden 26 in the calibration clip does not show a persistent pre-snap formation overlay. Real classifier in M5c reads from the on-field player layout instead. Bbox kept as a placeholder; do not OCR-read this region until M5c re-validates."
     }
   }
 }
