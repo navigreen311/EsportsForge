@@ -54,3 +54,7 @@ agents/capture/fixtures/real/*.webm
 agents/capture/fixtures/real/*.mkv
 # Validation report JSONs — kept small and committed; only the giant
 # media files are excluded above.
+
+# Per-service Python venvs. Each service has its own; do not commit.
+services/*/.venv/
+services/*/venv/
