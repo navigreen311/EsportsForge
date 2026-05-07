@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0.0",
+  "title": "madden26",
+  "resolution": [1920, 1080],
+  "regions": {
+    "scoreboard": {
+      "bbox": [40, 30, 380, 90],
+      "subregions": {
+        "team_home_abbr": [60, 50, 55, 30],
+        "score_home":     [120, 50, 60, 30],
+        "team_away_abbr": [205, 50, 55, 30],
+        "score_away":     [265, 50, 60, 30],
+        "quarter":        [60, 75, 60, 25],
+        "clock":          [125, 75, 100, 25]
+      }
+    },
+    "down_distance": {
+      "bbox": [800, 30, 320, 60],
+      "subregions": {
+        "down":           [810, 35, 50, 50],
+        "distance":       [870, 35, 110, 50],
+        "field_position": [1010, 35, 100, 50]
+      }
+    },
+    "play_clock": {
+      "bbox": [1750, 50, 80, 80]
+    },
+    "formation_overlay_pre_snap": {
+      "bbox": [400, 900, 1120, 150],
+      "appears": "during pre-snap, fades after motion or snap"
+    }
+  }
+}
