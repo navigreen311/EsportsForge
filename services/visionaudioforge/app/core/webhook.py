@@ -1,9 +1,13 @@
 """Webhook publisher to EsportsForge backend.
 
 Per ADR 0003: in-process v1 with fire-and-forget + 5 retries
-(250 ms → 4 s exponential). Per-session delivery-failure rate is logged;
-alarm at >0.1% sustained over 60 minutes triggers Redis Streams upgrade
+(250 ms → 4 s exponential). Per-session delivery-failure rate is logged
+and published to CloudWatch (see app/core/metrics.py); the alarm at
+>0.1% sustained over 60 minutes triggers the Redis Streams upgrade
 before Phase 1c.
+
+Post-PR-#62 review (L2): the metrics-emit hook fires every 60 s while
+the publisher is alive. Without it, the alarm would have no signal.
 """
 
 from __future__ import annotations
@@ -16,13 +20,17 @@ from typing import Any
 
 import httpx
 
+from app.core.metrics import MetricsClient
+
 logger = logging.getLogger("vaf.webhook")
 
-DEFAULT_BACKEND = os.environ.get("ESF_BACKEND_URL", "http://127.0.0.1:8001")
+# Default updated to :8002 per ADR 0011.
+DEFAULT_BACKEND = os.environ.get("ESF_BACKEND_URL", "http://127.0.0.1:8002")
 WEBHOOK_PATH = "/api/v1/visionaudio/events"
 RETRY_DELAYS_SEC = [0.25, 0.5, 1.0, 2.0, 4.0]
 BATCH_FLUSH_INTERVAL_SEC = 0.25
 BATCH_MAX_EVENTS = 32
+METRICS_EMIT_INTERVAL_SEC = 60.0
 
 
 class WebhookPublisher:
@@ -33,15 +41,26 @@ class WebhookPublisher:
     delivery-failure rate for the ADR 0003 alarm.
     """
 
-    def __init__(self, backend_url: str | None = None) -> None:
+    def __init__(
+        self,
+        backend_url: str | None = None,
+        session_id: str = "_unscoped",
+        title: str = "_unknown",
+    ) -> None:
         self._backend_url = backend_url or DEFAULT_BACKEND
+        self._session_id = session_id
+        self._title = title
         self._buffer: list[dict] = []
         self._lock = asyncio.Lock()
         self._flush_task: asyncio.Task | None = None
+        self._metrics_task: asyncio.Task | None = None
 
         # Per-session metrics for the alarm threshold.
         self._delivered = 0
         self._failed = 0
+        self._delivered_window = 0
+        self._failed_window = 0
+        self._metrics = MetricsClient.get()
 
     async def enqueue(self, envelope_json: dict) -> None:
         """Enqueue an event for the next batch flush."""
@@ -84,6 +103,7 @@ class WebhookPublisher:
                     res = await client.post(url, json={"events": batch})
                 if res.status_code < 300:
                     self._delivered += len(batch)
+                    self._delivered_window += len(batch)
                     return
                 logger.warning(
                     "webhook_non_2xx",
@@ -96,6 +116,7 @@ class WebhookPublisher:
                 )
 
         self._failed += len(batch)
+        self._failed_window += len(batch)
         logger.error(
             "webhook_dlq",
             extra={
@@ -104,6 +125,30 @@ class WebhookPublisher:
                 "failed_total": self._failed,
             },
         )
+
+    async def emit_metrics_periodic(self) -> None:
+        """Emit per-session failure rate to CloudWatch every 60 s.
+
+        Started by the FastAPI lifespan handler alongside flush_periodic.
+        Each emit window is independent (rolling rate, not cumulative)
+        so the alarm sees recent state, not lifetime state.
+        """
+        try:
+            while True:
+                await asyncio.sleep(METRICS_EMIT_INTERVAL_SEC)
+                window_total = self._delivered_window + self._failed_window
+                rate = (self._failed_window / window_total) if window_total else 0.0
+                self._metrics.publish_failure_rate(
+                    session_id=self._session_id,
+                    title=self._title,
+                    rate=rate,
+                    delivered=self._delivered_window,
+                    failed=self._failed_window,
+                )
+                self._delivered_window = 0
+                self._failed_window = 0
+        except asyncio.CancelledError:
+            raise
 
     @property
     def failure_rate(self) -> float:

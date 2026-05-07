@@ -1,0 +1,72 @@
+{
+  "video": "agents\\capture\\fixtures\\real\\madden26.mp4",
+  "video_fps": 59.94005994005994,
+  "video_resolution": [
+    1920,
+    1080
+  ],
+  "frames_in_file": 7193,
+  "frames_dispatched": 200,
+  "frames_dropped_pre_dispatch": 200,
+  "adapter_errors": 0,
+  "elapsed_sec": 73.234,
+  "title_lock": {
+    "title": "madden26",
+    "confidence": 0.9,
+    "frames_to_lock": 1,
+    "wallclock_to_lock_sec": 5.281
+  },
+  "detector_calls_before_lock": 1,
+  "latency_ms": {
+    "count": 200,
+    "p50": 250.0,
+    "p95": 359.0,
+    "p99": 485.0,
+    "max": 5172.0,
+    "mean": 285.075
+  },
+  "budget_breaches_80ms": 200,
+  "budget_breaches_pct": 100.0,
+  "sample_ocr_readings": [
+    {
+      "frame_idx": 20,
+      "score_home": null,
+      "score_away": null,
+      "quarter": null,
+      "clock": null,
+      "down": null,
+      "distance": null,
+      "field_position": null,
+      "team_home_abbr": null,
+      "team_away_abbr": null,
+      "confidence_overall": 0.0
+    },
+    {
+      "frame_idx": 245,
+      "score_home": null,
+      "score_away": null,
+      "quarter": null,
+      "clock": null,
+      "down": null,
+      "distance": null,
+      "field_position": null,
+      "team_home_abbr": null,
+      "team_away_abbr": null,
+      "confidence_overall": 0.0
+    },
+    {
+      "frame_idx": 995,
+      "score_home": null,
+      "score_away": null,
+      "quarter": null,
+      "clock": null,
+      "down": null,
+      "distance": null,
+      "field_position": null,
+      "team_home_abbr": null,
+      "team_away_abbr": "I",
+      "confidence_overall": 0.423
+    }
+  ],
+  "sample_events": []
+}

@@ -10,12 +10,19 @@ For each frame received from an agent:
 
 Phase 0 wires steps 1–5; step 6 (webhook delivery to EsportsForge
 backend) is stubbed until M3 lands.
+
+Post-PR-#62 review additions:
+  - Per-session latency tracking (rolling deque of last 1000 frames'
+    adapter elapsed_ms) for D3 + D4 measurement.
+  - title_detector receives an OCR-text extractor so the Madden/CFB
+    abbreviation tiebreaker (ADR 0007) is exercised in production.
 """
 
 from __future__ import annotations
 
 import logging
 import time
+from collections import deque
 from datetime import datetime, timezone
 
 import numpy as np
@@ -27,6 +34,21 @@ from app.schemas.events import EventEnvelope
 
 logger = logging.getLogger("vaf.dispatcher")
 
+LATENCY_WINDOW_FRAMES = 1000
+
+
+def _ocr_text_for_tiebreaker(frame: np.ndarray, bbox: list[int]) -> str:
+    """Read a single bbox via the Madden OCR pipeline's text reader.
+
+    Imported lazily so unit tests that don't exercise the tiebreaker
+    don't pay the EasyOCR cold-start cost.
+    """
+    from app.adapters.madden26 import ocr_pipeline
+
+    cropped = ocr_pipeline._crop(frame, bbox)
+    text, _conf = ocr_pipeline._read_text(cropped, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    return text
+
 
 class Dispatcher:
     """One Dispatcher per session.
@@ -37,7 +59,28 @@ class Dispatcher:
 
     def __init__(self, session: SessionContext) -> None:
         self.session = session
-        self.title_detector = TitleDetector()
+        self.title_detector = TitleDetector(
+            ocr_text_extractor=_ocr_text_for_tiebreaker,
+        )
+        # Adapter-elapsed-ms ring for the last 1000 frames. Used by
+        # GET /sessions/{id}/latency and the real-footage harness.
+        self.latency_ms: deque[float] = deque(maxlen=LATENCY_WINDOW_FRAMES)
+
+    def latency_percentiles(self) -> dict[str, float | int]:
+        """Return p50 / p95 / p99 from the rolling window. Empty → zeros."""
+        if not self.latency_ms:
+            return {"count": 0, "p50_ms": 0.0, "p95_ms": 0.0, "p99_ms": 0.0}
+        ordered = sorted(self.latency_ms)
+        n = len(ordered)
+        def pct(p: float) -> float:
+            idx = min(n - 1, int(p * n))
+            return round(ordered[idx], 3)
+        return {
+            "count": n,
+            "p50_ms": pct(0.50),
+            "p95_ms": pct(0.95),
+            "p99_ms": pct(0.99),
+        }
 
     def process_frame(self, frame: np.ndarray) -> list[EventEnvelope]:
         """Run the full dispatch loop for one frame.
@@ -103,6 +146,7 @@ class Dispatcher:
             )
             return []
         elapsed_ms = (time.monotonic() - start) * 1000.0
+        self.latency_ms.append(elapsed_ms)
 
         if elapsed_ms > adapter.max_processing_ms:
             logger.warning(
