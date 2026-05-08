@@ -29,6 +29,25 @@ The 8 v0.1 formations (per `services/visionaudioforge/app/adapters/madden26/form
 
 **Total: 5.25 working days ≈ 5.5 days**, slightly past the original 3–5 day estimate. The 0.5-day slip is called out openly in the standup-after-sub-task-6 — no silent compression.
 
+### Calendar slip — sub-task 1 paused 2026-05-07
+
+**Status:** sub-task 1 paused after first attempt; resume tomorrow morning.
+
+**What happened:** three sequential yt-dlp attempts to download candidate clips. The first attempt downloaded ~100 MB of `madden26_patriots_vs_bills.mp4.part` before being prematurely killed; subsequent attempts produced zero bytes. Pattern: YouTube anti-scraping rate-limit on the dev IP, triggered by rapid back-to-back yt-dlp invocations across multiple URLs in a short window.
+
+**Defensive posture for retry** (per user direction):
+
+1. **Throttle yt-dlp invocations** — `INTER_REQUEST_SLEEP_SEC = 180` (3 min between successive yt-dlp calls) added to `scripts/hud_calibration/sample_training_clips.py`. No more back-to-back requests.
+2. **Cache successfully downloaded clips** — script's existing `if out_path.exists() and >1MB: skip` is now the explicit "cached" branch with no yt-dlp invocation. Re-runs are idempotent.
+3. **Log every yt-dlp invocation** — appends timestamped record to `scripts/hud_calibration/training_clips_invocations.log` (gitignored). Helps correlate request volume with future rate-limit triggers.
+
+**Resume plan:**
+
+- Tuesday 2026-05-08, 8:00 AM local — first retry.
+- If rate-limit still active (yt-dlp produces zero bytes after 5 min on the first clip), wait 4–8 hours, retry. Do NOT iterate quickly through alternate URLs; that pattern is exactly what triggered the original throttle.
+
+**Calendar effect:** **M5c shifts by 1 calendar day.** Total estimate now **6.5 working days** instead of 5.5. The 0.5-day slip from sub-task 6.5 (already documented) plus the 1-day rate-limit slip stack honestly. End-of-M5c projected for **2026-05-15** (a working week from tomorrow's resume) instead of 2026-05-14.
+
 ## Sub-task 1 — Training data collection
 
 **Estimate:** 0.5 day.
