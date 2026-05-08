@@ -1,4 +1,44 @@
-"""Source 5–8 multi-matchup Madden 26 clips for M5c training.
+"""[DEPRECATED for Madden 26 / M5c — preserved as Option A template
+for future title adapters.]
+
+DEPRECATED 2026-05-08 — DO NOT RUN FOR M5c MADDEN 26 SOURCING.
+
+Why deprecated for this milestone:
+  The YouTube sourcing path failed for the Madden 26 dev workstation
+  account on 2026-05-07/08. Initial IP-level rate-limit (yt-dlp
+  invocation throttle) was followed by an account-level pattern flag
+  even with valid signed-in cookies — yt-dlp's auth was accepted but
+  YouTube silently downgraded responses to thumbnail-only formats
+  (`tv downgraded player API JSON`) instead of serving real video
+  streams. Diagnostic confirmed the account itself was flagged,
+  not the IP. Waiting was unlikely to clear it.
+
+Pivoted to Option C — local Madden 26 capture via PS5 + capture
+card + dev workstation. Protocol documented at
+docs/integrations/visionaudioforge/madden26-local-capture-protocol.md.
+
+Why preserved (not deleted):
+  Future title adapters (CFB 26, NBA 2K26, EAFC 26, MLB 26, FPS /
+  fighting / golf / cards titles) will use fresh accounts that have
+  not yet been flagged. The yt-dlp + multi-matchup sourcing pattern
+  here is the right shape for them; only the URL list + filename
+  pattern need swapping. Defensive posture (180s inter-request
+  sleep, idempotent cache check, timestamped invocation log) carries
+  over.
+
+To use this template for a new title:
+  1. Copy this file to scripts/hud_calibration/sample_training_clips_<title>.py.
+  2. Replace CANDIDATES with the new title's URL set.
+  3. Update FIXTURES_DIR to the new title's fixtures path.
+  4. Run from a fresh account (or rotate accounts if the dev account
+     has been flagged on the prior title).
+  5. If the new title also fails YouTube sourcing, fall through to
+     a per-title local capture protocol (mirror the Madden 26 one).
+
+Original docstring follows for reference:
+================================================================
+
+Source 5–8 multi-matchup Madden 26 clips for M5c training.
 
 Downloads ~3 minute sections of public YouTube Madden 26 ranked /
 franchise / CPU-simulation gameplay. Each matchup has a primary URL
@@ -260,6 +300,20 @@ def _verify_hud_presence(video_path: Path) -> tuple[bool, dict]:
 
 
 def main() -> int:
+    print(
+        "\n!!! DEPRECATED for Madden 26 / M5c — see file header.\n"
+        "    YouTube sourcing was permanently abandoned on 2026-05-08\n"
+        "    after account-level pattern detection. Local capture is\n"
+        "    the active sourcing path:\n"
+        "    docs/integrations/visionaudioforge/madden26-local-capture-protocol.md\n"
+        "\n"
+        "    To force-run anyway (e.g., for a future title adapter\n"
+        "    using a fresh account), set ALLOW_DEPRECATED_YT_SOURCING=1.\n",
+        flush=True,
+    )
+    import os
+    if os.environ.get("ALLOW_DEPRECATED_YT_SOURCING") != "1":
+        return 3
     if not YT_DLP.exists():
         print(f"ERROR: yt-dlp not found at {YT_DLP}")
         return 1

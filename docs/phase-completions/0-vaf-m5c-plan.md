@@ -29,24 +29,41 @@ The 8 v0.1 formations (per `services/visionaudioforge/app/adapters/madden26/form
 
 **Total: 5.25 working days ≈ 5.5 days**, slightly past the original 3–5 day estimate. The 0.5-day slip is called out openly in the standup-after-sub-task-6 — no silent compression.
 
-### Calendar slip — sub-task 1 paused 2026-05-07
+### Calendar slip — sub-task 1 sourcing path pivoted 2026-05-07/08
 
-**Status:** sub-task 1 paused after first attempt; resume tomorrow morning.
+**Status:** YouTube sourcing path **permanently abandoned** for this milestone. Pivoted to Option C (local Madden 26 capture via PS5 + capture card).
 
-**What happened:** three sequential yt-dlp attempts to download candidate clips. The first attempt downloaded ~100 MB of `madden26_patriots_vs_bills.mp4.part` before being prematurely killed; subsequent attempts produced zero bytes. Pattern: YouTube anti-scraping rate-limit on the dev IP, triggered by rapid back-to-back yt-dlp invocations across multiple URLs in a short window.
+**Sub-task-1 timeline of escalation (record for future-adapter retros):**
 
-**Defensive posture for retry** (per user direction):
+1. **2026-05-07 ~16:00 local** — first sourcing-script run, default yt-dlp args. ~100 MB of `madden26_patriots_vs_bills.mp4.part` downloaded before being prematurely killed at the 9-min mark.
+2. **2026-05-07 ~16:30** — second run with `android_creator` extractor client. Format extraction succeeded; zero bytes downloaded. Pattern: YouTube rate-limit on the dev IP after rapid back-to-back yt-dlp invocations.
+3. **2026-05-07 ~17:00** — third run, default args, 12-min/clip budget. Same zero-byte result. User decision: pause, retry tomorrow morning.
+4. **2026-05-07 evening** — defensive-posture commit (`483d76b`). 180s inter-request sleep, idempotent cache check, invocation logging.
+5. **2026-05-08 ~08:25** — first retry under defensive posture. Zero bytes after 6 minutes on the first clip. Rate-limit still active.
+6. **2026-05-08 ~10:00** — Phase 1 (cookies/auth) attempt. Initial export was anonymous-session preferences only; second export with HTTP-only cookies enabled contained all 22 expected auth tokens. yt-dlp accepted the auth (anti-bot challenge cleared) but YouTube silently downgraded responses to `tv downgraded player API JSON` returning only thumbnail tile sequences instead of video formats. **Diagnosis: account-level pattern detection on the dev YouTube account, not IP-level rate-limit.** Waiting would not clear it.
+7. **2026-05-08 ~11:00** — security cleanup (cookie file deletion + Recycle Bin empty + recommended Google account password rotation). Pivoted to local capture per the user's pre-defined Option C fallback.
 
-1. **Throttle yt-dlp invocations** — `INTER_REQUEST_SLEEP_SEC = 180` (3 min between successive yt-dlp calls) added to `scripts/hud_calibration/sample_training_clips.py`. No more back-to-back requests.
-2. **Cache successfully downloaded clips** — script's existing `if out_path.exists() and >1MB: skip` is now the explicit "cached" branch with no yt-dlp invocation. Re-runs are idempotent.
-3. **Log every yt-dlp invocation** — appends timestamped record to `scripts/hud_calibration/training_clips_invocations.log` (gitignored). Helps correlate request volume with future rate-limit triggers.
+**Why Option C is the right pivot:**
 
-**Resume plan:**
+- The hardware pipeline is proven (M4.5 fixture `madden26.mp4` was captured through the same setup).
+- Account-level YouTube flag is unlikely to clear without a different account; not a calendar-budget-friendly path.
+- Captures controlled by the operator give cleaner training data — no streamer overlays, no facecams, no commentary watermarks.
 
-- Tuesday 2026-05-08, 8:00 AM local — first retry.
-- If rate-limit still active (yt-dlp produces zero bytes after 5 min on the first clip), wait 4–8 hours, retry. Do NOT iterate quickly through alternate URLs; that pattern is exactly what triggered the original throttle.
+**YouTube sourcing script status:** `scripts/hud_calibration/sample_training_clips.py` is preserved but deprecated for this milestone. Header explains why; runtime guard refuses to run unless `ALLOW_DEPRECATED_YT_SOURCING=1` is set. Reusable for future title adapters with fresh (un-flagged) accounts.
 
-**Calendar effect:** **M5c shifts by 1 calendar day.** Total estimate now **6.5 working days** instead of 5.5. The 0.5-day slip from sub-task 6.5 (already documented) plus the 1-day rate-limit slip stack honestly. End-of-M5c projected for **2026-05-15** (a working week from tomorrow's resume) instead of 2026-05-14.
+**Local capture protocol:** [docs/integrations/visionaudioforge/madden26-local-capture-protocol.md](../integrations/visionaudioforge/madden26-local-capture-protocol.md) — captures the same per-clip and matchup-diversity requirements with the new sourcing path.
+
+**Calendar effect:** **M5c shifts by an additional 2–3 calendar days** beyond the original 5.5-working-day estimate, accounting for Madden 26 purchase + install + capture work on the operator's side. Cumulative slip from M5c plan v2 baseline:
+
+| Slip | Cause | Magnitude |
+| --- | --- | --- |
+| Sub-task 6.5 buffer | Smoothing regression check (planned at v2 sign-off) | +0.5 working day |
+| Sub-task 1 rate-limit | YouTube IP throttle (2026-05-07) | +1 calendar day |
+| Sub-task 1 path pivot | YouTube account flag (2026-05-08) → local capture | +2–3 calendar days |
+
+**Revised end-of-M5c projection: 2026-05-18** (vs. original 2026-05-14, vs. v2-after-rate-limit 2026-05-15). Phase 0 close projection: **2026-05-19** (one calendar day after M5c close, accounting for Phase 0 status doc finalisation).
+
+The slip is documented honestly here — no silent compression. If clip delivery moves faster than expected, M5c may close earlier; the revised projection is the conservative side.
 
 ## Sub-task 1 — Training data collection
 
@@ -74,9 +91,15 @@ I recommend the **5–8 longer clips** path. Longer clips give more match divers
 
 Realistic plan: source 5–8 YouTube clips of Madden 26 ranked or franchise gameplay, 5–10 minutes each, varied team matchups. Document each clip's URL + matchup + duration in a regeneration script alongside the existing `madden26.mp4` reference.
 
-### Sourcing strategy (confirmed before Day 0.5)
+### Sourcing strategy
 
-**Source: public YouTube Madden 26 ranked / franchise / MUT gameplay clips**, found by searching "Madden 26 ranked gameplay" / "Madden 26 franchise" / "Madden 26 best plays". Same `yt-dlp` toolchain proven in M4.5 (already in the backend venv).
+**Active path (2026-05-08 onward): Option C — local Madden 26 capture.** PS5 + capture card + dev workstation. Same hardware pipeline that produced the M4.5 fixture (`agents/capture/fixtures/real/madden26.mp4`). Protocol: [docs/integrations/visionaudioforge/madden26-local-capture-protocol.md](../integrations/visionaudioforge/madden26-local-capture-protocol.md). Operator delivers .mp4 files to `agents/capture/fixtures/real/`; verification harness runs on each on operator instruction.
+
+**Deprecated path (Option A — YouTube yt-dlp sourcing).** Permanently abandoned for this milestone after the 2026-05-08 account-level pattern flag on the dev YouTube account. Script at `scripts/hud_calibration/sample_training_clips.py` is preserved but guarded against accidental run. See "Calendar slip — sub-task 1 sourcing path pivoted" section below for full timeline.
+
+**Original (deprecated) Option A strategy follows for reference and for future adapter reuse:**
+
+Public YouTube Madden 26 ranked / franchise / MUT gameplay clips, found by searching "Madden 26 ranked gameplay" / "Madden 26 franchise" / "Madden 26 best plays". Same `yt-dlp` toolchain proven in M4.5 (already in the backend venv).
 
 **Selection criteria** (in priority order):
 
