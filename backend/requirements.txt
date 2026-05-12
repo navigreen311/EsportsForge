@@ -29,6 +29,7 @@ stripe==10.12.0
 # 2FA / Security
 pyotp==2.9.0
 qrcode==7.4.2
+cffi>=1.16.0  # cryptography C-extension; must be pip-installed explicitly on some envs
 
 # Utilities
 httpx==0.27.0
