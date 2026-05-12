@@ -123,9 +123,19 @@ class ForgeVault:
     # Recent entries
     # -----------------------------------------------------------------
     def get_recent(self, user_id: str, limit: int = 10) -> list[VaultEntry]:
-        """Return the most recently created entries."""
+        """Return the most recently created entries.
+
+        Insertion order is the authoritative tiebreaker — test fixtures
+        often create entries in the same instant, and sorting on
+        ``created_at`` alone gives undefined ordering for equal keys.
+        """
         entries = _vaults.get(user_id, [])
-        sorted_entries = sorted(entries, key=lambda e: e.created_at, reverse=True)
+        # Reverse insertion order first, then stable-sort by created_at
+        # descending so distinct timestamps still take precedence.
+        reversed_entries = list(reversed(entries))
+        sorted_entries = sorted(
+            reversed_entries, key=lambda e: e.created_at, reverse=True
+        )
         return sorted_entries[:limit]
 
     # -----------------------------------------------------------------
