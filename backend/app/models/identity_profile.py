@@ -21,3 +21,4 @@ class IdentityProfile(UUIDPrimaryKeyMixin, Base):
     pace_preference: Mapped[str | None] = mapped_column(String(50), nullable=True)
     comfort_zones: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     agent_directness: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    arsenal_voice_settings: Mapped[dict | None] = mapped_column(JSON, nullable=True)

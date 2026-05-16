@@ -1,7 +1,7 @@
 /**
  * Settings card for Arsenal voice coaching — toggles for read,
  * guided practice, post-deploy debrief, pre-exec brief, and a tone
- * selector. Backed by localStorage via useArsenalVoiceSettings.
+ * selector. Settings are persisted to the server via PATCH.
  */
 
 'use client';
@@ -60,7 +60,7 @@ function Toggle({
 
 export function ArsenalVoiceSettings() {
   const settings = useArsenalVoice();
-  const update = useArsenalVoiceSettings((s) => s.update);
+  const { update } = useArsenalVoiceSettings();
 
   return (
     <div className="rounded-xl border border-dark-700/50 bg-dark-900/60 p-5">

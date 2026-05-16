@@ -42,6 +42,7 @@ _mount("app.api.v1.endpoints.backbone",        prefix="/backbone",        tags=[
 _mount("app.api.v1.endpoints.auth",            prefix="/auth",            tags=["Auth"])
 _mount("app.api.v1.endpoints.two_factor",      prefix="/2fa",             tags=["2FA"])
 _mount("app.api.v1.endpoints.users",           prefix="/users",           tags=["Users"])
+_mount("app.api.v1.endpoints.arsenal_voice_settings", prefix="",           tags=["Arsenal"])
 _mount("app.api.v1.endpoints.onboarding",      prefix="/onboarding",      tags=["Onboarding"])
 _mount("app.api.v1.endpoints.sessions",        prefix="/sessions",        tags=["Sessions"])
 _mount("app.api.v1.endpoints.daily_forge",     prefix="/daily-forge",     tags=["DailyForge"])
