@@ -65,6 +65,25 @@ The 8 v0.1 formations (per `services/visionaudioforge/app/adapters/madden26/form
 
 The slip is documented honestly here — no silent compression. If clip delivery moves faster than expected, M5c may close earlier; the revised projection is the conservative side.
 
+### Calendar slip update — 2026-05-23 (resuming after one-week pause)
+
+**What happened between 2026-05-08 and 2026-05-23:** Madden 26 purchase, install, and capture-setup work happened on the operator's side. Roughly a one-calendar-week pause from Claude's perspective; no code changes during the window.
+
+**Resumed:** 2026-05-23. Operator has Madden 26 installed and ready to capture. Sub-task 1 still open (no clips delivered yet); items 1–4 of today's resume request being addressed.
+
+**Updated cumulative slip:**
+
+| Slip | Cause | Magnitude |
+| --- | --- | --- |
+| Sub-task 6.5 buffer | Smoothing regression check (planned at v2 sign-off) | +0.5 working day |
+| Sub-task 1 rate-limit | YouTube IP throttle (2026-05-07) | +1 calendar day |
+| Sub-task 1 path pivot | YouTube account flag (2026-05-08) → local capture | +2–3 calendar days |
+| Sub-task 1 pause | Madden 26 purchase + install + capture setup (2026-05-08 to 2026-05-23) | **+1 calendar week** |
+
+**Revised end-of-M5c projection: 2026-05-29** (assuming sub-task 1 closes by 2026-05-24 once captures land, then the remaining 4.75 working days of sub-tasks 2–7 complete by end of week). Phase 0 close projection: **2026-05-30**.
+
+This is the third honest slip update on this milestone. The original 5.5-working-day estimate has expanded to roughly **3 calendar weeks elapsed** because external blockers (YouTube + hardware install timing) ate the window. The classifier work itself has not started.
+
 ## Sub-task 1 — Training data collection
 
 **Estimate:** 0.5 day.
