@@ -150,6 +150,33 @@ Not a translation — a topology change. The scoreboard cluster (abbrevs/scores)
 
 **First-pass OCR after re-calibration (1b feasibility, sampled frames — qualitative, not a labeled-set rate):** `clock` reads cleanly on 5/5 frames tried (conf ~0.99); `down`/`quarter`/`field_position` read as ordinals/digits the existing parsers handle (with normal 2↔Z noise); but the **white-on-saturated-team-color** elements — `team_home_abbr` ("BAL"→"3AL"), `team_away_abbr` ("CIN"→"IN"), `score_home`/`score_away` (empty/garbage) — and the small `play_clock` (":18"→"8") read poorly even with correct bboxes. Implication: **sub-task 1b is not a pure bbox move** — the abbrev/score elements likely need OCR-preprocessing changes (color-aware masking / per-channel threshold) beyond the M4.5 grey-panel CLAHE path, so 1b may land at the upper end (~0.5 day) or need its own micro-calibration of the preprocessing. Captured here so the 1b estimate isn't understated.
 
+### Sub-task 1b OUTCOME — `hud_regions.json` v2.1.0 shipped (2026-06-29)
+
+Approved (Option 2) and completed. v2.1.0 re-calibration replaces v2.0.0 (commit `bfb680c`). Final per-element OCR validation across 31 calibration frames (8 colour-diverse matchup clips), vs the M4.5 9/10≥80% bar:
+
+| Element | v2.1.0 | | Element | v2.1.0 |
+| --- | --- | --- | --- | --- |
+| team_home_abbr | 100% | | distance | 96.8% |
+| team_away_abbr | 100% | | play_clock | 92.6% |
+| quarter | 90.3% | | field_position | 96.8% |
+| clock | 93.3% | | **score_home** | **62.5%** |
+| down | 100% | | **score_away** | **56.2%** |
+
+**8/10 elements ≥80% (most 90–100%), beating M4.5 on every comparable element** (field_position 71.4%→96.8%). The white-on-color preprocessing fear from the feasibility probe largely evaporated: it was **almost all coordinates**, plus two small additive fixes — ordinal-map aliases (`ZND`→2, `ATR`→4; lifted `down` 63%→100%) and free-read scores with a `_parse_score` glyph-normalizer (Madden's ring-shaped "0" reads as "U"). **Scores accepted as a v0.1 known-weak element** (user sign-off 2026-06-29): the large italic numerals defeat EasyOCR on 2-digit values (legible to humans — needs digit segmentation, not a capture fix), and M5c trains on on-field layout, not the scorebug. Follow-up tracked to harden score OCR when a feature consumes live score. See [ADR 0013](../adr/0013-hud-calibration-recurring-maintenance.md).
+
+### Fixture transition — `madden26.mp4` retired as the canonical OCR source
+
+Consequence of the v2.1.0 replace-and-re-baseline decision (Option A). `madden26.mp4` shows the **old v2.0.0 layout**; the production `OCRPipeline` now loads v2.1.0 coords, so the M4.5 OCR baseline (the 7 hand-labeled `madden26.mp4` play-state frames behind `validate_ocr.py` / `m45_ocr_validation.json`) is **no longer canonical**. `madden26.mp4` stays on disk (gitignored) as historical reference for v2.0.0; it is not deleted.
+
+**Impact on sub-tasks 6 / 6.5 / 7 — the temporal-smoothing baseline migrates to a v2.1.0-layout matchup clip:**
+
+- **Chosen baseline clip: `madden26_bal_vs_cin_q1.mp4`** (longest matchup clip, ~20.8 min, many drives → good `field_position` variety, which is the element the smoothing test must lift). field_position already reads 96.8% per-frame on the v2.1.0 calibration, leaving realistic single-frame OCR noise for temporal smoothing to demonstrably remove.
+- **Sub-task 6** (temporal consistency): the `--temporal-smoothing` validation runs against ~7–10 hand-labeled frames sampled from `madden26_bal_vs_cin_q1.mp4` (with neighbouring frames for the 7-frame smoothing windows), **not** the retired `madden26.mp4` 7-frame set. The field_position 71.4%→≥80% gate still applies — re-measured on the new clip.
+- **Sub-task 6.5** (smoothing regression): the "smoothing OFF baseline" is re-established on the new clip as the reference (the ±2% tolerance is vs this new baseline, not the historical M4.5 numbers). `m65_smoothing_regression.json` records both the new baseline and the smoothing-on result.
+- **Sub-task 7** (Phase 0 acceptance, criterion 6 "OCR reads HUD accurately"): verified against v2.1.0 + the new clip; the v2.1.0 validation report (`m5c_1b_ocr_validation.json`) is the OCR evidence, superseding `m45_ocr_validation.json`.
+
+Documented here explicitly rather than silently re-pointing the harness — the swap is a deliberate baseline migration, recorded for the sub-task 6/6.5 status check.
+
 #### Updated cumulative slip
 
 | Slip | Cause | Magnitude |
@@ -515,7 +542,9 @@ The smoother lives in `core/`, not in any adapter. Future adapters (CFB 26, NBA 
 
 ### Re-run M4.5 OCR validation with smoothing
 
-Add `--temporal-smoothing` flag to `scripts/hud_calibration/validate_ocr.py`. With smoothing enabled, run on the same 7 play-state frames extended to 7-frame windows (sample neighbouring frames). Verify:
+> **Fixture migrated (see "Fixture transition" under the 2026-06-29 update).** The baseline is no longer `madden26.mp4` — it is `madden26_bal_vs_cin_q1.mp4` on the v2.1.0 layout. Hand-label ~7–10 play-state frames from it (with neighbours for the windows) in place of the retired 7-frame `madden26.mp4` set.
+
+Add `--temporal-smoothing` flag to `scripts/hud_calibration/validate_ocr.py`. With smoothing enabled, run on ~7 play-state frames (from the migrated clip) extended to 7-frame windows (sample neighbouring frames). Verify:
 
 - field_position success rate climbs from 71.4% to ≥ 80%.
 - No regression in the other 9 elements.
@@ -543,12 +572,12 @@ If temporal smoothing introduces measurable lag visible to consumers (e.g., SCOR
 
 Re-run the M4.5 OCR validation harness twice with explicit control:
 
-1. **Smoothing OFF** — `validate_ocr.py --temporal-smoothing=off` (control). Confirms M4.5 baseline numbers reproduce on the post-M5c codebase. If any element regresses below its M4.5 success rate, **stop** — non-smoothing changes broke something downstream.
+1. **Smoothing OFF** — `validate_ocr.py --temporal-smoothing=off` (control). Establishes the per-element baseline on the migrated `madden26_bal_vs_cin_q1.mp4` clip (the M4.5 `madden26.mp4` numbers are historical only — different HUD layout). If any element regresses below this fresh baseline once smoothing-agnostic changes land, **stop** — something downstream broke.
 2. **Smoothing ON** — `validate_ocr.py --temporal-smoothing=on`. Confirms field_position climbs from 71.4% to ≥ 80%, and confirms no other element falls below its M4.5 baseline.
 
 ### Acceptance gates
 
-- **Smoothing OFF baseline matches M4.5 within ±2%** per element. Within-noise tolerance — different OCR pre-runs may vary slightly due to non-determinism in EasyOCR's recognition, but a >2% drop signals a real regression.
+- **Smoothing OFF baseline is self-consistent within ±2%** per element across re-runs on the migrated clip (`madden26_bal_vs_cin_q1.mp4`). Within-noise tolerance — different OCR pre-runs may vary slightly due to non-determinism in EasyOCR's recognition, but a >2% drop between runs signals a real regression. (The historical M4.5 `madden26.mp4` numbers are not the comparison point — that fixture is the retired v2.0.0 layout.)
 - **Smoothing ON: field_position ≥ 80%** (closing the M4.5 gap).
 - **Smoothing ON: no element regresses** below its smoothing-OFF baseline. If smoothing reduces an element's success rate (e.g., if smoothing windows are too aggressive and over-smooth), tune that element's window down and retry.
 

@@ -125,6 +125,48 @@ Strategy: keep the bbox stable; let the OCR pipeline classify state by reading m
 | Calibration appears correct but downstream events look wrong | OCR cadence: per-frame OCR is too slow on real footage; cache per-snap | OCR cadence reform — see Phase 0 milestone breakdown |
 | Bboxes correct for the dev clip, wrong for production capture | Resolution scaling assumption is broken | Record per-resolution calibration; add to `hud_regions.json` |
 
+## HUD drift between calibrations — recurring maintenance
+
+**Calibration is not a one-time setup. It is recurring maintenance driven by external game updates you do not control.** A title publisher (EA, 2K, etc.) can change the on-screen HUD in a seasonal patch, a presentation-mode default, or a UI refresh — and the moment they do, a calibration measured against the old footage stops aligning. This happened to Madden 26 between M4.5 and M5c (see ADR 0013).
+
+### Worked example — Madden 26 v2.0.0 → v2.1.0 (M5c sub-task 1b)
+
+`hud_regions.json` v2.0.0 was calibrated (M4.5) against `madden26.mp4`, which shows a **left-anchored full-width broadcast bar**. The M5c capture batch (2026-06-25–27) instead shows a **compact center-clustered scorebug**. Same game, same 1080p30 capture — a different HUD presentation. Every v2.0.0 bbox missed the new layout: the scoreboard cluster had shifted **+213…+304 px right** and the down/distance panel had collapsed **−449…−854 px left** into a centered sub-row. Result: 0/10 elements readable against v2.0.0 on the new clips, despite the captures being pristine.
+
+### Detection signal — how you know drift happened
+
+Two cheap signals, both produced by `scripts/hud_calibration/verify_capture.py`:
+
+1. **`central_std` of the calibrated scoreboard band drops / straddles its threshold** — the band coordinates now average HUD-over-background instead of solid HUD.
+2. **OCR yields 0 valid reads of stable fields** (team abbreviations parse to garbage) on footage that is visually fine.
+
+A human glance at one frame confirms it instantly: the HUD is legible, just not where the bboxes are. **Drift is a coordinate/preprocessing problem, not a capture defect** — do not re-capture; re-calibrate.
+
+### Re-calibration workflow
+
+Re-run Steps 1–6 against the new footage, with three deltas:
+
+- **Step 1 sampler:** `scripts/hud_calibration/sample_calibration_frames.py` finds clean-HUD frames via a valid-clock gate and spreads them across game states; it is clip-set-agnostic and reusable for any title-update re-cal. Cover the stress cases the new render introduces (for the v2.1.0 scorebug: white-on-saturated-team-color abbrevs/scores, smaller element type, KICKOFF/GOAL panels).
+- **Step 4 measurement:** re-crop, do not re-translate — element type sizes change between presentations (v2.1.0 `down` is 95→60 px wide).
+- **Step 5 validator:** use a mismatch-printing validator (`validate_ocr_v21.py` is the v2.1.0 example) so a wrong ground-truth label can be told apart from a real OCR miss. During v2.1.0 several first-pass GT labels were wrong and the audit caught them — trust the mismatch list, not the headline percentage, until you have eyeballed the disputes.
+
+### Font/preprocessing confusions are presentation-specific
+
+The new render's font carries its own OCR confusions, fixed in the adapter (never core):
+
+- v2.1.0 ordinals OCR "2ND"→"ZND", "4TH"→"ATR" — handled by additive `_ORDINAL_MAP` aliases.
+- v2.1.0 score "0" renders as a ring read as "U" — handled by reading scores without a digit allowlist + a `_parse_score` glyph normalizer.
+
+### Versioning + fixture transition
+
+- **Bump `schema_version`** (2.0.0 → 2.1.0) and record a `supersedes` note in the `calibration` block.
+- **Replace, then re-baseline** (the M5c decision): the new layout becomes *the* calibration. Retire the old reference clip as the OCR source but **keep it on disk** as historical reference for the superseded version. Any downstream baseline pinned to the old clip (e.g. the OCR-smoothing regression set) migrates to a clip on the new layout — document the swap explicitly, never silently re-point.
+- **Accept known-weak elements honestly.** v2.1.0 scores land below the 80% bar (large italic numerals defeat EasyOCR on 2-digit values); documented as a v0.1 known-weak element with a tracked follow-up, exactly as field_position was the weak element in v2.0.0. Do not hide it.
+
+### Budget it
+
+Treat per-title re-calibration as a recurring ~0.5–1.0 day line item whenever a capture batch trips the drift detector, not as a surprise. The cost is bounded because the workflow above is deterministic.
+
 ## Next titles' calibration order
 
 Per the integration spec, the calibration order matches the adapter rollout:
