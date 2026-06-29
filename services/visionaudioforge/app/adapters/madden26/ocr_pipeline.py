@@ -70,6 +70,10 @@ _ORDINAL_MAP = {
     "1ST": 1, "2ND": 2, "3RD": 3, "4TH": 4, "5TH": 5,
     # Common EasyOCR misreads on the same panels
     "1S": 1, "2N": 2, "3R": 3, "4T": 4,
+    # v2.1.0 centered-scorebug font (M5c sub-task 1b): the down/quarter
+    # ordinals render in a tighter italic where "2"->"Z" and "4"->"A"
+    # are the dominant single-glyph confusions ("2ND"->"ZND", "4TH"->"ATR").
+    "ZND": 2, "ZN": 2, "ATH": 4, "ATR": 4, "ATF": 4, "AT": 4,
 }
 
 # Madden 26 field-position panel renders "▲<yards>" with a triangle
@@ -340,6 +344,28 @@ def _parse_int(text: str, lo: int, hi: int) -> tuple[int | None, float]:
     return (v, 1.0)
 
 
+# v2.1.0 centered-scorebug score glyphs read freely (no allowlist). The
+# large italic numerals have stable single-glyph confusions: "0"->U/O/Q,
+# "1"->I/L, "2"->Z, "5"->S, "6"->G, "7"->T, "8"->B. Scores are pure
+# numbers in [0, 199] so this aggressive digit-substitution is safe here
+# (it is NOT applied to alphanumeric fields like team abbreviations).
+_SCORE_GLYPH_SUB = str.maketrans(
+    {"U": "0", "O": "0", "Q": "0", "D": "0", "I": "1", "L": "1",
+     "Z": "2", "S": "5", "G": "6", "T": "7", "B": "8", "A": "4"}
+)
+
+
+def _parse_score(text: str) -> int | None:
+    """Map stylised score glyphs to digits, then parse an int in [0, 199]."""
+    if not text:
+        return None
+    digits = re.sub(r"[^0-9]", "", text.upper().translate(_SCORE_GLYPH_SUB))
+    if not digits or len(digits) > 3:
+        return None
+    v = int(digits)
+    return v if 0 <= v <= 199 else None
+
+
 class OCRPipeline:
     """Loads HUD region map at construction; reads frames by-region."""
 
@@ -365,9 +391,12 @@ class OCRPipeline:
         scoreboard = self.regions["scoreboard"]["subregions"]
         dnd = self.regions["down_distance"]["subregions"]
 
-        # Score / clock — digit-only or digit+colon allowlist.
-        s_home_text, s_home_conf = _read_text(_crop(frame, scoreboard["score_home"]), "0123456789")
-        s_away_text, s_away_conf = _read_text(_crop(frame, scoreboard["score_away"]), "0123456789")
+        # Scores — read WITHOUT a digit allowlist. The v2.1.0 centered
+        # scorebug renders "0" as a ring that EasyOCR recognises as "U"/"O";
+        # a digit-only allowlist drops it entirely. Read freely and let
+        # _parse_score map the stylised glyphs back to digits.
+        s_home_text, s_home_conf = _read_text(_crop(frame, scoreboard["score_home"]))
+        s_away_text, s_away_conf = _read_text(_crop(frame, scoreboard["score_away"]))
         clock_text, clock_conf = _read_text(_crop(frame, scoreboard["clock"]), "0123456789:")
 
         # Quarter / down — ordinal text. No allowlist (EasyOCR drops
@@ -386,8 +415,8 @@ class OCRPipeline:
         # noise and our regex pulls the digits.
         fp_text, fp_conf = _read_text(_crop(frame, dnd["field_position"]))
 
-        score_home_v, _ = _parse_int(s_home_text, 0, 199)
-        score_away_v, _ = _parse_int(s_away_text, 0, 199)
+        score_home_v = _parse_score(s_home_text)
+        score_away_v = _parse_score(s_away_text)
         quarter_v = _parse_ordinal_to_int(q_text, 1, 5)
         down_v = _parse_ordinal_to_int(down_text, 1, 4)
         distance_v = _parse_distance(dist_text)

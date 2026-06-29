@@ -1,51 +1,49 @@
 {
-  "schema_version": "2.0.0",
+  "schema_version": "2.1.0",
   "title": "madden26",
   "resolution": [1920, 1080],
   "calibration": {
-    "source_clip": "agents/capture/fixtures/real/madden26.mp4",
-    "calibration_date": "2026-05-07",
-    "milestone": "M4.5",
-    "methodology": "docs/integrations/visionaudioforge/madden26-hud-calibration-methodology.md",
-    "calibrated_frames": [
-      "scripts/hud_calibration/frames/frame_004400.png",
-      "scripts/hud_calibration/frames/frame_004538.png",
-      "scripts/hud_calibration/frames/frame_006100.png",
-      "scripts/hud_calibration/frames/frame_006421.png",
-      "scripts/hud_calibration/frames/frame_007049.png"
-    ],
+    "source_clips": "agents/capture/fixtures/real/madden26_<matchup>.mp4 (10 CPU-vs-CPU clips, 2026-06-25..27)",
+    "calibration_date": "2026-06-29",
+    "milestone": "M5c sub-task 1b",
+    "supersedes": "2.0.0 (madden26.mp4 left-anchored broadcast bar — retired as OCR source, kept as historical fixture)",
     "notes": [
-      "Madden 26's HUD lives in a bottom band (y=1006-1080), not at the top as the original spec assumed. v1.0.0 of this file used spec-derived coords that did not align with real Madden 26 footage.",
-      "On kickoff/punt frames, the 'distance' bbox renders 'KICKOFF' / 'PUNT' / 'EXTRA POINT' instead of '& <yards>'. The bbox is stable; OCR pipeline state-classifies the result.",
-      "team_home is the LEFT-positioned team in the HUD (helmet + abbrev cluster on left of band). team_away is RIGHT-positioned. Whether 'home' equals the literal NFL home team depends on the broadcast — Madden's HUD always shows the away team's helmet on the left of NFL telecasts."
+      "Madden 26 capture batch uses a COMPACT CENTER-CLUSTERED scorebug, not the v2.0.0 left-anchored full-width broadcast bar. Element drift vs v2.0.0: scoreboard cluster +213..+304px right, down/distance panel -449..-854px left into a centered sub-row. See ADR 0013.",
+      "Top row (y~990): home logo | home abbr | home score | center broadcast logo (decorative) | away score | away abbr | away logo. Bottom sub-row (y~1034): down | distance | quarter | clock | play_clock | field_position.",
+      "team_home is the LEFT cluster, team_away the RIGHT cluster (same convention as v2.0.0).",
+      "distance bbox renders 'KICKOFF' on kickoffs and 'GOAL' on goal-line snaps; OCR pipeline state-classifies. No PUNT panel present in the 1b capture batch.",
+      "field_position bbox excludes the leading possession-arrow glyph (which OCR'd as a stray '4'); anchored on the trailing digits.",
+      "Element type is smaller than v2.0.0 (e.g. down 95->60px wide); re-crop, do not re-translate.",
+      "Scores use a large italic numeral that EasyOCR misreads on some 2-digit values (e.g. 15->'6'); expect scores to be the weakest element, analogous to field_position in v2.0.0/M4.5."
     ]
   },
   "regions": {
     "scoreboard": {
-      "bbox": [0, 1006, 1190, 74],
+      "bbox": [700, 988, 600, 78],
       "subregions": {
-        "team_home_logo":  [80, 1014, 280, 60],
-        "team_home_abbr":  [460, 1024, 145, 40],
-        "score_home":      [640, 1018, 90, 50],
-        "score_away":      [770, 1018, 80, 50],
-        "team_away_abbr":  [870, 1024, 130, 40],
-        "team_away_logo":  [990, 1014, 200, 60],
-        "quarter":         [1265, 1024, 80, 40],
-        "clock":           [1350, 1024, 110, 40]
+        "team_home_logo": [700, 990, 78, 76],
+        "team_home_abbr": [782, 990, 100, 33],
+        "score_home":     [840, 990, 66, 34],
+        "score_away":     [1008, 990, 72, 34],
+        "team_away_abbr": [1082, 990, 122, 34],
+        "team_away_logo": [1210, 990, 80, 76],
+        "broadcast_logo": [930, 990, 80, 80],
+        "quarter":        [880, 1034, 62, 25],
+        "clock":          [932, 1030, 92, 34]
       }
     },
     "down_distance": {
-      "bbox": [1465, 1006, 455, 74],
+      "bbox": [740, 1030, 470, 36],
       "subregions": {
-        "play_clock":      [1455, 1020, 100, 48],
-        "down":            [1545, 1024, 95, 40],
-        "distance":        [1640, 1024, 100, 40],
-        "field_position":  [1790, 1024, 110, 40]
+        "play_clock":     [1016, 1034, 62, 26],
+        "down":           [752, 1035, 60, 24],
+        "distance":       [806, 1035, 60, 24],
+        "field_position": [1098, 1033, 64, 26]
       }
     },
     "formation_overlay_pre_snap": {
       "bbox": [400, 700, 1120, 80],
-      "appears": "M4.5 deferred — Madden 26 in the calibration clip does not show a persistent pre-snap formation overlay. Real classifier in M5c reads from the on-field player layout instead. Bbox kept as a placeholder; do not OCR-read this region until M5c re-validates."
+      "appears": "M5c real classifier reads on-field player layout, not a HUD overlay. Placeholder retained."
     }
   }
 }
