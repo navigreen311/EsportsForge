@@ -1,0 +1,92 @@
+{
+  "clip": "madden26_wash_vs_pits_q4.mp4",
+  "kind": "matchup",
+  "expected_abbrevs": [
+    "WAS",
+    "PIT"
+  ],
+  "container": {
+    "resolution": [
+      1920,
+      1080
+    ],
+    "fps": 30.0,
+    "codec": "h264",
+    "frame_count": 10508,
+    "duration_sec": 350.3
+  },
+  "container_checks": {
+    "resolution_ok": true,
+    "fps_ok": true,
+    "fps_note": "matches 30 fps capture (protocol floor; plan v2 assumed 60)",
+    "codec_ok": true
+  },
+  "frames": [
+    {
+      "frame_idx": 1050,
+      "ts_sec": 35.0,
+      "read_ok": true,
+      "central_std": 47.2,
+      "hud_band_present": false
+    },
+    {
+      "frame_idx": 2627,
+      "ts_sec": 87.57,
+      "read_ok": true,
+      "central_std": 44.9,
+      "hud_band_present": false
+    },
+    {
+      "frame_idx": 5254,
+      "ts_sec": 175.13,
+      "read_ok": true,
+      "central_std": 46.6,
+      "hud_band_present": false,
+      "ocr": {
+        "team_home_abbr": null,
+        "team_away_abbr": "ATH ZAA",
+        "score_home": null,
+        "score_away": null,
+        "quarter": null,
+        "clock": null,
+        "down": null,
+        "distance": null,
+        "field_position": null,
+        "confidence_overall": 0.449
+      },
+      "ocr_elapsed_ms": 1000.0
+    },
+    {
+      "frame_idx": 7881,
+      "ts_sec": 262.7,
+      "read_ok": true,
+      "central_std": 77.1,
+      "hud_band_present": true
+    },
+    {
+      "frame_idx": 9457,
+      "ts_sec": 315.23,
+      "read_ok": true,
+      "central_std": 51.8,
+      "hud_band_present": false
+    }
+  ],
+  "hud_band": {
+    "max_central_std": 77.1,
+    "frames_with_band": 1,
+    "frames_sampled": 5,
+    "threshold": 70.0,
+    "present": true
+  },
+  "abbrev_check": {
+    "applies": true,
+    "frames_with_plausible_abbrevs": 0,
+    "plausible": false
+  },
+  "container_ok": true,
+  "verdict": "fail",
+  "reasons": [
+    "no sampled frame produced plausible team abbreviations against v2.0.0 bboxes \u2014 check HUD-layout alignment"
+  ],
+  "verify_elapsed_sec": 1.8
+}

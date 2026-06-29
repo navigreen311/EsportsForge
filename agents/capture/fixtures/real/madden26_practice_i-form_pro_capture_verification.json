@@ -1,0 +1,85 @@
+{
+  "clip": "madden26_practice_i-form_pro.mp4",
+  "kind": "practice",
+  "expected_abbrevs": null,
+  "container": {
+    "resolution": [
+      1920,
+      1080
+    ],
+    "fps": 30.0,
+    "codec": "h264",
+    "frame_count": 8473,
+    "duration_sec": 282.4
+  },
+  "container_checks": {
+    "resolution_ok": true,
+    "fps_ok": true,
+    "fps_note": "matches 30 fps capture (protocol floor; plan v2 assumed 60)",
+    "codec_ok": true
+  },
+  "frames": [
+    {
+      "frame_idx": 847,
+      "ts_sec": 28.23,
+      "read_ok": true,
+      "central_std": 22.6,
+      "hud_band_present": false
+    },
+    {
+      "frame_idx": 2118,
+      "ts_sec": 70.6,
+      "read_ok": true,
+      "central_std": 7.7,
+      "hud_band_present": false
+    },
+    {
+      "frame_idx": 4236,
+      "ts_sec": 141.2,
+      "read_ok": true,
+      "central_std": 12.2,
+      "hud_band_present": false,
+      "ocr": {
+        "team_home_abbr": null,
+        "team_away_abbr": null,
+        "score_home": null,
+        "score_away": null,
+        "quarter": null,
+        "clock": null,
+        "down": null,
+        "distance": null,
+        "field_position": null,
+        "confidence_overall": 0.0
+      },
+      "ocr_elapsed_ms": 953.0
+    },
+    {
+      "frame_idx": 6354,
+      "ts_sec": 211.8,
+      "read_ok": true,
+      "central_std": 2.9,
+      "hud_band_present": false
+    },
+    {
+      "frame_idx": 7625,
+      "ts_sec": 254.17,
+      "read_ok": true,
+      "central_std": 13.9,
+      "hud_band_present": false
+    }
+  ],
+  "hud_band": {
+    "max_central_std": 22.6,
+    "frames_with_band": 0,
+    "frames_sampled": 5,
+    "threshold": 70.0,
+    "present": false
+  },
+  "abbrev_check": {
+    "applies": false
+  },
+  "container_ok": true,
+  "verdict": "pass",
+  "reasons": [],
+  "verify_elapsed_sec": 1.7
+}

@@ -84,6 +84,87 @@ The slip is documented honestly here — no silent compression. If clip delivery
 
 This is the third honest slip update on this milestone. The original 5.5-working-day estimate has expanded to roughly **3 calendar weeks elapsed** because external blockers (YouTube + hardware install timing) ate the window. The classifier work itself has not started.
 
+### Calendar slip update — 2026-06-29 (clips delivered; capture verified; HUD-layout drift found)
+
+**What happened between 2026-05-23 and 2026-06-29:** the operator completed the hardware path (PS5 → HDMI splitter → TV + capture dongle → CLX) and ran the capture session. Clips landed 2026-06-25–27 (file mtimes). This is a longer wall-clock gap than the "one calendar week" the 05-23 update anticipated — **~5 weeks elapsed since the last commit**, with the operator's purchase/install/capture work spread across it. Recorded honestly, no compression: the prior 05-23 note's projected 05-29 close did not hold.
+
+**19 clips delivered** to `agents/capture/fixtures/real/` — 10 CPU-vs-CPU matchup clips (5 first-half, 5 fourth-quarter) + 9 practice-mode clips (8 target formations + 1 bonus `shotgun_tight`). Total footage **3.41 hours** (12,268 s). Verification harness `scripts/hud_calibration/verify_capture.py` was built this session and run across all 19.
+
+#### Container verification — all 19 pass
+
+ffprobe + OpenCV agree on every clip: **1920×1080, 30.00 fps, H.264 (yuv420p)**. Matchup-clip bitrate ≈ 19.2 Mbps, consistent with the declared 20 Mbps CBR. Resolution/codec match the protocol exactly.
+
+#### Frame-rate correction — 30 fps, not 60 fps (re-derivation)
+
+**Plan v2 assumed 60 fps (matching the M4.5 fixture's 59.94 fps). The capture dongle is a 30 fps device.** This does not threaten the frame target — it changes the sampling stride, not the yield ceiling:
+
+- **Pre-snap window:** 3–5 s of stable pre-snap = **90–150 frames at 30 fps** (was 180–300 at 60 fps; same wall-clock).
+- **Candidate sampling stride:** to keep ~0.5 s spacing, sample **every 15 frames at 30 fps** (the plan's `sample_pre_snap_candidates.py` heuristic said "every 30 frames ≈ 0.5 s at 60 fps" — that stride must change 30 → 15 for this footage, else only 3–5 candidates land per window).
+- **Labelable yield:** 90–150 frame window ÷ 15 = **6–10 labelable candidates per pre-snap window**; with roughly one usable window per minute of matchup footage that is ~6–10 labelable frames per minute. Practice-mode clips yield far more — they are repeated snaps of a single formation, so nearly every pre-snap is usable.
+
+**Does 3.41 hours hit the ~1,400-frame target? Yes — with large margin.**
+
+| Source | Footage | Conservative yield | Candidate frames |
+| --- | --- | --- | --- |
+| 10 matchup clips | 160.2 min | 6–10 / min | ~960–1,600 |
+| 9 practice clips | 44.3 min | 15–30 / min (dense reps) | ~660–1,330 |
+| **Total** | **204.5 min** | — | **~1,600–2,900 candidates** |
+
+The plan's pipeline needs ~2,000 candidates → ~1,400 labeled (≈30% skipped). The delivered footage clears that. Better still, the 9 dedicated practice clips give **per-class balance for free**: each target formation has its own ~4–6 min clip (≈480 candidate frames at every-15 sampling), far exceeding the ~175/class target. The binding constraint on sub-task 2 is **labeling time (1 working day)**, not footage availability. Matchup clips remain essential for generalization — practice-only would overfit the classifier to practice-mode camera/presentation.
+
+#### HUD-layout drift — `hud_regions.json` v2.0.0 bboxes do NOT align with the new clips
+
+The single material finding. The new captures use a **compact, center-clustered scorebug** (team logos + abbrevs + scores in a centered pill, with down/distance/clock as a sub-row directly beneath). The M4.5 fixture (`madden26.mp4`, 2026-05-07) — which v2.0.0 was calibrated against — uses a **left-anchored, full-width broadcast bar** (EA SPORTS MADDEN branding at far left; scoreboard x=0–1190; down/distance a separate right-side panel at x=1465–1920). The layouts are different presentations.
+
+Evidence (bbox-overlay + montage captured this session): with v2.0.0 coordinates, the scoreboard subregions land on **empty green field** on the left and the down/distance subregions on **empty field** at the right; the actual HUD sits centered around x≈580–1180. Consequence in the verification run:
+
+- **All 10 matchup clips: FAIL** the v2.0.0 HUD/OCR gate — scoreboard-band `central_std` is diluted (the wide v2.0.0 band now averages HUD-over-field, landing ~48–79 and straddling the 70 threshold), and no sampled frame yields plausible team abbreviations against the misaligned abbrev bboxes.
+- **All 9 practice clips: PASS** container-only verification (the scoreboard heuristic correctly does not apply — practice mode renders a different play-call HUD).
+
+**This is a coordinate problem, not a capture-quality problem.** A first-pass re-calibration of the centered layout (done this session as a proof-of-concept, not committed) already reads `down/distance → "3RD & 6"`, `quarter → "2ND"`, `play_clock → "18"`, `field_position → "49"` correctly via the production OCR pipeline; only the team-abbrev crops need tighter tuning. The captures are clean and OCR-able once re-calibrated.
+
+**Impact scoping — what this blocks and what it doesn't:**
+
+- **Does NOT block sub-tasks 2–5** (labeling, split, training, eval). The formation classifier reads the **on-field player layout**, not the HUD scorebug. Both clip kinds are valid training data regardless of scorebug position.
+- **Does NOT block sub-tasks 6/6.5/7** (temporal smoothing + Phase 0 OCR re-validation) **as currently specified** — those run against the M4.5 fixture `madden26.mp4`, which still matches v2.0.0.
+- **DOES require a new calibration** (`hud_regions.json` v2.1.0, centered-scorebug variant) **before any OCR path consumes the new clips** — e.g., if we later want auto-derived game-state ground truth alongside the formation labels. Bounded at ~0.25–0.5 day given the proof-of-concept above. Proposed as **sub-task 1b** (its own commit + estimate) rather than silently folded into another sub-task.
+
+**Known unknown (not a blocker):** whether a Madden 26 title update changed the default scorebug between 05-07 and 06-25, or the centered bug is a Play-Now-CPU-vs-CPU presentation difference vs. the M4.5 clip. Operator does not know offhand; flagged here for the record, not gating any decision. Either way the factual finding (v2.0.0 misaligned on the new clips) stands; the cause only affects whether v2.0.0 also needs revisiting for future M4.5-style captures.
+
+**Quantitative HUD drift (measured 2026-06-29).** Element positions are fixed across all 10 matchup clips (the `clock` bbox reads a valid `M:SS` on every clip at one set of coords), so the drift is a single universal layout delta, not per-clip variance. Center-X shift of each element, v2.0.0 → measured centered-scorebug position:
+
+| Element | v2.0.0 [x,y,w,h] | measured [x,y,w,h] | ΔcenterX | ΔY |
+| --- | --- | --- | --- | --- |
+| team_home_abbr | [460,1024,145,40] | [794,994,84,30] | +304 | −30 |
+| score_home | [640,1018,90,50] | [905,994,52,30] | +246 | −24 |
+| score_away | [770,1018,80,50] | [1042,992,70,32] | +267 | −26 |
+| team_away_abbr | [870,1024,130,40] | [1102,994,92,30] | +213 | −30 |
+| quarter | [1265,1024,80,40] | [880,1034,62,25] | −394 | +10 |
+| clock | [1350,1024,110,40] | [932,1030,92,34] | −427 | +6 |
+| play_clock | [1455,1020,100,48] | [1030,1034,52,26] | −449 | +14 |
+| down | [1545,1024,95,40] | [752,1035,60,24] | −810 | +11 |
+| distance | [1640,1024,100,40] | [808,1035,56,24] | −854 | +11 |
+| field_position | [1790,1024,110,40] | [1088,1033,72,26] | −721 | +9 |
+
+Not a translation — a topology change. The scoreboard cluster (abbrevs/scores) moved **right +213…+304 px** toward center; the right-side down/distance panel collapsed **left 449…854 px** into a centered sub-row. Every element is ≥213 px off its v2.0.0 center → zero overlap → v2.0.0 yields **0/10 readable elements** on the new clips. Element type is also smaller (e.g. `down` 95→60 px wide), so re-calibration must re-crop, not just re-translate.
+
+**First-pass OCR after re-calibration (1b feasibility, sampled frames — qualitative, not a labeled-set rate):** `clock` reads cleanly on 5/5 frames tried (conf ~0.99); `down`/`quarter`/`field_position` read as ordinals/digits the existing parsers handle (with normal 2↔Z noise); but the **white-on-saturated-team-color** elements — `team_home_abbr` ("BAL"→"3AL"), `team_away_abbr` ("CIN"→"IN"), `score_home`/`score_away` (empty/garbage) — and the small `play_clock` (":18"→"8") read poorly even with correct bboxes. Implication: **sub-task 1b is not a pure bbox move** — the abbrev/score elements likely need OCR-preprocessing changes (color-aware masking / per-channel threshold) beyond the M4.5 grey-panel CLAHE path, so 1b may land at the upper end (~0.5 day) or need its own micro-calibration of the preprocessing. Captured here so the 1b estimate isn't understated.
+
+#### Updated cumulative slip
+
+| Slip | Cause | Magnitude |
+| --- | --- | --- |
+| Sub-task 6.5 buffer | Smoothing regression check (planned at v2 sign-off) | +0.5 working day |
+| Sub-task 1 rate-limit | YouTube IP throttle (2026-05-07) | +1 calendar day |
+| Sub-task 1 path pivot | YouTube account flag (2026-05-08) → local capture | +2–3 calendar days |
+| Sub-task 1 pause | Madden 26 purchase + install (2026-05-08 → 2026-05-23) | +1 calendar week |
+| Sub-task 1 capture gap | "Ready to capture" (05-23) → clips delivered (06-25–27) | **+~4–5 calendar weeks wall-clock** |
+| Sub-task 1b (new) | `hud_regions.json` centered-scorebug re-calibration | +0.25–0.5 working day (only if new clips feed an OCR path) |
+
+**Wall-clock elapsed since plan v2 (2026-05-07): ~7.5 calendar weeks.** Attributable working-time slip remains small (the blockers were external/idle, not failed work); the calendar moved because of YouTube + purchase/install/capture timing on the operator's side. **Revised end-of-M5c projection: 2026-07-04**, assuming sub-task 1 signs off this week, sub-task 2 labeling starts immediately (footage is ready), and the remaining ~4.75 working days of sub-tasks 2–7 (+ optional 1b) complete. Phase 0 close projection: **2026-07-05**.
+
+This is the fourth honest slip update. The classifier work still has not started — but for the first time the training footage is in hand and verified, and the only new risk surfaced (HUD drift) is a bounded re-calibration, not a capture redo.
+
 ## Sub-task 1 — Training data collection
 
 **Estimate:** 0.5 day.

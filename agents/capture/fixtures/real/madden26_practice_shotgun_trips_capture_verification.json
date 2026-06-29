@@ -1,0 +1,85 @@
+{
+  "clip": "madden26_practice_shotgun_trips.mp4",
+  "kind": "practice",
+  "expected_abbrevs": null,
+  "container": {
+    "resolution": [
+      1920,
+      1080
+    ],
+    "fps": 30.0,
+    "codec": "h264",
+    "frame_count": 8147,
+    "duration_sec": 271.6
+  },
+  "container_checks": {
+    "resolution_ok": true,
+    "fps_ok": true,
+    "fps_note": "matches 30 fps capture (protocol floor; plan v2 assumed 60)",
+    "codec_ok": true
+  },
+  "frames": [
+    {
+      "frame_idx": 814,
+      "ts_sec": 27.13,
+      "read_ok": true,
+      "central_std": 4.1,
+      "hud_band_present": false
+    },
+    {
+      "frame_idx": 2036,
+      "ts_sec": 67.87,
+      "read_ok": true,
+      "central_std": 12.7,
+      "hud_band_present": false
+    },
+    {
+      "frame_idx": 4073,
+      "ts_sec": 135.77,
+      "read_ok": true,
+      "central_std": 24.9,
+      "hud_band_present": false,
+      "ocr": {
+        "team_home_abbr": null,
+        "team_away_abbr": null,
+        "score_home": 33,
+        "score_away": null,
+        "quarter": null,
+        "clock": null,
+        "down": null,
+        "distance": null,
+        "field_position": null,
+        "confidence_overall": 0.076
+      },
+      "ocr_elapsed_ms": 1000.0
+    },
+    {
+      "frame_idx": 6110,
+      "ts_sec": 203.67,
+      "read_ok": true,
+      "central_std": 5.8,
+      "hud_band_present": false
+    },
+    {
+      "frame_idx": 7332,
+      "ts_sec": 244.4,
+      "read_ok": true,
+      "central_std": 4.4,
+      "hud_band_present": false
+    }
+  ],
+  "hud_band": {
+    "max_central_std": 24.9,
+    "frames_with_band": 0,
+    "frames_sampled": 5,
+    "threshold": 70.0,
+    "present": false
+  },
+  "abbrev_check": {
+    "applies": false
+  },
+  "container_ok": true,
+  "verdict": "pass",
+  "reasons": [],
+  "verify_elapsed_sec": 1.8
+}

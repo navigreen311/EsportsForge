@@ -83,13 +83,17 @@ python scripts/hud_calibration/verify_capture.py \
   --video agents/capture/fixtures/real/madden26_<matchup>.mp4
 ```
 
-The verification script (to be added when capture starts) samples 5 frames at 10/25/50/75/90% positions and checks:
+The verification script (`scripts/hud_calibration/verify_capture.py`, added 2026-06-29 with the first capture batch) samples 5 frames at 10/25/50/75/90% positions and checks:
 
-1. Resolution matches 1920×1080 (or scales linearly per the `_crop` helper).
+1. Resolution matches 1920×1080 (or scales linearly per the `_crop` helper); framerate ≥30 fps; codec H.264.
 2. Bottom-band HUD region present (`central_std >= 70` in the scoreboard area, same heuristic the M4.5 calibration used).
-3. Sample OCR readings confirm `team_home_abbr` / `team_away_abbr` parse to the expected NFL abbreviations.
+3. Sample OCR readings (production `OCRPipeline`) confirm `team_home_abbr` / `team_away_abbr` parse to the expected NFL abbreviations.
 
-Output: `agents/capture/fixtures/real/<matchup>_capture_verification.json`. Pass/fail logged. Failed clips get re-captured.
+The scoreboard-band + abbrev checks (2 and 3) apply only to **matchup** clips. **Practice-mode** clips render a different play-call HUD with no scoreboard band, so they are verified on container sanity alone (`--video` auto-detects clip kind by filename). Run the whole batch with `--all`.
+
+Output: `agents/capture/fixtures/real/<matchup>_capture_verification.json` per clip + `_capture_verification_summary.json` for `--all`. Pass/fail logged.
+
+> **HUD-layout caution (discovered 2026-06-29).** The first capture batch uses a **compact center-clustered scorebug**, not the M4.5 fixture's left-anchored full-width broadcast bar that `hud_regions.json` v2.0.0 was calibrated against. The container is perfect (all 1080p30 H.264) but the v2.0.0 bboxes miss the new HUD, so checks 2–3 report FAIL on matchup clips against v2.0.0 — a coordinate mismatch, **not** a capture defect (a first-pass re-calibration reads the new layout correctly). A failing matchup clip here means "re-calibrate `hud_regions.json` for this scorebug (sub-task 1b)", not "re-capture". Only re-capture if the container checks (resolution/fps/codec) or HUD *presence* (visually confirmed) genuinely fail.
 
 ## Operator handoff (for clip delivery)
 
