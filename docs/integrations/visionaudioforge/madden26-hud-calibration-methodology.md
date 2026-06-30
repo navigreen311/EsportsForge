@@ -167,6 +167,48 @@ The new render's font carries its own OCR confusions, fixed in the adapter (neve
 
 Treat per-title re-calibration as a recurring ~0.5–1.0 day line item whenever a capture batch trips the drift detector, not as a surprise. The cost is bounded because the workflow above is deterministic.
 
+## Single-frame agent labeling limits (M5c sub-task 2)
+
+Calibration produces the OCR pipeline; the *formation classifier* additionally
+needs labeled training frames. M5c tried to have the coding agent bulk-label
+matchup-clip pre-snap frames into the canonical-8 offensive formations. The
+empirical result drew a clear, reusable line:
+
+**What the agent does reliably (high accuracy):**
+- **SKIP screening.** The agent confidently rejects non-trainable frames —
+  coach close-ups, crowd/sideline cuts, kickoffs/punts, replay graphics, and
+  mid-play piles/ball-carrier close-ups. These are visually unambiguous.
+
+**What the agent cannot do (from these frames):**
+- **Resolve the canonical-8 formation.** Madden's gameplay camera is elevated,
+  ball-following, and zoomed — not an all-22 formation view. In a single static
+  frame the agent cannot recover **QB depth** (shotgun vs pistol vs
+  under-center) or **WR-count-per-side** (trips vs bunch vs doubles vs empty),
+  which are exactly the distinctions the taxonomy is built on. Measured
+  confident yield was ~0–1 of 12 sampled frames; precise-class accuracy fell
+  below even the 85% escalation line. Cropping to the LOS and upscaling did not
+  recover the missing detail.
+
+This is a **camera-angle limitation, not a tooling failure**, and every sports
+sim with a similar broadcast/ball-following camera (CFB 26, NBA 2K26, EA FC 26,
+MLB 26) will hit it. Do not assume an agent can label fine on-field geometry
+from gameplay frames; budget for the division of labor below.
+
+**The reusable division of labor** (full protocol in
+[training-data-labeling-protocol.md](training-data-labeling-protocol.md)):
+
+1. **Agent pre-screens skips** — high-accuracy rejection of non-trainable frames.
+2. **A tightened selector produces a clean pool** — require the players *locked*
+   (two consecutive near-zero-motion samples, not a single mid-play lull),
+   strong field-green dominance, a live scorebug, and an OCR drop of
+   kickoff/punt panels. This is the v2 `sample_pre_snap_candidates.py`.
+3. **A human labels the canonical classes** — with frame-scrubbing for snap
+   context and domain knowledge, which the camera angle still demands.
+
+The escalation discipline that surfaced this — *attempt, calibrate on a small
+sample, and stop before bulk-producing low-confidence labels* — is itself the
+reusable rule. Bad ground truth poisons the classifier worse than fewer labels.
+
 ## Next titles' calibration order
 
 Per the integration spec, the calibration order matches the adapter rollout:

@@ -110,14 +110,30 @@ def preload_frames(cands: list[dict]) -> list[dict]:
 
 def _overlay(img, idx: int, total: int, c: dict, medium: bool, labeled: int):
     canvas = img.copy()
-    bar = canvas.copy()
-    cv2.rectangle(bar, (0, 0), (DISPLAY_SIZE[0], 70), (0, 0, 0), -1)
-    cv2.addWeighted(bar, 0.55, canvas, 0.45, 0, canvas)
+    W, H = DISPLAY_SIZE
+    # Top status bar.
+    top = canvas.copy()
+    cv2.rectangle(top, (0, 0), (W, 70), (0, 0, 0), -1)
+    cv2.addWeighted(top, 0.55, canvas, 0.45, 0, canvas)
     cv2.putText(canvas, f"[{idx+1}/{total}] {c['clip']}  f{c['frame_idx']} ({c['ts_sec']}s)",
                 (8, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1, cv2.LINE_AA)
-    mode = "MEDIUM-next" if medium else "high"
-    cv2.putText(canvas, f"labeled {labeled}   quality:{mode}   1-8 label  SPACE skip  m med  j/l nav  q quit",
-                (8, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1, cv2.LINE_AA)
+    mode = "MEDIUM (next label)" if medium else "high"
+    qcol = (0, 165, 255) if medium else (0, 255, 255)
+    cv2.putText(canvas, f"labeled this session: {labeled}    quality: {mode}",
+                (8, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.5, qcol, 1, cv2.LINE_AA)
+    # Bottom legend: which number labels which formation + the control keys.
+    bot = canvas.copy()
+    cv2.rectangle(bot, (0, H - 78), (W, H), (0, 0, 0), -1)
+    cv2.addWeighted(bot, 0.6, canvas, 0.4, 0, canvas)
+    col_w = W // 4
+    for i, formation in enumerate(TOP_8_FORMATIONS):
+        row, col = divmod(i, 4)
+        x = 8 + col * col_w
+        y = H - 54 + row * 22
+        cv2.putText(canvas, f"{i+1} {formation}", (x, y),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (120, 255, 120), 1, cv2.LINE_AA)
+    cv2.putText(canvas, "SPACE skip   m medium   j/l (or <-/->) nav   q save+quit",
+                (8, H - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 255), 1, cv2.LINE_AA)
     return canvas
 
 
@@ -194,11 +210,40 @@ def check() -> int:
     return 0
 
 
+def smoke() -> int:
+    """GUI smoke test: open the fullscreen window, render the first candidate
+    frame for ~1.5 s, then close. Confirms cv2 GUI (opencv-python, not
+    -headless) works end-to-end without starting a real labeling session."""
+    cands = load_matchup_candidates()
+    if not cands:
+        print("no candidates to smoke-test")
+        return 1
+    frames = preload_frames(cands[:1])
+    if not frames:
+        print("could not load first candidate frame")
+        return 1
+    win = "label_formations"
+    cv2.namedWindow(win, cv2.WINDOW_NORMAL)
+    cv2.setWindowProperty(win, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    cv2.imshow(win, _overlay(frames[0]["img"], 0, len(cands), frames[0], False, 0))
+    cv2.waitKey(1500)
+    cv2.destroyAllWindows()
+    cv2.waitKey(1)  # flush destroy on some backends
+    print("smoke OK — window opened and first frame rendered cleanly")
+    return 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--check", action="store_true", help="no-GUI self-test")
+    p.add_argument("--smoke", action="store_true",
+                   help="GUI smoke test: open window + render first frame, then close")
     args = p.parse_args()
-    return check() if args.check else run()
+    if args.check:
+        return check()
+    if args.smoke:
+        return smoke()
+    return run()
 
 
 if __name__ == "__main__":
