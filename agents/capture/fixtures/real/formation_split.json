@@ -1,0 +1,94 @@
+{
+  "version": "1.0.0",
+  "milestone": "M5c sub-task 3",
+  "method": "match-level disjoint, by clip (never by frame)",
+  "design": "8 practice clips (single-formation) -> train so the model learns every class; val/test are held-out MATCHUP clips for real-game eval",
+  "train_clips": [
+    "madden26_bal_vs_cin_q1.mp4",
+    "madden26_dal_vs_sf_q1.mp4",
+    "madden26_gb_vs_det_q1.mp4",
+    "madden26_ind_vs_ne__q4.mp4",
+    "madden26_practice_i-form_pro.mp4",
+    "madden26_practice_pistol_strong.mp4",
+    "madden26_practice_shotgun_bunch.mp4",
+    "madden26_practice_shotgun_doubles.mp4",
+    "madden26_practice_shotgun_empty.mp4",
+    "madden26_practice_shotgun_trips.mp4",
+    "madden26_practice_singleback_ace.mp4",
+    "madden26_practice_singleback_wing.mp4",
+    "madden26_tb_vs_la_q4.mp4",
+    "madden26_wash_vs_pits_q4.mp4"
+  ],
+  "val_clips": [
+    "madden26_buf_vs_mia_q1.mp4",
+    "madden26_lac_vs_sea_q4.mp4"
+  ],
+  "test_clips": [
+    "madden26_chi_vs_hou_q4.mp4",
+    "madden26_kc_vs_phi._q1.mp4"
+  ],
+  "clip_counts": {
+    "train": 14,
+    "val": 2,
+    "test": 2,
+    "train_practice": 8,
+    "train_matchup": 6
+  },
+  "per_split_class_counts": {
+    "train": {
+      "shotgun_trips": 132,
+      "shotgun_bunch": 115,
+      "shotgun_empty": 95,
+      "i_form_pro": 83,
+      "singleback_ace": 178,
+      "pistol_strong": 77,
+      "shotgun_doubles": 63,
+      "singleback_wing": 245
+    },
+    "val": {
+      "shotgun_trips": 41,
+      "shotgun_bunch": 24,
+      "shotgun_empty": 12,
+      "i_form_pro": 6,
+      "singleback_ace": 14,
+      "pistol_strong": 9,
+      "shotgun_doubles": 6,
+      "singleback_wing": 8
+    },
+    "test": {
+      "shotgun_trips": 26,
+      "shotgun_bunch": 23,
+      "shotgun_empty": 14,
+      "i_form_pro": 6,
+      "singleback_ace": 6,
+      "pistol_strong": 3,
+      "shotgun_doubles": 20,
+      "singleback_wing": 21
+    }
+  },
+  "per_split_totals": {
+    "train": 988,
+    "val": 120,
+    "test": 119
+  },
+  "low_support_warning": {
+    "threshold": 15,
+    "note": "matchup footage is sparse/uneven for rare formations; val/test cannot hit >=15 for these. Caveat low-support F1 in sub-task 5.",
+    "below_15": {
+      "val": [
+        "shotgun_empty",
+        "i_form_pro",
+        "singleback_ace",
+        "pistol_strong",
+        "shotgun_doubles",
+        "singleback_wing"
+      ],
+      "test": [
+        "shotgun_empty",
+        "i_form_pro",
+        "singleback_ace",
+        "pistol_strong"
+      ]
+    }
+  }
+}
