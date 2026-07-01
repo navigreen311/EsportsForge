@@ -50,6 +50,22 @@ After labeling, the human spot-checks a stratified sample (≈30 frames across c
 
 The same thresholds apply when the *agent* attempts step 1's labeling on a calibration sample: if the agent's confident fine-class accuracy is below 85%, it pre-screens skips only and the human owns the canonical labels.
 
+## Capture mode determines the learnable signal
+
+**Before capturing, decide what signal the model needs — then pick the capture mode that contains it.** M5c learned this the expensive way (ADR 0014): the CPU-vs-CPU capture was ideal for *live-gameplay* HUD OCR (scorebug, down/distance) and for *on-field* frames, but it **structurally omitted the play-call screen** — the CPU picks plays off-screen, so the formation-name overlay never appears. When the pixel-based formation CNN failed (single-frame gameplay-camera classification ceilinged at ~0.22 macro-F1), the pivot to reading the formation *name* off the play-call overlay required **re-capturing in a different mode** (practice play-select + human-played gameplay) because the original footage simply didn't contain that signal.
+
+The rule for future title adapters:
+
+| Signal the model needs | Capture mode that contains it |
+| --- | --- |
+| Live-gameplay HUD (score, clock, down) via OCR | Any in-play footage (incl. CPU-vs-CPU) |
+| On-field geometry (formation, coverage) via CNN | In-play footage — **but** verify the broadcast camera exposes enough player detail (M5c: it did not for fine formations) |
+| Explicit UI text (formation/play NAME) via OCR | A mode that *shows the menu/overlay* — practice play-select, human-played play-call. **NOT** CPU-vs-CPU. |
+
+Two consequences:
+1. **Prefer OCR-of-overlay over CNN-from-pixels when the game displays the signal as text** (ADR 0014). Reading the game's own label is far more reliable than inferring geometry — but it dictates the capture mode.
+2. **Plan capture per-signal up front.** A single capture batch may not contain every signal a title adapter needs; budget for multiple capture modes (live gameplay + menu/overlay screens) rather than discovering the gap after a failed model.
+
 ## Environment requirements
 
 **Labeling tools need `opencv-python` (the GUI build), not `opencv-python-headless`.** This is a recurring gotcha worth fixing once:

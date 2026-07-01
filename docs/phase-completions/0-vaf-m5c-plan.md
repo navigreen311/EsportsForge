@@ -373,6 +373,49 @@ If a class is underrepresented after the clip-level split, oversample within the
 
 ## Sub-task 4 — Training pipeline
 
+> ### OUTCOME (2026-06-30) — CNN NOT VIABLE; pivoted to OCR-of-overlay
+>
+> The MobileNetV3 pipeline below was built and run in full, and the approach was
+> exhausted honestly rather than papered over:
+>
+> - **12 training runs across the whole technical ladder** — regularization
+>   (frozen-head, weight-decay, strong aug), capacity (Small vs Large), input
+>   size (224 vs 192), learning rate, class-weighted vs unweighted, label-quality
+>   filtering, and two tighter-crop re-extractions. **Single-model ceiling ≈ 0.22
+>   macro-F1** vs the 0.85 target. Per-cluster: well-supported formations ~0.33,
+>   rare data-starved classes (ace/pistol/doubles) ~0.00.
+> - **Root cause (evidenced, not asserted):** the elevated ball-following gameplay
+>   camera renders players as ~5–15 px of overlapping shapes — insufficient detail
+>   for fine formation discrimination. Not overfitting alone (regularization
+>   doubled test F1 then plateaued), not label noise (high-quality-only didn't
+>   help), not zero-signal (some classes hit 0.5–0.8 individually).
+> - **Pivot per pre-committed contingency:** the game displays the formation as
+>   explicit text on its play-call overlay. OCR feasibility: **100% (40/40) on the
+>   8 canonical practice clips + production-confirmed on a human exhibition clip.**
+>   See [ADR 0014](../adr/0014-ocr-overlay-over-cnn-for-formation-signals.md).
+>
+> **Delivered instead:** `hud_regions.json` v2.2.0 (multi-context: live_gameplay +
+> play_call), an OCR formation reader in `ocr_pipeline.py`, the OCR-based
+> `formation_detector.py`, and `validate_formation_ocr.py`. The CNN pipeline in
+> `services/visionaudioforge/training/` is retained as the evidence artifact +
+> reusable harness, not shipped.
+>
+> **Revised sub-task 4 acceptance criterion:** OCR formation-name success **≥ 80%
+> on the canonical 8 across production conditions** — MET (100% practice; 10/10
+> exhibition play-call screens read; live-gameplay frames correctly gated to
+> no-formation). Sub-tasks 5–7 adapt: **sub-task 5** evaluation moves from CNN
+> metrics (confusion matrix, ONNX latency/parity) to **OCR metrics** (per-formation
+> read rate, confidence, state-detector gating); **sub-task 6** temporal smoothing
+> still applies (formation is a categorical field, stable within a play-call
+> screen); **sub-task 7** Phase 0 acceptance re-validates the OCR detector.
+>
+> **Capture-mode finding:** CPU-vs-CPU footage omits the play-call screen (CPU
+> picks off-screen), so the pivot needed a re-capture (practice play-select +
+> human-played). Documented in the labeling protocol.
+>
+> The plan text below is the original CNN design — kept for the record; superseded
+> by the OCR detector.
+
 **Estimate:** 1 day.
 
 ### Location

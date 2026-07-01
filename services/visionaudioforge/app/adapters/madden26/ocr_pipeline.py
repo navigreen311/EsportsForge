@@ -366,6 +366,59 @@ def _parse_score(text: str) -> int | None:
     return v if 0 <= v <= 199 else None
 
 
+# --- Play-call overlay formation-name reading (M5c sub-task 4 pivot, ADR 0014) ---
+# Madden's play-call banner reads "<Formation Name> - N Plays" (e.g. "Trips TE
+# Offset - 12 Plays"). The full name is the primary label; the canonical-8 family
+# is derived from the LEADING family word. Keyword list tolerates the OCR char
+# errors seen in feasibility (Trips->'rips', Doubles->'Doubies', Wing->'Wving').
+_FORMATION_CANON: tuple[tuple[str, str], ...] = (
+    ("TRIP", "shotgun_trips"), ("RIPS", "shotgun_trips"),
+    ("BUNCH", "shotgun_bunch"), ("BUNC", "shotgun_bunch"),
+    ("EMPTY", "shotgun_empty"), ("EMPT", "shotgun_empty"),
+    ("DOUBLE", "shotgun_doubles"), ("DOUB", "shotgun_doubles"),
+    ("ACE", "singleback_ace"),
+    ("WING", "singleback_wing"), ("VING", "singleback_wing"),
+    ("PRO", "i_form_pro"),
+    ("STRONG", "pistol_strong"), ("STRON", "pistol_strong"),
+)
+# "N Plays" suffix — its presence is also the play-call-screen state signal.
+_PLAYS_RE = re.compile(r"[-_]?\s*\d+\s*P[il1]ay", re.IGNORECASE)
+
+
+def _parse_formation_name(text: str) -> str | None:
+    """Strip the '- N Plays' suffix (and any trailing play-art digits) from the
+    banner OCR to isolate the formation name."""
+    if not text:
+        return None
+    name = _PLAYS_RE.split(text, 1)[0]
+    name = re.sub(r"\s+\d.*$", "", name).strip(" -_")  # drop trailing stray digits
+    return name or None
+
+
+def _formation_to_canonical(name: str | None) -> str | None:
+    """Map a play-call formation name to a canonical-8 family. Prefer the leading
+    (family) word, then fall back to anywhere in the name."""
+    if not name:
+        return None
+    up = name.upper()
+    first = up.split()[0] if up.split() else ""
+    for kw, fam in _FORMATION_CANON:
+        if kw in first:
+            return fam
+    for kw, fam in _FORMATION_CANON:
+        if kw in up:
+            return fam
+    return None
+
+
+@dataclass(frozen=True)
+class FormationNameReading:
+    full_name: str | None      # e.g. "Trips TE Offset" (primary label)
+    canonical: str | None      # e.g. "shotgun_trips" (secondary family tag)
+    confidence: float
+    is_play_call_screen: bool
+
+
 class OCRPipeline:
     """Loads HUD region map at construction; reads frames by-region."""
 
@@ -373,7 +426,16 @@ class OCRPipeline:
         if hud_regions_path is None:
             hud_regions_path = Path(__file__).parent / "hud_regions.json"
         with open(hud_regions_path, "r", encoding="utf-8") as f:
-            self.regions: dict[str, Any] = json.load(f)["regions"]
+            data = json.load(f)
+        # v2.2.0+ groups regions under hud_contexts (live_gameplay vs play_call);
+        # v2.0/2.1 used a flat top-level "regions". Support both.
+        contexts = data.get("hud_contexts")
+        if contexts:
+            self.regions: dict[str, Any] = contexts["live_gameplay"]["regions"]
+            self.play_call_regions: dict[str, Any] = contexts.get("play_call", {}).get("regions", {})
+        else:
+            self.regions = data["regions"]
+            self.play_call_regions = {}
 
     def read_frame(self, frame: np.ndarray) -> OCRSnapshot:
         """Read every HUD region. Returns a snapshot.
@@ -458,3 +520,28 @@ class OCRPipeline:
             team_away_abbr=away_abbr,
             confidence_overall=round(overall, 3),
         )
+
+    # --- Play-call overlay (formation name) — v2.2.0 play_call context ---
+
+    def read_formation_name(self, frame: np.ndarray) -> FormationNameReading:
+        """Read the offensive formation from the play-call overlay banner.
+
+        Returns is_play_call_screen=False (and null name) when the overlay is not
+        visible — the banner region on live gameplay reads field/players, which
+        does not match the '<name> - N Plays' pattern. The v2.2.0 play_call
+        context must be present (empty reading otherwise).
+        """
+        region = self.play_call_regions.get("formation_name")
+        if region is None:
+            return FormationNameReading(None, None, 0.0, False)
+        text, conf = _read_text(_crop(frame, region["bbox"]))
+        # The "N Plays" suffix is the state signal: only the play-call screen has it.
+        on_screen = bool(_PLAYS_RE.search(text)) and conf > 0.4
+        if not on_screen:
+            return FormationNameReading(None, None, round(conf, 3), False)
+        name = _parse_formation_name(text)
+        return FormationNameReading(name, _formation_to_canonical(name), round(conf, 3), True)
+
+    def is_play_call_screen(self, frame: np.ndarray) -> bool:
+        """Cheap state check: is the pre-snap play-call overlay currently visible?"""
+        return self.read_formation_name(frame).is_play_call_screen

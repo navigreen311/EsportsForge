@@ -1,49 +1,69 @@
 {
-  "schema_version": "2.1.0",
+  "schema_version": "2.2.0",
   "title": "madden26",
   "resolution": [1920, 1080],
   "calibration": {
-    "source_clips": "agents/capture/fixtures/real/madden26_<matchup>.mp4 (10 CPU-vs-CPU clips, 2026-06-25..27)",
-    "calibration_date": "2026-06-29",
-    "milestone": "M5c sub-task 1b",
-    "supersedes": "2.0.0 (madden26.mp4 left-anchored broadcast bar — retired as OCR source, kept as historical fixture)",
+    "milestone": "M5c sub-task 4 pivot (OCR-of-overlay formation detection)",
+    "calibration_date": "2026-06-30",
+    "supersedes": "2.1.0 (single-context; regions moved under hud_contexts.live_gameplay unchanged)",
     "notes": [
-      "Madden 26 capture batch uses a COMPACT CENTER-CLUSTERED scorebug, not the v2.0.0 left-anchored full-width broadcast bar. Element drift vs v2.0.0: scoreboard cluster +213..+304px right, down/distance panel -449..-854px left into a centered sub-row. See ADR 0013.",
-      "Top row (y~990): home logo | home abbr | home score | center broadcast logo (decorative) | away score | away abbr | away logo. Bottom sub-row (y~1034): down | distance | quarter | clock | play_clock | field_position.",
-      "team_home is the LEFT cluster, team_away the RIGHT cluster (same convention as v2.0.0).",
-      "distance bbox renders 'KICKOFF' on kickoffs and 'GOAL' on goal-line snaps; OCR pipeline state-classifies. No PUNT panel present in the 1b capture batch.",
-      "field_position bbox excludes the leading possession-arrow glyph (which OCR'd as a stray '4'); anchored on the trailing digits.",
-      "Element type is smaller than v2.0.0 (e.g. down 95->60px wide); re-crop, do not re-translate.",
-      "Scores use a large italic numeral that EasyOCR misreads on some 2-digit values (e.g. 15->'6'); expect scores to be the weakest element, analogous to field_position in v2.0.0/M4.5."
+      "v2.2.0 introduces MULTIPLE HUD CONTEXTS. A title's UI has distinct screens that expose different signals at different bboxes; a single flat region map can't represent them. Each context declares its own regions; the OCR pipeline / adapter selects the context by the on-screen state.",
+      "live_gameplay = the in-play HUD (v2.1.0 center-clustered scorebug + down/distance), present during snaps in every mode. Coords unchanged from v2.1.0. See ADR 0013.",
+      "play_call = the pre-snap play-call / formation-select overlay that displays the offensive formation NAME as text. Present in Practice play-select and human-played gameplay; ABSENT in CPU-vs-CPU (the CPU picks off-screen). Added because single-frame CNN formation classification from the live gameplay camera ceilinged at ~0.22 macro-F1 (12 training runs); reading the game's own formation label is far more reliable. See ADR 0014.",
+      "This multi-context shape is the reusable pattern for future title adapters (CFB 26, NBA 2K26, EA FC 26): live-gameplay HUD vs menu/overlay screens each get a context."
+    ],
+    "sources": {
+      "live_gameplay": "agents/capture/fixtures/real/madden26_<matchup>.mp4 (10 CPU-vs-CPU clips, 2026-06-25..27); see v2.1.0 notes below",
+      "play_call": "agents/capture/fixtures/real/madden26_playcall_<formation>.mp4 (8 practice play-select clips + 1 human exhibition, 2026-06-30)"
+    },
+    "live_gameplay_notes": [
+      "Center-clustered scorebug, not the v2.0.0 left-anchored broadcast bar (element drift +213..+304px scoreboard, -449..-854px down/distance). See ADR 0013.",
+      "distance bbox renders 'KICKOFF'/'GOAL' on special/goal-line snaps; OCR state-classifies.",
+      "field_position bbox excludes the leading possession-arrow glyph. Scores use a large italic numeral that OCRs weakly on some 2-digit values (known-weak, ADR 0013)."
+    ],
+    "play_call_notes": [
+      "formation_name is the centered '<Formation Name> - N Plays' banner (white-on-dark). The full Madden name (e.g. 'Trips TE Offset', 'Ace Double Wing') is the primary label; a canonical-8 family tag is derived via keyword mapping (leading family word). Parse the name before '- N Plays'; the bbox height (32px) excludes the play-art jersey numbers below (~y655).",
+      "Feasibility (2026-06-30): 100% (40/40) on the 8 canonical practice clips, avg conf 0.82; production-confirmed on the human exhibition clip (7/7 play-call screens read, same bbox).",
+      "Ambiguous single-word families ('Pro','Strong') are unique within the v0.1 canonical 8; the full 24-formation taxonomy (v0.3) will add left-panel family disambiguation."
     ]
   },
-  "regions": {
-    "scoreboard": {
-      "bbox": [700, 988, 600, 78],
-      "subregions": {
-        "team_home_logo": [700, 990, 78, 76],
-        "team_home_abbr": [782, 990, 100, 33],
-        "score_home":     [840, 990, 66, 34],
-        "score_away":     [1008, 990, 72, 34],
-        "team_away_abbr": [1082, 990, 122, 34],
-        "team_away_logo": [1210, 990, 80, 76],
-        "broadcast_logo": [930, 990, 80, 80],
-        "quarter":        [880, 1034, 62, 25],
-        "clock":          [932, 1030, 92, 34]
+  "hud_contexts": {
+    "live_gameplay": {
+      "description": "In-play HUD (v2.1.0 center scorebug + down/distance sub-row). Present during snaps.",
+      "regions": {
+        "scoreboard": {
+          "bbox": [700, 988, 600, 78],
+          "subregions": {
+            "team_home_logo": [700, 990, 78, 76],
+            "team_home_abbr": [782, 990, 100, 33],
+            "score_home":     [840, 990, 66, 34],
+            "score_away":     [1008, 990, 72, 34],
+            "team_away_abbr": [1082, 990, 122, 34],
+            "team_away_logo": [1210, 990, 80, 76],
+            "broadcast_logo": [930, 990, 80, 80],
+            "quarter":        [880, 1034, 62, 25],
+            "clock":          [932, 1030, 92, 34]
+          }
+        },
+        "down_distance": {
+          "bbox": [740, 1030, 470, 36],
+          "subregions": {
+            "play_clock":     [1016, 1034, 62, 26],
+            "down":           [752, 1035, 60, 24],
+            "distance":       [806, 1035, 60, 24],
+            "field_position": [1098, 1033, 64, 26]
+          }
+        }
       }
     },
-    "down_distance": {
-      "bbox": [740, 1030, 470, 36],
-      "subregions": {
-        "play_clock":     [1016, 1034, 62, 26],
-        "down":           [752, 1035, 60, 24],
-        "distance":       [806, 1035, 60, 24],
-        "field_position": [1098, 1033, 64, 26]
+    "play_call": {
+      "description": "Pre-snap play-call / formation-select overlay. Displays the offensive formation NAME as text. Present in Practice play-select + human-played gameplay; absent in CPU-vs-CPU.",
+      "regions": {
+        "formation_name": {
+          "bbox": [640, 585, 540, 32],
+          "note": "Centered '<Formation Name> - N Plays' banner, white-on-dark. Primary output = full name; secondary = canonical-8 family via keyword map. See ADR 0014."
+        }
       }
-    },
-    "formation_overlay_pre_snap": {
-      "bbox": [400, 700, 1120, 80],
-      "appears": "M5c real classifier reads on-field player layout, not a HUD overlay. Placeholder retained."
     }
   }
 }

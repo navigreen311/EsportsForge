@@ -1,0 +1,2 @@
+# CNN training checkpoints — failed approach (ADR 0014), retained on disk not committed.
+*.pt
