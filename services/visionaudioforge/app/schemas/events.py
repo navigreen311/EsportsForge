@@ -32,7 +32,8 @@ class FootballPayload(BaseModel):
     distance: int | None = None
     field_position: str | None = None  # "OWN_35", "OPP_22", "MIDFIELD"
     possession: Literal["home", "away"] | None = None
-    offensive_formation: str | None = None
+    offensive_formation: str | None = None  # full play-call name, e.g. "Trips TE Offset"
+    offensive_formation_family: str | None = None  # canonical-8 tag, e.g. "shotgun_trips" (ADR 0014)
     defensive_formation: str | None = None  # None until v0.3 ships
 
 

@@ -51,6 +51,23 @@ class Madden26Adapter:
         IntegrityMode.BROADCAST: IntegrityPolicy(opponent_data_redacted=True),
     }
 
+    # Temporal-smoothing schema (M5c sub-task 6). Categorical fields -> mode-vote,
+    # numeric -> median, across a per-field window; windows reset on the
+    # live_gameplay <-> play_call context switch. See app/core/temporal.py. The
+    # engine is title-agnostic; this schema is the only Madden-specific config.
+    smoothing_schema: dict = {
+        # play_call context — the formation read off the play-call overlay.
+        "offensive_formation": {"kind": "categorical", "window": 5, "min_window": 3},
+        # live_gameplay context — the in-play HUD OCR fields.
+        "field_position":      {"kind": "numeric",      "window": 7, "min_window": 4},
+        "down":                {"kind": "categorical", "window": 5, "min_window": 3},
+        "distance":            {"kind": "numeric",      "window": 5, "min_window": 3},
+        "score_home":          {"kind": "numeric",      "window": 3, "min_window": 1},
+        "score_away":          {"kind": "numeric",      "window": 3, "min_window": 1},
+        "play_clock":          {"kind": "numeric",      "window": 3, "min_window": 1},
+        "clock":               {"kind": "string_clock", "window": 3, "min_window": 2},
+    }
+
     def __init__(self) -> None:
         # Lazy-loaded once per worker. Real ML model loads happen here in
         # Phase 1 M5c. Phase 0 — cheap.
@@ -87,4 +104,5 @@ class Madden26Adapter:
             ocr=ocr,
             offense=offense,
             captured_at=captured_at,
+            smoothing_schema=self.smoothing_schema,
         )
