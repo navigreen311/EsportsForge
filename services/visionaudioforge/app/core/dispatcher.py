@@ -65,22 +65,28 @@ class Dispatcher:
         # Adapter-elapsed-ms ring for the last 1000 frames. Used by
         # GET /sessions/{id}/latency and the real-footage harness.
         self.latency_ms: deque[float] = deque(maxlen=LATENCY_WINDOW_FRAMES)
+        # Per-tier rings (ADR 0015): the hot path (no OCR) and the sampled OCR
+        # tier have different budgets, so they're reported separately.
+        self.latency_by_tier: dict[str, deque[float]] = {
+            "hot": deque(maxlen=LATENCY_WINDOW_FRAMES),
+            "ocr": deque(maxlen=LATENCY_WINDOW_FRAMES),
+        }
 
-    def latency_percentiles(self) -> dict[str, float | int]:
-        """Return p50 / p95 / p99 from the rolling window. Empty → zeros."""
-        if not self.latency_ms:
+    @staticmethod
+    def _pctiles(values) -> dict[str, float | int]:
+        if not values:
             return {"count": 0, "p50_ms": 0.0, "p95_ms": 0.0, "p99_ms": 0.0}
-        ordered = sorted(self.latency_ms)
+        ordered = sorted(values)
         n = len(ordered)
         def pct(p: float) -> float:
-            idx = min(n - 1, int(p * n))
-            return round(ordered[idx], 3)
-        return {
-            "count": n,
-            "p50_ms": pct(0.50),
-            "p95_ms": pct(0.95),
-            "p99_ms": pct(0.99),
-        }
+            return round(ordered[min(n - 1, int(p * n))], 3)
+        return {"count": n, "p50_ms": pct(0.50), "p95_ms": pct(0.95), "p99_ms": pct(0.99)}
+
+    def latency_percentiles(self) -> dict[str, float | int | dict]:
+        """p50/p95/p99 over all frames, plus a per-tier breakdown (ADR 0015)."""
+        out = self._pctiles(self.latency_ms)
+        out["by_tier"] = {t: self._pctiles(v) for t, v in self.latency_by_tier.items()}
+        return out
 
     def process_frame(self, frame: np.ndarray) -> list[EventEnvelope]:
         """Run the full dispatch loop for one frame.
@@ -148,18 +154,29 @@ class Dispatcher:
         elapsed_ms = (time.monotonic() - start) * 1000.0
         self.latency_ms.append(elapsed_ms)
 
-        if elapsed_ms > adapter.max_processing_ms:
+        # Tier-aware budget (ADR 0015). The adapter signals which tier this frame
+        # ran: "hot" (no OCR, 80ms budget) vs "ocr" (a sampled OCR read, its own
+        # ~500ms budget). A hot-path frame over 80ms is a real "behind real time"
+        # signal and drops; a scheduled OCR-tier frame is expected to be slower and
+        # is NOT dropped for exceeding the hot-path budget — dropping it would throw
+        # away the only frames that produce events (the Phase 0 zero-events failure).
+        tier = self.session.adapter_state.get("_last_tier", "hot")
+        self.latency_by_tier.get(tier, self.latency_by_tier["hot"]).append(elapsed_ms)
+        budget = (getattr(adapter, "max_ocr_tier_ms", adapter.max_processing_ms)
+                  if tier == "ocr" else adapter.max_processing_ms)
+
+        if elapsed_ms > budget:
             logger.warning(
                 "adapter_budget_breach",
                 extra={
                     "title": self.session.title.value,
                     "elapsed_ms": elapsed_ms,
-                    "budget_ms": adapter.max_processing_ms,
+                    "budget_ms": budget,
+                    "tier": tier,
                 },
             )
-            # Per spec: budget breaches drop the frame. We've already
-            # paid the cost, but we don't publish the events to keep
-            # the sentinel "we're behind real time" signal honest.
+            # Budget breach drops the frame (honest "behind real time" sentinel),
+            # now evaluated against the frame's own tier budget.
             return []
 
         # 5. Event-level integrity policy.

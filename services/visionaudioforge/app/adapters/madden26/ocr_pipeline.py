@@ -521,6 +521,53 @@ class OCRPipeline:
             confidence_overall=round(overall, 3),
         )
 
+    # Field -> (region-group, subregion-key, allowlist, parser). Mirrors read_frame
+    # exactly; read_fields reads only the requested subset (M5c sub-task 7.5.2, the
+    # sampled-OCR cadence path). read_frame is left untouched as the validated
+    # full-read artifact the v2.1.0 regression baseline reproduces against.
+    _FIELD_SPEC = {
+        "score_home":     ("scoreboard", "score_home", None, _parse_score),
+        "score_away":     ("scoreboard", "score_away", None, _parse_score),
+        "clock":          ("scoreboard", "clock", "0123456789:", _parse_clock),
+        "quarter":        ("scoreboard", "quarter", None,
+                           lambda t: _parse_ordinal_to_int(t, 1, 5)),
+        "team_home_abbr": ("scoreboard", "team_home_abbr",
+                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                           lambda t: (t.upper().strip() or None)),
+        "team_away_abbr": ("scoreboard", "team_away_abbr",
+                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                           lambda t: (t.upper().strip() or None)),
+        "down":           ("down_distance", "down", None,
+                           lambda t: _parse_ordinal_to_int(t, 1, 4)),
+        "distance":       ("down_distance", "distance", None, _parse_distance),
+        "play_clock":     ("down_distance", "play_clock", "0123456789", _parse_play_clock),
+        "field_position": ("down_distance", "field_position", None, _parse_field_position),
+    }
+
+    def read_fields(self, frame: np.ndarray, fields) -> dict:
+        """Read ONLY the requested HUD fields (the cadence-sampled path).
+
+        Returns {field: parsed_value, ...} for the requested fields plus
+        "_confidence" (mean over the read regions). Fields not requested are
+        absent — the caller carries their last value forward. Per-field read
+        logic (bbox, allowlist, parser) mirrors read_frame exactly.
+        """
+        groups = {"scoreboard": self.regions["scoreboard"]["subregions"],
+                  "down_distance": self.regions["down_distance"]["subregions"]}
+        out: dict = {}
+        confs: list[float] = []
+        for field in fields:
+            spec = self._FIELD_SPEC.get(field)
+            if spec is None:
+                continue
+            grp, key, allow, parser = spec
+            text, conf = _read_text(_crop(frame, groups[grp][key]), allow)
+            if conf > 0:
+                confs.append(conf)
+            out[field] = parser(text)
+        out["_confidence"] = round(sum(confs) / len(confs), 3) if confs else 0.0
+        return out
+
     # --- Play-call overlay (formation name) — v2.2.0 play_call context ---
 
     def read_formation_name(self, frame: np.ndarray) -> FormationNameReading:
