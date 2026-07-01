@@ -33,6 +33,7 @@ Concretely for Madden 26 formation detection (v0.1):
 - **v0.1 formation acceptance criterion changes** from CNN macro-F1 ≥ 0.85 to **OCR formation-name success ≥ 80% on the canonical 8 across production conditions** (met: 100% practice + production-confirmed). Sub-task 5 evaluation moves from CNN metrics (confusion matrix, latency of an ONNX model) to OCR metrics (per-formation read rate, confidence, state-detector gating).
 - **`hud_regions.json` becomes multi-context (v2.2.0):** `live_gameplay` (v2.1.0 scorebug/down-distance) vs `play_call` (the overlay). This overlay-vs-gameplay context split is the reusable shape for future title adapters.
 - **Temporal smoothing (sub-task 6) applies unchanged:** formation is a categorical field, stable within a play-call screen; the title-agnostic smoother mode-votes away single-frame OCR misreads.
+- **Throughput cost is resolved by [ADR 0015](0015-tiered-budget-and-sampled-ocr-cadence.md):** OCR-of-overlay is far slower per frame than the CNN it replaced (CPU EasyOCR ~65 ms/crop), which broke the flat 80 ms budget and dropped 100 % of frames at Phase 0 acceptance. ADR 0015 introduces the tiered budget + sampled-OCR cadence + cheap non-OCR context detection that make the pivot viable in real time.
 - The gameplay-camera CNN limitation is a **general finding**: any fine on-field geometry (defensive front, coverage shells) will face the same pixel-detail wall from the broadcast camera. Prefer the UI text signal where the game exposes one.
 
 ## Followups
