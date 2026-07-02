@@ -188,6 +188,11 @@ _mount("app.api.v1.endpoints.video_poker.responsible_gambling",
 # ═══════════════════════════════════════════════════════════════════════════
 _mount("app.api.v1.endpoints.voiceforge",      prefix="/voiceforge",      tags=["VoiceForge"])
 _mount("app.api.v1.endpoints.visionaudio",     prefix="/visionaudio",     tags=["VisionAudioForge"])
+# Phase 0 — new VisionAudioForge integration endpoints (real pipeline path).
+# Mounted with empty prefix so the routes spell their own /auth/... and
+# /visionaudio/... paths. Coexists with the legacy mock-proxy module above
+# during the parallel-run window (per docs/specs/03 §3 cutover phases).
+_mount("app.api.v1.endpoints.visionaudio_phase0", prefix="",              tags=["VisionAudioForge — Phase 0"])
 
 # ═══════════════════════════════════════════════════════════════════════════
 # AI Agents

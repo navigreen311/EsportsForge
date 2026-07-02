@@ -1,0 +1,747 @@
+{
+  "milestone": "M4.5",
+  "calibration_source": "scripts/hud_calibration/frames/frame_*.png",
+  "frames_evaluated": [
+    4400,
+    4538,
+    4700,
+    5300,
+    5900,
+    6100,
+    6300,
+    6421,
+    7000,
+    7049
+  ],
+  "elapsed_total_sec": 14.0,
+  "per_frame": [
+    {
+      "frame_idx": 4400,
+      "state": "kickoff",
+      "elapsed_ms": 3657.0,
+      "fields": {
+        "team_home_abbr": {
+          "expected": "LAC",
+          "actual": "LAC",
+          "match": true
+        },
+        "team_away_abbr": {
+          "expected": "ARI",
+          "actual": "ARI",
+          "match": true
+        },
+        "score_home": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "score_away": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "quarter": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "clock": {
+          "expected": "4:00",
+          "actual": "4:00",
+          "match": true
+        },
+        "play_clock": {
+          "expected": null,
+          "actual": null,
+          "match": true
+        },
+        "down": {
+          "expected": null,
+          "actual": null,
+          "match": true
+        },
+        "distance": {
+          "expected": null,
+          "actual": null,
+          "match": true
+        },
+        "field_position": {
+          "expected": "+35",
+          "actual": "+35",
+          "match": true
+        }
+      },
+      "ocr_overall_confidence": 0.91
+    },
+    {
+      "frame_idx": 4538,
+      "state": "kickoff",
+      "elapsed_ms": 1094.0,
+      "fields": {
+        "team_home_abbr": {
+          "expected": "LAC",
+          "actual": "LAC",
+          "match": true
+        },
+        "team_away_abbr": {
+          "expected": "ARI",
+          "actual": "ARI",
+          "match": true
+        },
+        "score_home": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "score_away": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "quarter": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "clock": {
+          "expected": "4:00",
+          "actual": "4:00",
+          "match": true
+        },
+        "play_clock": {
+          "expected": null,
+          "actual": null,
+          "match": true
+        },
+        "down": {
+          "expected": null,
+          "actual": null,
+          "match": true
+        },
+        "distance": {
+          "expected": null,
+          "actual": null,
+          "match": true
+        },
+        "field_position": {
+          "expected": "+35",
+          "actual": "+35",
+          "match": true
+        }
+      },
+      "ocr_overall_confidence": 0.927
+    },
+    {
+      "frame_idx": 4700,
+      "state": "kickoff",
+      "elapsed_ms": 1109.0,
+      "fields": {
+        "team_home_abbr": {
+          "expected": "LAC",
+          "actual": "LAC",
+          "match": true
+        },
+        "team_away_abbr": {
+          "expected": "ARI",
+          "actual": "ARI",
+          "match": true
+        },
+        "score_home": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "score_away": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "quarter": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "clock": {
+          "expected": "3:57",
+          "actual": "3:57",
+          "match": true
+        },
+        "play_clock": {
+          "expected": null,
+          "actual": null,
+          "match": true
+        },
+        "down": {
+          "expected": null,
+          "actual": null,
+          "match": true
+        },
+        "distance": {
+          "expected": null,
+          "actual": null,
+          "match": true
+        },
+        "field_position": {
+          "expected": "+35",
+          "actual": "+35",
+          "match": true
+        }
+      },
+      "ocr_overall_confidence": 0.839
+    },
+    {
+      "frame_idx": 5300,
+      "state": "play",
+      "elapsed_ms": 1125.0,
+      "fields": {
+        "team_home_abbr": {
+          "expected": "LAC",
+          "actual": "LAC",
+          "match": true
+        },
+        "team_away_abbr": {
+          "expected": "ARI",
+          "actual": "ARI",
+          "match": true
+        },
+        "score_home": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "score_away": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "quarter": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "clock": {
+          "expected": "3:53",
+          "actual": "3:53",
+          "match": true
+        },
+        "play_clock": {
+          "expected": "28",
+          "actual": "28",
+          "match": true
+        },
+        "down": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "distance": {
+          "expected": 10,
+          "actual": 10,
+          "match": true
+        },
+        "field_position": {
+          "expected": "+24",
+          "actual": "+24",
+          "match": true
+        }
+      },
+      "ocr_overall_confidence": 0.754
+    },
+    {
+      "frame_idx": 5900,
+      "state": "play",
+      "elapsed_ms": 1109.0,
+      "fields": {
+        "team_home_abbr": {
+          "expected": "LAC",
+          "actual": "LAC",
+          "match": true
+        },
+        "team_away_abbr": {
+          "expected": "ARI",
+          "actual": "ARI",
+          "match": true
+        },
+        "score_home": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "score_away": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "quarter": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "clock": {
+          "expected": "3:21",
+          "actual": "3:27",
+          "match": false
+        },
+        "play_clock": {
+          "expected": "11",
+          "actual": "31",
+          "match": false
+        },
+        "down": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "distance": {
+          "expected": 10,
+          "actual": 10,
+          "match": true
+        },
+        "field_position": {
+          "expected": "+41",
+          "actual": "+47",
+          "match": false
+        }
+      },
+      "ocr_overall_confidence": 0.684
+    },
+    {
+      "frame_idx": 6100,
+      "state": "play",
+      "elapsed_ms": 1125.0,
+      "fields": {
+        "team_home_abbr": {
+          "expected": "LAC",
+          "actual": "LAC",
+          "match": true
+        },
+        "team_away_abbr": {
+          "expected": "ARI",
+          "actual": "ARI",
+          "match": true
+        },
+        "score_home": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "score_away": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "quarter": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "clock": {
+          "expected": "3:18",
+          "actual": "3:18",
+          "match": true
+        },
+        "play_clock": {
+          "expected": "11",
+          "actual": "11",
+          "match": true
+        },
+        "down": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "distance": {
+          "expected": 10,
+          "actual": 10,
+          "match": true
+        },
+        "field_position": {
+          "expected": "+47",
+          "actual": "+47",
+          "match": true
+        }
+      },
+      "ocr_overall_confidence": 0.684
+    },
+    {
+      "frame_idx": 6300,
+      "state": "play",
+      "elapsed_ms": 1109.0,
+      "fields": {
+        "team_home_abbr": {
+          "expected": "LAC",
+          "actual": "LAC",
+          "match": true
+        },
+        "team_away_abbr": {
+          "expected": "ARI",
+          "actual": "ARI",
+          "match": true
+        },
+        "score_home": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "score_away": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "quarter": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "clock": {
+          "expected": "2:50",
+          "actual": "2:50",
+          "match": true
+        },
+        "play_clock": {
+          "expected": "14",
+          "actual": "14",
+          "match": true
+        },
+        "down": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "distance": {
+          "expected": 10,
+          "actual": 10,
+          "match": true
+        },
+        "field_position": {
+          "expected": "+30",
+          "actual": "+30",
+          "match": true
+        }
+      },
+      "ocr_overall_confidence": 0.745
+    },
+    {
+      "frame_idx": 6421,
+      "state": "play",
+      "elapsed_ms": 1156.0,
+      "fields": {
+        "team_home_abbr": {
+          "expected": "LAC",
+          "actual": "LAC",
+          "match": true
+        },
+        "team_away_abbr": {
+          "expected": "ARI",
+          "actual": "ARI",
+          "match": true
+        },
+        "score_home": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "score_away": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "quarter": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "clock": {
+          "expected": "2:48",
+          "actual": "2:48",
+          "match": true
+        },
+        "play_clock": {
+          "expected": "12",
+          "actual": "12",
+          "match": true
+        },
+        "down": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "distance": {
+          "expected": 10,
+          "actual": 10,
+          "match": true
+        },
+        "field_position": {
+          "expected": "+30",
+          "actual": "+30",
+          "match": true
+        }
+      },
+      "ocr_overall_confidence": 0.794
+    },
+    {
+      "frame_idx": 7000,
+      "state": "play",
+      "elapsed_ms": 1125.0,
+      "fields": {
+        "team_home_abbr": {
+          "expected": "LAC",
+          "actual": "LAC",
+          "match": true
+        },
+        "team_away_abbr": {
+          "expected": "ARI",
+          "actual": "ARI",
+          "match": true
+        },
+        "score_home": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "score_away": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "quarter": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "clock": {
+          "expected": "2:29",
+          "actual": "2:29",
+          "match": true
+        },
+        "play_clock": {
+          "expected": "28",
+          "actual": "28",
+          "match": true
+        },
+        "down": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "distance": {
+          "expected": 10,
+          "actual": 10,
+          "match": true
+        },
+        "field_position": {
+          "expected": "+10",
+          "actual": "+70",
+          "match": false
+        }
+      },
+      "ocr_overall_confidence": 0.753
+    },
+    {
+      "frame_idx": 7049,
+      "state": "play",
+      "elapsed_ms": 1125.0,
+      "fields": {
+        "team_home_abbr": {
+          "expected": "LAC",
+          "actual": "LAC",
+          "match": true
+        },
+        "team_away_abbr": {
+          "expected": "ARI",
+          "actual": "ARI",
+          "match": true
+        },
+        "score_home": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "score_away": {
+          "expected": 0,
+          "actual": 0,
+          "match": true
+        },
+        "quarter": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "clock": {
+          "expected": "2:28",
+          "actual": "2:28",
+          "match": true
+        },
+        "play_clock": {
+          "expected": "28",
+          "actual": "28",
+          "match": true
+        },
+        "down": {
+          "expected": 1,
+          "actual": 1,
+          "match": true
+        },
+        "distance": {
+          "expected": 10,
+          "actual": 10,
+          "match": true
+        },
+        "field_position": {
+          "expected": "+70",
+          "actual": "+70",
+          "match": true
+        }
+      },
+      "ocr_overall_confidence": 0.805
+    }
+  ],
+  "per_element_success_rate": {
+    "team_home_abbr": {
+      "all_states_pct": 100.0,
+      "play_state_pct": 100.0,
+      "kickoff_state_pct": 100.0,
+      "raw": {
+        "hits": 10,
+        "trials": 10,
+        "play_hits": 7,
+        "play_trials": 7,
+        "kickoff_hits": 3,
+        "kickoff_trials": 3
+      }
+    },
+    "team_away_abbr": {
+      "all_states_pct": 100.0,
+      "play_state_pct": 100.0,
+      "kickoff_state_pct": 100.0,
+      "raw": {
+        "hits": 10,
+        "trials": 10,
+        "play_hits": 7,
+        "play_trials": 7,
+        "kickoff_hits": 3,
+        "kickoff_trials": 3
+      }
+    },
+    "score_home": {
+      "all_states_pct": 100.0,
+      "play_state_pct": 100.0,
+      "kickoff_state_pct": 100.0,
+      "raw": {
+        "hits": 10,
+        "trials": 10,
+        "play_hits": 7,
+        "play_trials": 7,
+        "kickoff_hits": 3,
+        "kickoff_trials": 3
+      }
+    },
+    "score_away": {
+      "all_states_pct": 100.0,
+      "play_state_pct": 100.0,
+      "kickoff_state_pct": 100.0,
+      "raw": {
+        "hits": 10,
+        "trials": 10,
+        "play_hits": 7,
+        "play_trials": 7,
+        "kickoff_hits": 3,
+        "kickoff_trials": 3
+      }
+    },
+    "quarter": {
+      "all_states_pct": 100.0,
+      "play_state_pct": 100.0,
+      "kickoff_state_pct": 100.0,
+      "raw": {
+        "hits": 10,
+        "trials": 10,
+        "play_hits": 7,
+        "play_trials": 7,
+        "kickoff_hits": 3,
+        "kickoff_trials": 3
+      }
+    },
+    "clock": {
+      "all_states_pct": 90.0,
+      "play_state_pct": 85.7,
+      "kickoff_state_pct": 100.0,
+      "raw": {
+        "hits": 9,
+        "trials": 10,
+        "play_hits": 6,
+        "play_trials": 7,
+        "kickoff_hits": 3,
+        "kickoff_trials": 3
+      }
+    },
+    "play_clock": {
+      "all_states_pct": 90.0,
+      "play_state_pct": 85.7,
+      "kickoff_state_pct": 100.0,
+      "raw": {
+        "hits": 9,
+        "trials": 10,
+        "play_hits": 6,
+        "play_trials": 7,
+        "kickoff_hits": 3,
+        "kickoff_trials": 3
+      }
+    },
+    "down": {
+      "all_states_pct": 100.0,
+      "play_state_pct": 100.0,
+      "kickoff_state_pct": 100.0,
+      "raw": {
+        "hits": 10,
+        "trials": 10,
+        "play_hits": 7,
+        "play_trials": 7,
+        "kickoff_hits": 3,
+        "kickoff_trials": 3
+      }
+    },
+    "distance": {
+      "all_states_pct": 100.0,
+      "play_state_pct": 100.0,
+      "kickoff_state_pct": 100.0,
+      "raw": {
+        "hits": 10,
+        "trials": 10,
+        "play_hits": 7,
+        "play_trials": 7,
+        "kickoff_hits": 3,
+        "kickoff_trials": 3
+      }
+    },
+    "field_position": {
+      "all_states_pct": 80.0,
+      "play_state_pct": 71.4,
+      "kickoff_state_pct": 100.0,
+      "raw": {
+        "hits": 8,
+        "trials": 10,
+        "play_hits": 5,
+        "play_trials": 7,
+        "kickoff_hits": 3,
+        "kickoff_trials": 3
+      }
+    }
+  },
+  "overall_play_state_success_rate": 94.3,
+  "acceptance_threshold_pct": 80.0,
+  "elements_meeting_acceptance_in_play_state": [
+    "team_home_abbr",
+    "team_away_abbr",
+    "score_home",
+    "score_away",
+    "quarter",
+    "clock",
+    "play_clock",
+    "down",
+    "distance"
+  ],
+  "elements_below_acceptance_in_play_state": [
+    "field_position"
+  ]
+}

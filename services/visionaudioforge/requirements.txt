@@ -1,0 +1,42 @@
+fastapi==0.115.4
+uvicorn[standard]==0.32.0
+pydantic==2.7.4
+websockets==13.1
+httpx==0.27.2
+numpy==1.26.4
+# opencv-python (GUI variant), NOT opencv-python-headless. The dev machine runs
+# Windows desktop tooling — the keyboard formation-labeling tool
+# (scripts/hud_calibration/label_formations.py) calls cv2.namedWindow, which
+# the headless build compiles out ("The function is not implemented. Rebuild
+# the library with Windows/GTK+/Cocoa support"). The GUI variant is a functional
+# superset and works fine in headless contexts too (GUI calls just go unused).
+# Caveat: easyocr declares opencv-python-headless as a dependency, so a fresh
+# `pip install -r requirements.txt` may pull headless back in and shadow this —
+# install opencv-python LAST (or `pip install --force-reinstall opencv-python`)
+# on the dev box. Production Linux ECS may pin opencv-python-headless instead;
+# the namedWindow calls live only in scripts/, never in the core service.
+opencv-python==4.10.0.84
+structlog==24.4.0
+python-ulid==3.0.0
+# OCR — replaces the Phase 0 stub. Tesseract was specced but is
+# unavailable on the dev box without admin (chocolatey install blocked).
+# EasyOCR is pure-Python and pip-installable; per-frame cost is the
+# subject of the OCR-cadence-reform milestone.
+easyocr==1.7.2
+# Formation-classifier training (M5c sub-task 4). torch/torchvision are already
+# pulled transitively by easyocr; pinned here explicitly for training
+# reproducibility. On the dev box these are the CPU builds (torch 2.11.0+cpu /
+# torchvision 0.26.0+cpu from the pytorch CPU index); a GPU box may install the
+# CUDA build instead. onnx/onnxruntime are for the formation_v0_1.onnx export +
+# parity check. This stack is dev/training-only — the core service does not
+# import torch.
+torch==2.11.0
+torchvision==0.26.0
+onnx==1.22.0
+onnxruntime==1.27.0
+pytest==8.3.3
+pytest-asyncio==0.24.0
+# boto3 is intentionally NOT pinned here. metrics.py lazy-imports it
+# and no-ops when absent, so dev runs without AWS credentials work
+# fine. Production deploys add boto3 via the deployment Dockerfile /
+# requirements-prod.txt overlay.

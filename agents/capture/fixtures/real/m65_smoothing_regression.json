@@ -1,0 +1,45 @@
+{
+  "milestone": "M5c sub-task 6.5 (temporal-smoothing regression)",
+  "smoothing_off_baseline_v21": {
+    "team_home_abbr": 100.0,
+    "team_away_abbr": 100.0,
+    "score_home": 62.5,
+    "score_away": 56.2,
+    "quarter": 90.3,
+    "clock": 93.3,
+    "down": 100.0,
+    "distance": 96.8,
+    "play_clock": 92.6,
+    "field_position": 96.8
+  },
+  "smoothing_off_note": "read_frame is unchanged by sub-tasks 4/6; OFF baseline = v2.1.0 rates. Re-run validate_ocr_v21.py confirms reproduction (regression control).",
+  "smoothing_on_stability": {
+    "per_field": {
+      "field_position": {
+        "raw_flaps": 0,
+        "smoothed_flaps": 0
+      },
+      "down": {
+        "raw_flaps": 0,
+        "smoothed_flaps": 0
+      },
+      "clock": {
+        "raw_flaps": 0,
+        "smoothed_flaps": 0
+      }
+    },
+    "no_regression": true
+  },
+  "context_switch_guard": {
+    "first_screen_locks": [
+      "shotgun_trips"
+    ],
+    "live_snapshots": 3,
+    "second_screen_locks": [
+      "shotgun_bunch"
+    ],
+    "no_cross_context_blend": true
+  },
+  "regressions": [],
+  "passes": true
+}

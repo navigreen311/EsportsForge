@@ -1,0 +1,360 @@
+{
+  "milestone": "M5c sub-task 1",
+  "clips_verified": 19,
+  "passed": 9,
+  "failed": 10,
+  "per_clip": [
+    {
+      "clip": "madden26_bal_vs_cin_q1.mp4",
+      "kind": "matchup",
+      "verdict": "fail",
+      "reasons": [
+        "scoreboard band below threshold (max central_std 64.5 < 70.0) \u2014 may indicate HUD-layout drift vs v2.0.0",
+        "no sampled frame produced plausible team abbreviations against v2.0.0 bboxes \u2014 check HUD-layout alignment"
+      ],
+      "max_central_std": 64.5,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": true,
+        "frames_with_plausible_abbrevs": 0,
+        "plausible": false
+      }
+    },
+    {
+      "clip": "madden26_buf_vs_mia_q1.mp4",
+      "kind": "matchup",
+      "verdict": "fail",
+      "reasons": [
+        "no sampled frame produced plausible team abbreviations against v2.0.0 bboxes \u2014 check HUD-layout alignment"
+      ],
+      "max_central_std": 73.6,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": true,
+        "frames_with_plausible_abbrevs": 0,
+        "plausible": false
+      }
+    },
+    {
+      "clip": "madden26_chi_vs_hou_q4.mp4",
+      "kind": "matchup",
+      "verdict": "fail",
+      "reasons": [
+        "scoreboard band below threshold (max central_std 62.3 < 70.0) \u2014 may indicate HUD-layout drift vs v2.0.0",
+        "no sampled frame produced plausible team abbreviations against v2.0.0 bboxes \u2014 check HUD-layout alignment"
+      ],
+      "max_central_std": 62.3,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": true,
+        "frames_with_plausible_abbrevs": 0,
+        "plausible": false
+      }
+    },
+    {
+      "clip": "madden26_dal_vs_sf_q1.mp4",
+      "kind": "matchup",
+      "verdict": "fail",
+      "reasons": [
+        "scoreboard band below threshold (max central_std 47.8 < 70.0) \u2014 may indicate HUD-layout drift vs v2.0.0",
+        "no sampled frame produced plausible team abbreviations against v2.0.0 bboxes \u2014 check HUD-layout alignment"
+      ],
+      "max_central_std": 47.8,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": true,
+        "frames_with_plausible_abbrevs": 0,
+        "plausible": false
+      }
+    },
+    {
+      "clip": "madden26_gb_vs_det_q1.mp4",
+      "kind": "matchup",
+      "verdict": "fail",
+      "reasons": [
+        "scoreboard band below threshold (max central_std 69.2 < 70.0) \u2014 may indicate HUD-layout drift vs v2.0.0",
+        "no sampled frame produced plausible team abbreviations against v2.0.0 bboxes \u2014 check HUD-layout alignment"
+      ],
+      "max_central_std": 69.2,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": true,
+        "frames_with_plausible_abbrevs": 0,
+        "plausible": false
+      }
+    },
+    {
+      "clip": "madden26_ind_vs_ne__q4.mp4",
+      "kind": "matchup",
+      "verdict": "fail",
+      "reasons": [
+        "scoreboard band below threshold (max central_std 48.7 < 70.0) \u2014 may indicate HUD-layout drift vs v2.0.0",
+        "no sampled frame produced plausible team abbreviations against v2.0.0 bboxes \u2014 check HUD-layout alignment"
+      ],
+      "max_central_std": 48.7,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": true,
+        "frames_with_plausible_abbrevs": 0,
+        "plausible": false
+      }
+    },
+    {
+      "clip": "madden26_kc_vs_phi._q1.mp4",
+      "kind": "matchup",
+      "verdict": "fail",
+      "reasons": [
+        "scoreboard band below threshold (max central_std 57.4 < 70.0) \u2014 may indicate HUD-layout drift vs v2.0.0",
+        "no sampled frame produced plausible team abbreviations against v2.0.0 bboxes \u2014 check HUD-layout alignment"
+      ],
+      "max_central_std": 57.4,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": true,
+        "frames_with_plausible_abbrevs": 0,
+        "plausible": false
+      }
+    },
+    {
+      "clip": "madden26_lac_vs_sea_q4.mp4",
+      "kind": "matchup",
+      "verdict": "fail",
+      "reasons": [
+        "scoreboard band below threshold (max central_std 57.0 < 70.0) \u2014 may indicate HUD-layout drift vs v2.0.0",
+        "no sampled frame produced plausible team abbreviations against v2.0.0 bboxes \u2014 check HUD-layout alignment"
+      ],
+      "max_central_std": 57.0,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": true,
+        "frames_with_plausible_abbrevs": 0,
+        "plausible": false
+      }
+    },
+    {
+      "clip": "madden26_practice_i-form_pro.mp4",
+      "kind": "practice",
+      "verdict": "pass",
+      "reasons": [],
+      "max_central_std": 22.6,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": false
+      }
+    },
+    {
+      "clip": "madden26_practice_pistol_strong.mp4",
+      "kind": "practice",
+      "verdict": "pass",
+      "reasons": [],
+      "max_central_std": 34.4,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": false
+      }
+    },
+    {
+      "clip": "madden26_practice_shotgun_bunch.mp4",
+      "kind": "practice",
+      "verdict": "pass",
+      "reasons": [],
+      "max_central_std": 32.1,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": false
+      }
+    },
+    {
+      "clip": "madden26_practice_shotgun_doubles.mp4",
+      "kind": "practice",
+      "verdict": "pass",
+      "reasons": [],
+      "max_central_std": 20.0,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": false
+      }
+    },
+    {
+      "clip": "madden26_practice_shotgun_empty.mp4",
+      "kind": "practice",
+      "verdict": "pass",
+      "reasons": [],
+      "max_central_std": 36.6,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": false
+      }
+    },
+    {
+      "clip": "madden26_practice_shotgun_tight.mp4",
+      "kind": "practice",
+      "verdict": "pass",
+      "reasons": [],
+      "max_central_std": 27.2,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": false
+      }
+    },
+    {
+      "clip": "madden26_practice_shotgun_trips.mp4",
+      "kind": "practice",
+      "verdict": "pass",
+      "reasons": [],
+      "max_central_std": 24.9,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": false
+      }
+    },
+    {
+      "clip": "madden26_practice_singleback_ace.mp4",
+      "kind": "practice",
+      "verdict": "pass",
+      "reasons": [],
+      "max_central_std": 42.6,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": false
+      }
+    },
+    {
+      "clip": "madden26_practice_singleback_wing.mp4",
+      "kind": "practice",
+      "verdict": "pass",
+      "reasons": [],
+      "max_central_std": 42.6,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": false
+      }
+    },
+    {
+      "clip": "madden26_tb_vs_la_q4.mp4",
+      "kind": "matchup",
+      "verdict": "fail",
+      "reasons": [
+        "scoreboard band below threshold (max central_std 57.5 < 70.0) \u2014 may indicate HUD-layout drift vs v2.0.0",
+        "no sampled frame produced plausible team abbreviations against v2.0.0 bboxes \u2014 check HUD-layout alignment"
+      ],
+      "max_central_std": 57.5,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": true,
+        "frames_with_plausible_abbrevs": 0,
+        "plausible": false
+      }
+    },
+    {
+      "clip": "madden26_wash_vs_pits_q4.mp4",
+      "kind": "matchup",
+      "verdict": "fail",
+      "reasons": [
+        "no sampled frame produced plausible team abbreviations against v2.0.0 bboxes \u2014 check HUD-layout alignment"
+      ],
+      "max_central_std": 77.1,
+      "fps": 30.0,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "codec": "h264",
+      "abbrev": {
+        "applies": true,
+        "frames_with_plausible_abbrevs": 0,
+        "plausible": false
+      }
+    }
+  ]
+}

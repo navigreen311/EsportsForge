@@ -1,0 +1,360 @@
+{
+  "milestone": "M5c sub-task 4 (OCR-of-overlay pivot)",
+  "calibration": "hud_regions.json v2.2.0 play_call.formation_name",
+  "acceptance_threshold_pct": 80.0,
+  "practice_success_rate_pct": 100.0,
+  "practice_passes": true,
+  "per_formation": [
+    {
+      "formation": "shotgun_trips",
+      "ok": 5,
+      "of": 5,
+      "full_names": [
+        "Trips"
+      ],
+      "reads": [
+        {
+          "canonical": "shotgun_trips",
+          "full_name": "Trips",
+          "conf": 0.785
+        },
+        {
+          "canonical": "shotgun_trips",
+          "full_name": "Trips",
+          "conf": 0.91
+        },
+        {
+          "canonical": "shotgun_trips",
+          "full_name": "Trips",
+          "conf": 0.997
+        },
+        {
+          "canonical": "shotgun_trips",
+          "full_name": "Trips",
+          "conf": 0.997
+        },
+        {
+          "canonical": "shotgun_trips",
+          "full_name": "Trips",
+          "conf": 0.998
+        }
+      ]
+    },
+    {
+      "formation": "shotgun_bunch",
+      "ok": 5,
+      "of": 5,
+      "full_names": [
+        "Bunch"
+      ],
+      "reads": [
+        {
+          "canonical": "shotgun_bunch",
+          "full_name": "Bunch",
+          "conf": 1.0
+        },
+        {
+          "canonical": "shotgun_bunch",
+          "full_name": "Bunch",
+          "conf": 0.784
+        },
+        {
+          "canonical": "shotgun_bunch",
+          "full_name": "Bunch",
+          "conf": 1.0
+        },
+        {
+          "canonical": "shotgun_bunch",
+          "full_name": "Bunch",
+          "conf": 1.0
+        },
+        {
+          "canonical": "shotgun_bunch",
+          "full_name": "Bunch",
+          "conf": 1.0
+        }
+      ]
+    },
+    {
+      "formation": "shotgun_empty",
+      "ok": 5,
+      "of": 5,
+      "full_names": [
+        "Empty Base"
+      ],
+      "reads": [
+        {
+          "canonical": "shotgun_empty",
+          "full_name": "Empty Base",
+          "conf": 0.763
+        },
+        {
+          "canonical": "shotgun_empty",
+          "full_name": "Empty Base",
+          "conf": 0.755
+        },
+        {
+          "canonical": "shotgun_empty",
+          "full_name": "Empty Base",
+          "conf": 0.873
+        },
+        {
+          "canonical": "shotgun_empty",
+          "full_name": "Empty Base",
+          "conf": 0.772
+        },
+        {
+          "canonical": "shotgun_empty",
+          "full_name": "Empty Base",
+          "conf": 0.87
+        }
+      ]
+    },
+    {
+      "formation": "i_form_pro",
+      "ok": 5,
+      "of": 5,
+      "full_names": [
+        "Pro"
+      ],
+      "reads": [
+        {
+          "canonical": "i_form_pro",
+          "full_name": "Pro",
+          "conf": 0.827
+        },
+        {
+          "canonical": "i_form_pro",
+          "full_name": "Pro",
+          "conf": 0.813
+        },
+        {
+          "canonical": "i_form_pro",
+          "full_name": "Pro",
+          "conf": 0.82
+        },
+        {
+          "canonical": "i_form_pro",
+          "full_name": "Pro",
+          "conf": 0.859
+        },
+        {
+          "canonical": "i_form_pro",
+          "full_name": "Pro",
+          "conf": 0.962
+        }
+      ]
+    },
+    {
+      "formation": "singleback_ace",
+      "ok": 5,
+      "of": 5,
+      "full_names": [
+        "Ace"
+      ],
+      "reads": [
+        {
+          "canonical": "singleback_ace",
+          "full_name": "Ace",
+          "conf": 0.732
+        },
+        {
+          "canonical": "singleback_ace",
+          "full_name": "Ace",
+          "conf": 0.81
+        },
+        {
+          "canonical": "singleback_ace",
+          "full_name": "Ace",
+          "conf": 0.813
+        },
+        {
+          "canonical": "singleback_ace",
+          "full_name": "Ace",
+          "conf": 0.966
+        },
+        {
+          "canonical": "singleback_ace",
+          "full_name": "Ace",
+          "conf": 0.893
+        }
+      ]
+    },
+    {
+      "formation": "pistol_strong",
+      "ok": 5,
+      "of": 5,
+      "full_names": [
+        "Strong A",
+        "Strong F",
+        "Strong G",
+        "Strong Gnd"
+      ],
+      "reads": [
+        {
+          "canonical": "pistol_strong",
+          "full_name": "Strong F",
+          "conf": 0.597
+        },
+        {
+          "canonical": "pistol_strong",
+          "full_name": "Strong A",
+          "conf": 0.648
+        },
+        {
+          "canonical": "pistol_strong",
+          "full_name": "Strong Gnd",
+          "conf": 0.667
+        },
+        {
+          "canonical": "pistol_strong",
+          "full_name": "Strong F",
+          "conf": 0.618
+        },
+        {
+          "canonical": "pistol_strong",
+          "full_name": "Strong G",
+          "conf": 0.634
+        }
+      ]
+    },
+    {
+      "formation": "shotgun_doubles",
+      "ok": 5,
+      "of": 5,
+      "full_names": [
+        "Doubles",
+        "Doubles M",
+        "Doubles S"
+      ],
+      "reads": [
+        {
+          "canonical": "shotgun_doubles",
+          "full_name": "Doubles M",
+          "conf": 0.566
+        },
+        {
+          "canonical": "shotgun_doubles",
+          "full_name": "Doubles",
+          "conf": 0.553
+        },
+        {
+          "canonical": "shotgun_doubles",
+          "full_name": "Doubles",
+          "conf": 0.545
+        },
+        {
+          "canonical": "shotgun_doubles",
+          "full_name": "Doubles",
+          "conf": 0.831
+        },
+        {
+          "canonical": "shotgun_doubles",
+          "full_name": "Doubles S",
+          "conf": 0.53
+        }
+      ]
+    },
+    {
+      "formation": "singleback_wing",
+      "ok": 5,
+      "of": 5,
+      "full_names": [
+        "Wing Slot"
+      ],
+      "reads": [
+        {
+          "canonical": "singleback_wing",
+          "full_name": "Wing Slot",
+          "conf": 0.899
+        },
+        {
+          "canonical": "singleback_wing",
+          "full_name": "Wing Slot",
+          "conf": 0.833
+        },
+        {
+          "canonical": "singleback_wing",
+          "full_name": "Wing Slot",
+          "conf": 0.877
+        },
+        {
+          "canonical": "singleback_wing",
+          "full_name": "Wing Slot",
+          "conf": 1.0
+        },
+        {
+          "canonical": "singleback_wing",
+          "full_name": "Wing Slot",
+          "conf": 0.998
+        }
+      ]
+    }
+  ],
+  "exhibition": {
+    "play_call_screens_found": 10,
+    "gameplay_frames_gated_to_none": "40/40",
+    "reads": [
+      {
+        "ts": 19.9,
+        "full_name": "Wing Tight Z",
+        "canonical": "singleback_wing",
+        "conf": 0.596
+      },
+      {
+        "ts": 58.8,
+        "full_name": "Wing F",
+        "canonical": "singleback_wing",
+        "conf": 0.662
+      },
+      {
+        "ts": 97.8,
+        "full_name": "Normal",
+        "canonical": null,
+        "conf": 0.975
+      },
+      {
+        "ts": 273.1,
+        "full_name": "Wing Tight Z",
+        "canonical": "singleback_wing",
+        "conf": 0.874
+      },
+      {
+        "ts": 282.9,
+        "full_name": "Ace Double Wing",
+        "canonical": "singleback_ace",
+        "conf": 0.924
+      },
+      {
+        "ts": 312.1,
+        "full_name": "Ace Double Wing",
+        "canonical": "singleback_ace",
+        "conf": 0.895
+      },
+      {
+        "ts": 321.8,
+        "full_name": "Normal Y Off Close",
+        "canonical": null,
+        "conf": 0.996
+      },
+      {
+        "ts": 331.6,
+        "full_name": "Trips TE Offset",
+        "canonical": "shotgun_trips",
+        "conf": 0.923
+      },
+      {
+        "ts": 380.3,
+        "full_name": "Y Off Trio Close",
+        "canonical": null,
+        "conf": 0.999
+      },
+      {
+        "ts": 390.0,
+        "full_name": "Empty Quads A",
+        "canonical": "shotgun_empty",
+        "conf": 0.566
+      }
+    ]
+  }
+}

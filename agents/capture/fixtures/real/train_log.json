@@ -1,0 +1,302 @@
+{
+  "milestone": "M5c sub-task 4",
+  "model": "mobilenet_v3_small (ImageNet pretrained, 8-way head)",
+  "hyperparams": {
+    "seed": 42,
+    "batch": 32,
+    "lr": 0.001,
+    "max_epochs": 30,
+    "freeze_epochs": 5,
+    "patience": 6,
+    "input_size": 224,
+    "class_weighted_loss": true,
+    "augment": "rot+-5,bright+-15%,jitter+-5%,no-hflip"
+  },
+  "environment": {
+    "python": "3.12.10",
+    "torch": "2.11.0+cpu",
+    "torchvision": "0.26.0+cpu",
+    "device": "cpu"
+  },
+  "epochs_run": 9,
+  "best_val_macro_f1": 0.1737,
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 1.4975,
+      "val_loss": 2.3125,
+      "val_macro_f1": 0.046,
+      "lr": 0.001,
+      "frozen": true
+    },
+    {
+      "epoch": 2,
+      "train_loss": 1.0265,
+      "val_loss": 2.5379,
+      "val_macro_f1": 0.0625,
+      "lr": 0.001,
+      "frozen": true
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.8864,
+      "val_loss": 2.1913,
+      "val_macro_f1": 0.1737,
+      "lr": 0.001,
+      "frozen": true
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.7766,
+      "val_loss": 2.2823,
+      "val_macro_f1": 0.1063,
+      "lr": 0.001,
+      "frozen": true
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.6949,
+      "val_loss": 2.3914,
+      "val_macro_f1": 0.1522,
+      "lr": 0.001,
+      "frozen": true
+    },
+    {
+      "epoch": 6,
+      "train_loss": 0.7466,
+      "val_loss": 3.3924,
+      "val_macro_f1": 0.0783,
+      "lr": 0.001,
+      "frozen": false
+    },
+    {
+      "epoch": 7,
+      "train_loss": 0.3771,
+      "val_loss": 4.8807,
+      "val_macro_f1": 0.085,
+      "lr": 0.0005,
+      "frozen": false
+    },
+    {
+      "epoch": 8,
+      "train_loss": 0.1907,
+      "val_loss": 4.6712,
+      "val_macro_f1": 0.1315,
+      "lr": 0.0005,
+      "frozen": false
+    },
+    {
+      "epoch": 9,
+      "train_loss": 0.1144,
+      "val_loss": 3.3683,
+      "val_macro_f1": 0.1333,
+      "lr": 0.0005,
+      "frozen": false
+    }
+  ],
+  "final": {
+    "val_macro_f1": 0.1737,
+    "test_macro_f1": 0.0699,
+    "test_loss": 2.2153,
+    "test_per_class": [
+      {
+        "class": "shotgun_trips",
+        "precision": 0.27,
+        "recall": 0.385,
+        "f1": 0.317,
+        "support": 26
+      },
+      {
+        "class": "shotgun_bunch",
+        "precision": 0.2,
+        "recall": 0.304,
+        "f1": 0.241,
+        "support": 23
+      },
+      {
+        "class": "shotgun_empty",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 14
+      },
+      {
+        "class": "i_form_pro",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 6
+      },
+      {
+        "class": "singleback_ace",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 6
+      },
+      {
+        "class": "pistol_strong",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 3
+      },
+      {
+        "class": "shotgun_doubles",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 20
+      },
+      {
+        "class": "singleback_wing",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 21
+      }
+    ],
+    "val_per_class": [
+      {
+        "class": "shotgun_trips",
+        "precision": 0.432,
+        "recall": 0.463,
+        "f1": 0.447,
+        "support": 41
+      },
+      {
+        "class": "shotgun_bunch",
+        "precision": 0.267,
+        "recall": 0.5,
+        "f1": 0.348,
+        "support": 24
+      },
+      {
+        "class": "shotgun_empty",
+        "precision": 0.214,
+        "recall": 0.25,
+        "f1": 0.231,
+        "support": 12
+      },
+      {
+        "class": "i_form_pro",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 6
+      },
+      {
+        "class": "singleback_ace",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 14
+      },
+      {
+        "class": "pistol_strong",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 9
+      },
+      {
+        "class": "shotgun_doubles",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 6
+      },
+      {
+        "class": "singleback_wing",
+        "precision": 0.667,
+        "recall": 0.25,
+        "f1": 0.364,
+        "support": 8
+      }
+    ],
+    "test_confusion": [
+      [
+        10,
+        1,
+        13,
+        0,
+        2,
+        0,
+        0,
+        0
+      ],
+      [
+        11,
+        7,
+        4,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        5,
+        9,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        3,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        5,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        3,
+        9,
+        8,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        6,
+        1,
+        10,
+        1,
+        0,
+        0,
+        3,
+        0
+      ]
+    ]
+  },
+  "elapsed_sec": 56.7,
+  "checkpoint": "services/visionaudioforge/app/adapters/madden26/models/formation_v0_1.pt"
+}

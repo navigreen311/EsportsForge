@@ -1,0 +1,24 @@
+# Local dev config for the capture agent — points at the synthetic fixture.
+
+[auth]
+api_key = "esf-cap-dev-placeholder"
+user_id = "5041bbe7-5d16-47c4-8f70-211935da55ea"
+
+[core]
+endpoint          = "ws://127.0.0.1:8100/ws/ingest"
+fallback_endpoint = "ws://127.0.0.1:8100/ws/ingest"
+
+[capture]
+source     = "test-video"
+test_video = "C:/Users/ivann/Projects/EsportsForge/agents/capture/fixtures/synthetic.mp4"
+
+[transport]
+target_fps          = 6
+adaptive            = false
+adaptive_max_fps    = 12
+jpeg_quality        = 70
+batch_size          = 2
+ring_buffer_seconds = 30
+
+[diagnostics]
+log_level = "INFO"

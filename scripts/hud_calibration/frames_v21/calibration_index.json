@@ -1,0 +1,286 @@
+{
+  "source": "M5c sub-task 1b",
+  "frame_count": 31,
+  "frames": [
+    {
+      "frame_idx": 1498,
+      "ts_sec": 49.93,
+      "clock_read": "1:49",
+      "down_distance_read": "1s7 & 10",
+      "clip": "madden26_bal_vs_cin_q1.mp4",
+      "file": "madden26_bal_vs_cin_q1_f001498.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 2300,
+      "ts_sec": 76.67,
+      "clock_read": "4:21",
+      "down_distance_read": "ZND & 8",
+      "clip": "madden26_bal_vs_cin_q1.mp4",
+      "file": "madden26_bal_vs_cin_q1_f002300.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 16728,
+      "ts_sec": 557.6,
+      "clock_read": "3:32",
+      "down_distance_read": "4th &4",
+      "clip": "madden26_bal_vs_cin_q1.mp4",
+      "file": "madden26_bal_vs_cin_q1_f016728.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 1457,
+      "ts_sec": 48.57,
+      "clock_read": "5:57",
+      "down_distance_read": "1s7 & 10",
+      "clip": "madden26_kc_vs_phi._q1.mp4",
+      "file": "madden26_kc_vs_phi._q1_f001457.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 2237,
+      "ts_sec": 74.57,
+      "clock_read": "5:43",
+      "down_distance_read": "ZND & 6",
+      "clip": "madden26_kc_vs_phi._q1.mp4",
+      "file": "madden26_kc_vs_phi._q1_f002237.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 19388,
+      "ts_sec": 646.27,
+      "clock_read": "9:19",
+      "down_distance_read": "3rD & 5",
+      "clip": "madden26_kc_vs_phi._q1.mp4",
+      "file": "madden26_kc_vs_phi._q1_f019388.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 1402,
+      "ts_sec": 46.73,
+      "clock_read": "4:28",
+      "down_distance_read": "ZND & 14",
+      "clip": "madden26_gb_vs_det_q1.mp4",
+      "file": "madden26_gb_vs_det_q1_f001402.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 2152,
+      "ts_sec": 71.73,
+      "clock_read": "1:00",
+      "down_distance_read": "3r0 & 5",
+      "clip": "madden26_gb_vs_det_q1.mp4",
+      "file": "madden26_gb_vs_det_q1_f002152.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 15652,
+      "ts_sec": 521.73,
+      "clock_read": "2:53",
+      "down_distance_read": "4th &5",
+      "clip": "madden26_gb_vs_det_q1.mp4",
+      "file": "madden26_gb_vs_det_q1_f015652.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 1488,
+      "ts_sec": 49.6,
+      "clock_read": "4:31",
+      "down_distance_read": "ZND & 9",
+      "clip": "madden26_buf_vs_mia_q1.mp4",
+      "file": "madden26_buf_vs_mia_q1_f001488.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 2284,
+      "ts_sec": 76.13,
+      "clock_read": "4:01",
+      "down_distance_read": "1s7 & 10",
+      "clip": "madden26_buf_vs_mia_q1.mp4",
+      "file": "madden26_buf_vs_mia_q1_f002284.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 19003,
+      "ts_sec": 633.43,
+      "clock_read": "3:39",
+      "down_distance_read": "ZND & 12",
+      "clip": "madden26_buf_vs_mia_q1.mp4",
+      "file": "madden26_buf_vs_mia_q1_f019003.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 645,
+      "ts_sec": 21.5,
+      "clock_read": "4:42",
+      "down_distance_read": "2ND & 5",
+      "clip": "madden26_wash_vs_pits_q4.mp4",
+      "file": "madden26_wash_vs_pits_q4_f000645.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 1994,
+      "ts_sec": 66.47,
+      "clock_read": "3:50",
+      "down_distance_read": "ZND & 4",
+      "clip": "madden26_wash_vs_pits_q4.mp4",
+      "file": "madden26_wash_vs_pits_q4_f001994.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 5141,
+      "ts_sec": 171.37,
+      "clock_read": "2:44",
+      "down_distance_read": "ZND & 10",
+      "clip": "madden26_wash_vs_pits_q4.mp4",
+      "file": "madden26_wash_vs_pits_q4_f005141.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 1504,
+      "ts_sec": 50.13,
+      "clock_read": "4:53",
+      "down_distance_read": "1s7 & 10",
+      "clip": "madden26_dal_vs_sf_q1.mp4",
+      "file": "madden26_dal_vs_sf_q1_f001504.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 2309,
+      "ts_sec": 76.97,
+      "clock_read": "4:22",
+      "down_distance_read": "ZND & 11",
+      "clip": "madden26_dal_vs_sf_q1.mp4",
+      "file": "madden26_dal_vs_sf_q1_f002309.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 17598,
+      "ts_sec": 586.6,
+      "clock_read": "2:20",
+      "down_distance_read": "ZND & 10",
+      "clip": "madden26_dal_vs_sf_q1.mp4",
+      "file": "madden26_dal_vs_sf_q1_f017598.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 1103,
+      "ts_sec": 36.77,
+      "clock_read": "4:56",
+      "down_distance_read": "4th &5",
+      "clip": "madden26_lac_vs_sea_q4.mp4",
+      "file": "madden26_lac_vs_sea_q4_f001103.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 1694,
+      "ts_sec": 56.47,
+      "clock_read": "4:51",
+      "down_distance_read": "Ath %5",
+      "clip": "madden26_lac_vs_sea_q4.mp4",
+      "file": "madden26_lac_vs_sea_q4_f001694.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 9960,
+      "ts_sec": 332.0,
+      "clock_read": "2:24",
+      "down_distance_read": "1s7 & 10",
+      "clip": "madden26_lac_vs_sea_q4.mp4",
+      "file": "madden26_lac_vs_sea_q4_f009960.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 1391,
+      "ts_sec": 46.37,
+      "clock_read": "1:40",
+      "down_distance_read": "ZND & 9",
+      "clip": "madden26_chi_vs_hou_q4.mp4",
+      "file": "madden26_chi_vs_hou_q4_f001391.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 2879,
+      "ts_sec": 95.97,
+      "clock_read": "3:43",
+      "down_distance_read": "ZND & 9",
+      "clip": "madden26_chi_vs_hou_q4.mp4",
+      "file": "madden26_chi_vs_hou_q4_f002879.png",
+      "tag": "play"
+    },
+    {
+      "frame_idx": 12552,
+      "ts_sec": 418.4,
+      "clock_read": "0:34",
+      "down_distance_read": "3rd & 3",
+      "clip": "madden26_chi_vs_hou_q4.mp4",
+      "file": "madden26_chi_vs_hou_q4_f012552.png",
+      "tag": "play"
+    },
+    {
+      "clip": "madden26_bal_vs_cin_q1.mp4",
+      "file": "madden26_bal_vs_cin_q1_kp000187.png",
+      "frame_idx": 187,
+      "clock_read": "5:00",
+      "down_distance_read": "KICKOFF",
+      "ts_sec": null,
+      "tag": "kickoff"
+    },
+    {
+      "clip": "madden26_kc_vs_phi._q1.mp4",
+      "file": "madden26_kc_vs_phi._q1_kp010931.png",
+      "frame_idx": 10931,
+      "clock_read": "2:07",
+      "down_distance_read": "KICKOFF",
+      "ts_sec": null,
+      "tag": "kickoff"
+    },
+    {
+      "clip": "madden26_dal_vs_sf_q1.mp4",
+      "file": "madden26_dal_vs_sf_q1_kp000188.png",
+      "frame_idx": 188,
+      "clock_read": "5:00",
+      "down_distance_read": "KICKOFF",
+      "ts_sec": null,
+      "tag": "kickoff"
+    },
+    {
+      "clip": "madden26_gb_vs_det_q1.mp4",
+      "file": "madden26_gb_vs_det_q1_kp025941.png",
+      "frame_idx": 25941,
+      "clock_read": "0:05",
+      "down_distance_read": "1s7 & GOAL",
+      "ts_sec": null,
+      "tag": "kickoff"
+    },
+    {
+      "clip": "madden26_lac_vs_sea_q4.mp4",
+      "file": "madden26_lac_vs_sea_q4_kp006071.png",
+      "frame_idx": 6071,
+      "clock_read": "3:26",
+      "down_distance_read": "KICKOFF",
+      "ts_sec": null,
+      "tag": "kickoff"
+    },
+    {
+      "clip": "madden26_wash_vs_pits_q4.mp4",
+      "file": "madden26_wash_vs_pits_q4_sc009247.png",
+      "frame_idx": 9247,
+      "clock_read": "0:41",
+      "down_distance_read": "1ST & 10",
+      "tag": "2digit_score",
+      "note": "WAS 7 / PIT 13, 4TH-qtr"
+    },
+    {
+      "clip": "madden26_chi_vs_hou_q4.mp4",
+      "file": "madden26_chi_vs_hou_q4_sc033734.png",
+      "frame_idx": 33734,
+      "clock_read": "1:01",
+      "down_distance_read": "1ST & GOAL",
+      "tag": "2digit_score",
+      "note": "CHI 15 / HOU 15, OVERTIME, goal-line"
+    }
+  ],
+  "coverage_note": "8 colour-diverse matchups; downs 1-4; KICKOFF x4 + GOAL + OT; 2-digit scores x2; no PUNT panel present in captured footage (CPU-vs-CPU segments)"
+}

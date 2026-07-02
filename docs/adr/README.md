@@ -32,8 +32,13 @@ Every ADR has these sections:
 | 0003 | [Webhook delivery durability v1](0003-webhook-delivery-durability-v1.md) | Accepted | [specs/03 §5 Q3](../specs/03-mock-removal-and-page-wiring.md), [specs/02 §8](../specs/02-visionaudioforge-core.md) |
 | 0004 | [Mock deletion bar](0004-mock-deletion-bar.md) | Accepted | [specs/03 §5 Q4](../specs/03-mock-removal-and-page-wiring.md) |
 | 0005 | [Per-adapter frame-rate override](0005-per-adapter-frame-rate-override.md) | Accepted | [specs/01 §2](../specs/01-capture-agent.md) |
-| 0006 | [Tiered per-frame budget](0006-tiered-per-frame-budget.md) | Accepted | [specs/02 §1, §4](../specs/02-visionaudioforge-core.md) |
+| 0006 | [Tiered per-frame budget](0006-tiered-per-frame-budget.md) | Accepted (amended by 0015) | [specs/02 §1, §4](../specs/02-visionaudioforge-core.md) |
 | 0007 | [Title detection fallback strategy](0007-title-detection-fallback.md) | Accepted | [specs/02 §1](../specs/02-visionaudioforge-core.md) |
 | 0008 | [Credential Manager in v1](0008-credential-manager-in-v1.md) | Accepted | [specs/01 §6](../specs/01-capture-agent.md) |
 | 0009 | [Core service platform-neutral](0009-core-service-platform-neutral.md) | Accepted | [specs/01 §1](../specs/01-capture-agent.md), [specs/02](../specs/02-visionaudioforge-core.md) |
 | 0010 | [Phase 1c gated on adapter v0.3](0010-phase-1c-gated-on-adapter-v0-3.md) | Accepted | [specs/03 §3](../specs/03-mock-removal-and-page-wiring.md) |
+| 0011 | [Dev backend port correction (8001→8002)](0011-dev-backend-port-correction.md) | Accepted | [specs/01, specs/02 ports](../specs/02-visionaudioforge-core.md) |
+| 0012 | [Two-stage flag pattern](0012-two-stage-flag-pattern.md) | Accepted | [specs/03 §5](../specs/03-mock-removal-and-page-wiring.md) |
+| 0013 | [HUD calibration recurring maintenance](0013-hud-calibration-recurring-maintenance.md) | Accepted | [M5c plan / HUD methodology](../integrations/visionaudioforge/madden26-hud-calibration-methodology.md) |
+| 0014 | [OCR-of-overlay over CNN for formation signals](0014-ocr-overlay-over-cnn-for-formation-signals.md) | Accepted | [M5c plan sub-task 4](../phase-completions/0-vaf-m5c-plan.md) |
+| 0015 | [Tiered budget + sampled-OCR cadence](0015-tiered-budget-and-sampled-ocr-cadence.md) | Accepted | amends [0006](0006-tiered-per-frame-budget.md); [specs/02 §4](../specs/02-visionaudioforge-core.md) |

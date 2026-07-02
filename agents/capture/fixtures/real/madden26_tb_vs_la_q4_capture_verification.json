@@ -1,0 +1,93 @@
+{
+  "clip": "madden26_tb_vs_la_q4.mp4",
+  "kind": "matchup",
+  "expected_abbrevs": [
+    "TB",
+    "LAR"
+  ],
+  "container": {
+    "resolution": [
+      1920,
+      1080
+    ],
+    "fps": 30.0,
+    "codec": "h264",
+    "frame_count": 17262,
+    "duration_sec": 575.4
+  },
+  "container_checks": {
+    "resolution_ok": true,
+    "fps_ok": true,
+    "fps_note": "matches 30 fps capture (protocol floor; plan v2 assumed 60)",
+    "codec_ok": true
+  },
+  "frames": [
+    {
+      "frame_idx": 1726,
+      "ts_sec": 57.53,
+      "read_ok": true,
+      "central_std": 49.3,
+      "hud_band_present": false
+    },
+    {
+      "frame_idx": 4315,
+      "ts_sec": 143.83,
+      "read_ok": true,
+      "central_std": 51.4,
+      "hud_band_present": false
+    },
+    {
+      "frame_idx": 8631,
+      "ts_sec": 287.7,
+      "read_ok": true,
+      "central_std": 57.2,
+      "hud_band_present": false,
+      "ocr": {
+        "team_home_abbr": null,
+        "team_away_abbr": "ATH ZBI",
+        "score_home": null,
+        "score_away": null,
+        "quarter": null,
+        "clock": null,
+        "down": null,
+        "distance": null,
+        "field_position": null,
+        "confidence_overall": 0.291
+      },
+      "ocr_elapsed_ms": 1000.0
+    },
+    {
+      "frame_idx": 12946,
+      "ts_sec": 431.53,
+      "read_ok": true,
+      "central_std": 57.5,
+      "hud_band_present": false
+    },
+    {
+      "frame_idx": 15535,
+      "ts_sec": 517.83,
+      "read_ok": true,
+      "central_std": 56.2,
+      "hud_band_present": false
+    }
+  ],
+  "hud_band": {
+    "max_central_std": 57.5,
+    "frames_with_band": 0,
+    "frames_sampled": 5,
+    "threshold": 70.0,
+    "present": false
+  },
+  "abbrev_check": {
+    "applies": true,
+    "frames_with_plausible_abbrevs": 0,
+    "plausible": false
+  },
+  "container_ok": true,
+  "verdict": "fail",
+  "reasons": [
+    "scoreboard band below threshold (max central_std 57.5 < 70.0) \u2014 may indicate HUD-layout drift vs v2.0.0",
+    "no sampled frame produced plausible team abbreviations against v2.0.0 bboxes \u2014 check HUD-layout alignment"
+  ],
+  "verify_elapsed_sec": 1.7
+}

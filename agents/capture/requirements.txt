@@ -1,0 +1,8 @@
+opencv-python-headless==4.10.0.84
+websockets==13.1
+pydantic==2.7.4
+numpy==1.26.4
+# v1 adds (per ADR 0008): pywin32 for Credential Manager + system tray
+# pywin32==306; sys_platform == "win32"
+# pystray==0.19.5; sys_platform == "win32"
+# pillow==10.4.0; sys_platform == "win32"

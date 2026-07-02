@@ -1,0 +1,25 @@
+# Example config for the EsportsForge Capture Agent (Phase 0 skeleton).
+# Copy to config.dev.toml and fill in values for local dev.
+
+[auth]
+api_key = "esf-cap-dev-placeholder"
+user_id = "5041bbe7-5d16-47c4-8f70-211935da55ea"
+
+[core]
+endpoint          = "ws://localhost:8100/ws/ingest"
+fallback_endpoint = "ws://localhost:8100/ws/ingest"
+
+[capture]
+source     = "test-video"          # Phase 0: only "test-video" supported
+test_video = "./fixtures/madden_sample.mp4"
+
+[transport]
+target_fps          = 12
+adaptive            = true
+adaptive_max_fps    = 24
+jpeg_quality        = 75
+batch_size          = 4
+ring_buffer_seconds = 30
+
+[diagnostics]
+log_level = "INFO"

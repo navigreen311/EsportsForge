@@ -1,0 +1,185 @@
+{
+  "milestone": "M5c sub-task 5 (OCR-of-overlay acceptance evaluation)",
+  "detector": "formation_detector.FormationDetector (hud_regions v2.2.0 play_call)",
+  "acceptance": {
+    "per_formation_success_pct": 100.0,
+    "per_formation_gate": ">=80%",
+    "per_formation_pass": true,
+    "name_to_canonical_accuracy_pct": 100.0,
+    "state_detector_true_negative_pct": 100.0,
+    "state_detector_false_positives": 0,
+    "state_detector_gate": "~0 false positives on live gameplay",
+    "state_detector_pass": true
+  },
+  "confidence_overall": {
+    "mean": 0.83,
+    "min": 0.508,
+    "stdev": 0.151
+  },
+  "per_formation": [
+    {
+      "formation": "shotgun_trips",
+      "success": "10/10",
+      "pct": 100.0,
+      "conf_mean": 0.893,
+      "conf_min": 0.576,
+      "full_names": [
+        "Trips"
+      ]
+    },
+    {
+      "formation": "shotgun_bunch",
+      "success": "10/10",
+      "pct": 100.0,
+      "conf_mean": 0.958,
+      "conf_min": 0.673,
+      "full_names": [
+        "Bunch",
+        "Bunch L"
+      ]
+    },
+    {
+      "formation": "shotgun_empty",
+      "success": "10/10",
+      "pct": 100.0,
+      "conf_mean": 0.883,
+      "conf_min": 0.741,
+      "full_names": [
+        "Empty Base"
+      ]
+    },
+    {
+      "formation": "i_form_pro",
+      "success": "10/10",
+      "pct": 100.0,
+      "conf_mean": 0.851,
+      "conf_min": 0.542,
+      "full_names": [
+        "Pro"
+      ]
+    },
+    {
+      "formation": "singleback_ace",
+      "success": "10/10",
+      "pct": 100.0,
+      "conf_mean": 0.88,
+      "conf_min": 0.713,
+      "full_names": [
+        "Ace"
+      ]
+    },
+    {
+      "formation": "pistol_strong",
+      "success": "10/10",
+      "pct": 100.0,
+      "conf_mean": 0.635,
+      "conf_min": 0.57,
+      "full_names": [
+        "Strong",
+        "Strong A",
+        "Strong C",
+        "Strong F",
+        "Strong G",
+        "Strong ed"
+      ]
+    },
+    {
+      "formation": "shotgun_doubles",
+      "success": "10/10",
+      "pct": 100.0,
+      "conf_mean": 0.639,
+      "conf_min": 0.508,
+      "full_names": [
+        "Doubles",
+        "Doubles L"
+      ]
+    },
+    {
+      "formation": "singleback_wing",
+      "success": "10/10",
+      "pct": 100.0,
+      "conf_mean": 0.9,
+      "conf_min": 0.788,
+      "full_names": [
+        "Wing Slot"
+      ]
+    }
+  ],
+  "state_detector_negative_test": {
+    "matchup_frames": 40,
+    "true_negatives": 40,
+    "false_positives": 0,
+    "fp_examples": []
+  },
+  "exhibition_production": {
+    "play_call_screens_read": 11,
+    "reads": [
+      {
+        "ts": 58.8,
+        "name": "Wing F",
+        "canonical": "singleback_wing",
+        "conf": 0.662
+      },
+      {
+        "ts": 99.4,
+        "name": "Heavy Raven",
+        "canonical": null,
+        "conf": 0.738
+      },
+      {
+        "ts": 237.4,
+        "name": "Spread Dbl Flex",
+        "canonical": null,
+        "conf": 0.961
+      },
+      {
+        "ts": 269.9,
+        "name": "H Tight",
+        "canonical": null,
+        "conf": 0.945
+      },
+      {
+        "ts": 278.0,
+        "name": "Deuce Close",
+        "canonical": null,
+        "conf": 0.938
+      },
+      {
+        "ts": 310.5,
+        "name": "Ace Double Wing",
+        "canonical": "singleback_ace",
+        "conf": 1.0
+      },
+      {
+        "ts": 318.6,
+        "name": "Wing Slot Offset",
+        "canonical": "singleback_wing",
+        "conf": 1.0
+      },
+      {
+        "ts": 326.7,
+        "name": "Tight Slot Flip",
+        "canonical": null,
+        "conf": 0.687
+      },
+      {
+        "ts": 334.8,
+        "name": "Y Off Trio Close",
+        "canonical": null,
+        "conf": 0.917
+      },
+      {
+        "ts": 383.5,
+        "name": "Spread Dbl Flex",
+        "canonical": null,
+        "conf": 0.844
+      },
+      {
+        "ts": 391.6,
+        "name": "Empty Quads",
+        "canonical": "shotgun_empty",
+        "conf": 0.955
+      }
+    ]
+  }
+}

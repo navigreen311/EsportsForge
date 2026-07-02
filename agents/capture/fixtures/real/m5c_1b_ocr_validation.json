@@ -1,0 +1,208 @@
+{
+  "milestone": "M5c sub-task 1b",
+  "calibration": "hud_regions.json v2.1.0 (centered scorebug)",
+  "frames_evaluated": 31,
+  "per_element": {
+    "team_home_abbr": {
+      "pct": 100.0,
+      "hits": 31,
+      "trials": 31
+    },
+    "team_away_abbr": {
+      "pct": 100.0,
+      "hits": 31,
+      "trials": 31
+    },
+    "score_home": {
+      "pct": 62.5,
+      "hits": 10,
+      "trials": 16
+    },
+    "score_away": {
+      "pct": 56.2,
+      "hits": 9,
+      "trials": 16
+    },
+    "quarter": {
+      "pct": 90.3,
+      "hits": 28,
+      "trials": 31
+    },
+    "clock": {
+      "pct": 93.3,
+      "hits": 28,
+      "trials": 30
+    },
+    "down": {
+      "pct": 100.0,
+      "hits": 27,
+      "trials": 27
+    },
+    "distance": {
+      "pct": 96.8,
+      "hits": 30,
+      "trials": 31
+    },
+    "play_clock": {
+      "pct": 92.6,
+      "hits": 25,
+      "trials": 27
+    },
+    "field_position": {
+      "pct": 96.8,
+      "hits": 30,
+      "trials": 31
+    }
+  },
+  "elements_at_or_above_80": [
+    "team_home_abbr",
+    "team_away_abbr",
+    "quarter",
+    "clock",
+    "down",
+    "distance",
+    "play_clock",
+    "field_position"
+  ],
+  "elements_below_80": [
+    "score_home",
+    "score_away"
+  ],
+  "gate_9_of_10_at_80": false,
+  "scores_accepted_known_weak_v0_1": true,
+  "decision": "8/10 elements >= 80% (most 90-100%). Only score_home/score_away fall short: the large italic scorebug numerals defeat EasyOCR on 2-digit values (legible to humans \u2014 an OCR-tuning gap, not a capture defect; needs digit segmentation / template matching). Scores accepted as a v0.1 KNOWN-WEAK element per user sign-off 2026-06-29 \u2014 M5c trains on on-field formation layout, not the scorebug, and every game-state element that drives events (down/distance/clock/quarter/field_position) reads >= 90%. Follow-up: harden score OCR when a feature consumes live score.",
+  "mismatches": [
+    {
+      "frame": "bal_vs_cin_q1_f001498.png",
+      "elem": "score_home",
+      "expected": 0,
+      "actual": null
+    },
+    {
+      "frame": "bal_vs_cin_q1_f001498.png",
+      "elem": "clock",
+      "expected": "4:49",
+      "actual": "1:49"
+    },
+    {
+      "frame": "bal_vs_cin_q1_f016728.png",
+      "elem": "quarter",
+      "expected": 2,
+      "actual": null
+    },
+    {
+      "frame": "bal_vs_cin_q1_kp000187.png",
+      "elem": "score_home",
+      "expected": 0,
+      "actual": null
+    },
+    {
+      "frame": "buf_vs_mia_q1_f001488.png",
+      "elem": "play_clock",
+      "expected": "17",
+      "actual": "11"
+    },
+    {
+      "frame": "buf_vs_mia_q1_f002284.png",
+      "elem": "score_away",
+      "expected": 0,
+      "actual": null
+    },
+    {
+      "frame": "chi_vs_hou_q4_f001391.png",
+      "elem": "score_home",
+      "expected": 12,
+      "actual": 0
+    },
+    {
+      "frame": "chi_vs_hou_q4_f001391.png",
+      "elem": "score_away",
+      "expected": 7,
+      "actual": null
+    },
+    {
+      "frame": "chi_vs_hou_q4_f002879.png",
+      "elem": "score_home",
+      "expected": 12,
+      "actual": 0
+    },
+    {
+      "frame": "chi_vs_hou_q4_f002879.png",
+      "elem": "score_away",
+      "expected": 13,
+      "actual": null
+    },
+    {
+      "frame": "chi_vs_hou_q4_sc033734.png",
+      "elem": "score_home",
+      "expected": 15,
+      "actual": 0
+    },
+    {
+      "frame": "chi_vs_hou_q4_sc033734.png",
+      "elem": "score_away",
+      "expected": 15,
+      "actual": 0
+    },
+    {
+      "frame": "chi_vs_hou_q4_sc033734.png",
+      "elem": "quarter",
+      "expected": 5,
+      "actual": null
+    },
+    {
+      "frame": "dal_vs_sf_q1_f001504.png",
+      "elem": "score_away",
+      "expected": 0,
+      "actual": null
+    },
+    {
+      "frame": "gb_vs_det_q1_f002152.png",
+      "elem": "quarter",
+      "expected": 1,
+      "actual": 4
+    },
+    {
+      "frame": "gb_vs_det_q1_f002152.png",
+      "elem": "clock",
+      "expected": "4:00",
+      "actual": "1:00"
+    },
+    {
+      "frame": "gb_vs_det_q1_f002152.png",
+      "elem": "play_clock",
+      "expected": "17",
+      "actual": "11"
+    },
+    {
+      "frame": "kc_vs_phi._q1_f002237.png",
+      "elem": "score_away",
+      "expected": 0,
+      "actual": null
+    },
+    {
+      "frame": "lac_vs_sea_q4_f001694.png",
+      "elem": "distance",
+      "expected": 5,
+      "actual": 25
+    },
+    {
+      "frame": "wash_vs_pits_q4_f000645.png",
+      "elem": "field_position",
+      "expected": "11",
+      "actual": "+41"
+    },
+    {
+      "frame": "wash_vs_pits_q4_sc009247.png",
+      "elem": "score_home",
+      "expected": 7,
+      "actual": null
+    },
+    {
+      "frame": "wash_vs_pits_q4_sc009247.png",
+      "elem": "score_away",
+      "expected": 13,
+      "actual": 4
+    }
+  ]
+}

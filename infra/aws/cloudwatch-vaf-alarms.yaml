@@ -1,0 +1,114 @@
+# CloudFormation template — VAF webhook + adapter alarms.
+#
+# Per ADR 0003 + L2 review item: per-session webhook failure-rate alarm
+# at >0.1% sustained over 60 minutes. Trigger fires the SNS topic
+# `vaf-on-call`, which pages the Phase 1 oncall and surfaces in the
+# `vaf-alarms` Slack channel.
+#
+# Phase 1a hard prerequisite — this stack must be deployed before the
+# Drill Lab cohort widens past 5%.
+#
+# Deploy:
+#   aws cloudformation deploy \
+#     --stack-name vaf-cloudwatch-alarms \
+#     --template-file infra/aws/cloudwatch-vaf-alarms.yaml \
+#     --capabilities CAPABILITY_NAMED_IAM \
+#     --parameter-overrides Environment=prod NotificationEmail=oncall@<domain>
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VAF webhook delivery + adapter latency alarms
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [staging, prod]
+    Default: staging
+  NotificationEmail:
+    Type: String
+    Description: Email subscribed to the SNS topic for paging
+  WebhookFailureRateThreshold:
+    Type: Number
+    Default: 0.001
+    Description: 0.001 = 0.1%. Per ADR 0003.
+  AdapterBudgetBreachThreshold:
+    Type: Number
+    Default: 0.05
+    Description: 0.05 = 5% of frames over budget. Above → degraded mode.
+
+Resources:
+
+  VAFAlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub vaf-on-call-${Environment}
+      DisplayName: VAF on-call paging
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref NotificationEmail
+
+  WebhookFailureRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub vaf-webhook-failure-rate-${Environment}
+      AlarmDescription: >-
+        Per-session webhook failure rate > 0.1% sustained for 60 minutes.
+        Triggers ADR 0003 Redis Streams upgrade evaluation.
+      Namespace: EsportsForge/VAF
+      MetricName: WebhookFailureRate
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 60
+      DatapointsToAlarm: 60
+      Threshold: !Ref WebhookFailureRateThreshold
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref VAFAlarmTopic
+      OKActions:
+        - !Ref VAFAlarmTopic
+
+  AdapterBudgetBreachAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub vaf-adapter-budget-breach-${Environment}
+      AlarmDescription: >-
+        Adapter budget breach rate > 5% over 15 minutes. Indicates the
+        adapter is missing the ADR 0006 per-frame budget on real footage.
+        Phase 1 escalation: degrade to lower frame-rate cadence.
+      Namespace: EsportsForge/VAF
+      MetricName: AdapterBudgetBreachRate
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 15
+      DatapointsToAlarm: 12
+      Threshold: !Ref AdapterBudgetBreachThreshold
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref VAFAlarmTopic
+
+  AdapterLatencyP95Alarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub vaf-adapter-p95-latency-${Environment}
+      AlarmDescription: >-
+        Adapter p95 latency exceeds the v0.1 80 ms budget over 10 minutes.
+        Diagnostic — paired with AdapterBudgetBreachAlarm.
+      Namespace: EsportsForge/VAF
+      MetricName: AdapterLatencyP95Ms
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 10
+      DatapointsToAlarm: 8
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref VAFAlarmTopic
+
+Outputs:
+  AlarmTopicArn:
+    Description: SNS topic ARN for VAF alarms
+    Value: !Ref VAFAlarmTopic
+    Export:
+      Name: !Sub ${AWS::StackName}-AlarmTopicArn

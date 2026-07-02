@@ -46,6 +46,20 @@ When parallel development helps, use **git worktrees** so multiple branches can 
 ai-feature/<kebab-case-description>
 ```
 
+### One PR per stream of work
+
+When a feature has independently-acceptance-testable streams, **each stream gets its own PR**. A "stream" is anything that can be reviewed, validated, and merged on its own — for example:
+
+- VAF core service + Madden adapter (one stream)
+- Capture agent (a separate stream)
+- EsportsForge backend integration endpoints (a third stream)
+
+A single bundled PR for multiple streams is only acceptable when the streams have hard ordering dependencies that make them impossible to merge separately, **and** the bundle is called out explicitly in the PR description.
+
+**Why:** review thoroughness drops sharply once a PR exceeds ~30 files. Reviewers triage rather than read; bugs slip through. Phase 0 (PR #62) shipped 31 files in one PR — flagged in the Phase 0 lessons (L1 / D1) as a deviation from this rule. Documented here so the rule is enforced for future cutovers.
+
+**How to apply:** before opening a PR with multiple streams, ask: "could each stream be merged on its own without breaking the others?" If yes, split. If no, document the dependency in the PR description and explain why it has to bundle.
+
 ---
 
 ## Development Process (Recipe)

@@ -1,0 +1,220 @@
+{
+  "milestone": "7.5.1 context detector calibration",
+  "ground_truth": "OCRPipeline.is_play_call_screen",
+  "bboxes": {
+    "banner_formation_name": [
+      640,
+      585,
+      540,
+      32
+    ],
+    "scoreboard": [
+      700,
+      988,
+      600,
+      78
+    ]
+  },
+  "samples": {
+    "total": 174,
+    "gt_play_call": 87,
+    "gt_live": 87
+  },
+  "feature_separation": {
+    "banner_mean": {
+      "play_call": {
+        "n": 87,
+        "min": 153.3,
+        "max": 167.3,
+        "mean": 162.6
+      },
+      "live": {
+        "n": 87,
+        "min": 38.0,
+        "max": 159.9,
+        "mean": 90.4
+      }
+    },
+    "dark_frac": {
+      "play_call": {
+        "n": 87,
+        "min": 0.368,
+        "max": 0.654,
+        "mean": 0.5
+      },
+      "live": {
+        "n": 87,
+        "min": 0.019,
+        "max": 0.717,
+        "mean": 0.2
+      }
+    },
+    "scorebar_mean": {
+      "play_call": {
+        "n": 87,
+        "min": 20.8,
+        "max": 116.9,
+        "mean": 36.1
+      },
+      "live": {
+        "n": 87,
+        "min": 43.7,
+        "max": 140.3,
+        "mean": 77.6
+      }
+    }
+  },
+  "thresholds": {
+    "banner_mean_ge": 150.0,
+    "dark_frac_ge": 0.3,
+    "scorebar_mean_le_REJECTED": 80.0
+  },
+  "rules": {
+    "primary_banner": {
+      "desc": "banner_mean >= 150.0",
+      "overall": {
+        "tp": 87,
+        "fp": 1,
+        "fn": 0,
+        "tn": 86
+      },
+      "clean": false,
+      "zero_fn": true,
+      "misfiring_clips": {
+        "madden26_playcall_human_exhibition.mp4": {
+          "tp": 7,
+          "fp": 1,
+          "fn": 0,
+          "tn": 22
+        }
+      }
+    },
+    "rejected_banner_scorebar": {
+      "desc": "banner_mean >= 150.0 AND scorebar_mean <= 80.0",
+      "overall": {
+        "tp": 80,
+        "fp": 0,
+        "fn": 7,
+        "tn": 87
+      },
+      "clean": false,
+      "zero_fn": false,
+      "misfiring_clips": {
+        "madden26_playcall_human_exhibition.mp4": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 7,
+          "tn": 23
+        }
+      }
+    },
+    "recommended_banner_darkfrac": {
+      "desc": "banner_mean >= 150.0 AND dark_frac >= 0.3",
+      "overall": {
+        "tp": 87,
+        "fp": 1,
+        "fn": 0,
+        "tn": 86
+      },
+      "clean": false,
+      "zero_fn": true,
+      "misfiring_clips": {
+        "madden26_playcall_human_exhibition.mp4": {
+          "tp": 7,
+          "fp": 1,
+          "fn": 0,
+          "tn": 22
+        }
+      }
+    }
+  },
+  "recommended_rule": "recommended_banner_darkfrac",
+  "escalation": "primary single-feature not clean; escalated to 2-feature (banner + dark_frac). scorebar rejected (game-mode-dependent). 0 FN achieved; residual FP are play<->live transition frames neutralised downstream by the read_formation_name 'N Plays' OCR guard.",
+  "per_clip_gt": {
+    "madden26_playcall_shotgun_trips.mp4": {
+      "n": 10,
+      "gt_play_call": 10,
+      "gt_live": 0
+    },
+    "madden26_playcall_shotgun_bunch.mp4": {
+      "n": 10,
+      "gt_play_call": 10,
+      "gt_live": 0
+    },
+    "madden26_playcall_shotgun_empty.mp4": {
+      "n": 10,
+      "gt_play_call": 10,
+      "gt_live": 0
+    },
+    "madden26_playcall_shotgun_doubles.mp4": {
+      "n": 10,
+      "gt_play_call": 10,
+      "gt_live": 0
+    },
+    "madden26_playcall_i_form_pro.mp4": {
+      "n": 10,
+      "gt_play_call": 10,
+      "gt_live": 0
+    },
+    "madden26_playcall_singleback_ace.mp4": {
+      "n": 10,
+      "gt_play_call": 10,
+      "gt_live": 0
+    },
+    "madden26_playcall_singleback_wing.mp4": {
+      "n": 10,
+      "gt_play_call": 10,
+      "gt_live": 0
+    },
+    "madden26_playcall_pistol_strong.mp4": {
+      "n": 10,
+      "gt_play_call": 10,
+      "gt_live": 0
+    },
+    "madden26_bal_vs_cin_q1.mp4": {
+      "n": 8,
+      "gt_play_call": 0,
+      "gt_live": 8
+    },
+    "madden26_buf_vs_mia_q1.mp4": {
+      "n": 8,
+      "gt_play_call": 0,
+      "gt_live": 8
+    },
+    "madden26_dal_vs_sf_q1.mp4": {
+      "n": 8,
+      "gt_play_call": 0,
+      "gt_live": 8
+    },
+    "madden26_gb_vs_det_q1.mp4": {
+      "n": 8,
+      "gt_play_call": 0,
+      "gt_live": 8
+    },
+    "madden26_kc_vs_phi._q1.mp4": {
+      "n": 8,
+      "gt_play_call": 0,
+      "gt_live": 8
+    },
+    "madden26_chi_vs_hou_q4.mp4": {
+      "n": 8,
+      "gt_play_call": 0,
+      "gt_live": 8
+    },
+    "madden26_lac_vs_sea_q4.mp4": {
+      "n": 8,
+      "gt_play_call": 0,
+      "gt_live": 8
+    },
+    "madden26_tb_vs_la_q4.mp4": {
+      "n": 8,
+      "gt_play_call": 0,
+      "gt_live": 8
+    },
+    "madden26_playcall_human_exhibition.mp4": {
+      "n": 30,
+      "gt_play_call": 7,
+      "gt_live": 23
+    }
+  }
+}
