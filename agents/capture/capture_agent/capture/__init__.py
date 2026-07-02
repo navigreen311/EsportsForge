@@ -2,6 +2,7 @@
 source is a new module + registry entry, no agent core changes."""
 
 from .base import CaptureSource, Frame
+from .file_playback import FilePlaybackSource
 from .test_video import TestVideoSource
 
-__all__ = ["CaptureSource", "Frame", "TestVideoSource"]
+__all__ = ["CaptureSource", "Frame", "FilePlaybackSource", "TestVideoSource"]

@@ -1,8 +1,11 @@
 """Capture Agent entry point.
 
-Phase 0: loads config, opens the test-video source (only source supported
-in this skeleton), connects to the VAF core via WS, sends frame batches
-at the configured cadence, sends heartbeats every 5 s.
+Phase 0: loads config, opens a frame source, connects to the VAF core via
+WS, sends frame batches at the configured cadence, sends heartbeats every 5 s.
+
+Phase 1a Day 0 adds source="file" (FilePlaybackSource) — plays a recorded
+MP4 once through this same production path for playback validation. The
+legacy source="test-video" (infinite loop) is retained for the smoke fixture.
 
 Out of scope for this Phase 0 skeleton:
 - Capture-card source (Phase 1 M1 final — needs cv2.CAP_DSHOW + Win32 device enumeration)
@@ -26,26 +29,38 @@ import sys
 import time
 from pathlib import Path
 
-from .capture import TestVideoSource
+from .capture import FilePlaybackSource, TestVideoSource
 from .config import AgentConfig, load_config
 from .transport import WSClient
 
 logger = logging.getLogger("capture.main")
 
 
+def _build_source(cfg: AgentConfig):
+    """Select the capture source. Phase 1a adds file-mode ingestion."""
+    src = cfg.capture.source
+    if src == "test-video":
+        return TestVideoSource(
+            path=cfg.capture.test_video,
+            target_fps=cfg.transport.target_fps,
+        )
+    if src == "file":
+        return FilePlaybackSource(
+            path=cfg.capture.file or cfg.capture.test_video,
+            target_fps=cfg.transport.target_fps,
+            playback_mode=cfg.capture.playback_mode,
+            normalize_1080p=cfg.capture.normalize_1080p,
+        )
+    raise SystemExit(
+        f"Phase 1a capture agent supports source in {{test-video, file}}; got {src}. "
+        "capture-card and pc-monitor sources land in Phase 1.1."
+    )
+
+
 async def run(cfg: AgentConfig, session_id: str) -> None:
     """Single capture session loop."""
 
-    if cfg.capture.source != "test-video":
-        raise SystemExit(
-            f"Phase 0 capture agent only supports source=test-video; got {cfg.capture.source}. "
-            "Capture-card and pc-monitor sources land in Phase 1."
-        )
-
-    source = TestVideoSource(
-        path=cfg.capture.test_video,
-        target_fps=cfg.transport.target_fps,
-    )
+    source = _build_source(cfg)
     source.open()
 
     ws = WSClient(
@@ -76,6 +91,27 @@ async def run(cfg: AgentConfig, session_id: str) -> None:
                 last_heartbeat = now
 
             await asyncio.sleep(0)  # yield to control_task
+
+        # File-mode sources play once and reach EOF here; flush the tail
+        # batch before signalling completion so no frames are lost.
+        if batch:
+            await ws.send_frame_batch(batch, cfg.transport.jpeg_quality)
+            batch = []
+        if getattr(source, "completed", False):
+            logger.info(
+                "clip_complete",
+                extra={
+                    "clip": source.device_label,
+                    "frames_emitted": getattr(source, "frames_emitted", None),
+                },
+            )
+            try:
+                await ws.send_heartbeat(
+                    current_fps=cfg.transport.target_fps,
+                    capture_status="completed",
+                )
+            except Exception:
+                pass
     except asyncio.CancelledError:
         logger.info("cancelled")
     finally:

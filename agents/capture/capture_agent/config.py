@@ -18,11 +18,15 @@ from pathlib import Path
 
 @dataclass
 class CaptureConfig:
-    source: str  # "capture-card" | "pc-monitor" | "test-video"
+    source: str  # "capture-card" | "pc-monitor" | "test-video" | "file"
     device_index: int = 0
     monitor_index: int = 0
     crop: tuple[int, int, int, int] = (0, 0, 1920, 1080)
     test_video: str = ""
+    # File-mode ingestion (Phase 1a Day 0, source="file").
+    file: str = ""
+    playback_mode: str = "realtime"  # "realtime" (live cadence) | "max" (throughput)
+    normalize_1080p: bool = True
 
 
 @dataclass
@@ -101,6 +105,9 @@ def load_config(path: str | Path | None = None) -> AgentConfig:
             monitor_index=raw["capture"].get("monitor_index", 0),
             crop=tuple(raw["capture"].get("crop", [0, 0, 1920, 1080])),  # type: ignore[arg-type]
             test_video=raw["capture"].get("test_video", ""),
+            file=raw["capture"].get("file", ""),
+            playback_mode=raw["capture"].get("playback_mode", "realtime"),
+            normalize_1080p=raw["capture"].get("normalize_1080p", True),
         ),
         transport=TransportConfig(
             target_fps=raw["transport"].get("target_fps", 12),

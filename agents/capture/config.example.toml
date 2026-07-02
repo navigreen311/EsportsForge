@@ -10,8 +10,15 @@ endpoint          = "ws://localhost:8100/ws/ingest"
 fallback_endpoint = "ws://localhost:8100/ws/ingest"
 
 [capture]
-source     = "test-video"          # Phase 0: only "test-video" supported
+source     = "test-video"          # "test-video" | "file" (Phase 1a). capture-card/pc-monitor land in Phase 1.1
 test_video = "./fixtures/madden_sample.mp4"
+
+# File-mode ingestion (Phase 1a Day 0) — plays a recorded MP4 once through
+# the production capture → WS → VAF core path (not the bypass harness):
+#   source          = "file"
+#   file            = "./fixtures/real/madden26_yt_baseline_cpu-vs-cpu.mp4"
+#   playback_mode   = "realtime"   # "realtime" (live HDMI cadence) | "max" (throughput test)
+#   normalize_1080p = true         # resize non-1080p sources to 1920x1080 for HUD alignment
 
 [transport]
 target_fps          = 12
