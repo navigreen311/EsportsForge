@@ -14,6 +14,7 @@ import { NotificationCenter } from '@/components/notifications/NotificationCente
 import { clsx } from 'clsx';
 import {
   Bell,
+  Check,
   ChevronRight,
   Menu,
   Shield,
@@ -25,7 +26,7 @@ import {
   UserCircle,
 } from 'lucide-react';
 import { useUIStore, MODE_CONFIG } from '@/lib/store';
-import type { IntegrityStatus } from '@/lib/store';
+import type { IntegrityStatus, GameMode } from '@/lib/store';
 import { Badge } from './Badge';
 
 const INTEGRITY_CONFIG: Record<
@@ -133,8 +134,79 @@ function UserMenu() {
   );
 }
 
-export function TopBar() {
+function ModeSelector() {
   const currentMode = useUIStore((s) => s.currentMode);
+  const setMode = useUIStore((s) => s.setMode);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const variantFor = (m: GameMode) =>
+    m === 'ranked' ? 'success' : m === 'tournament' ? 'warning' : 'info';
+  const dotFor = (m: GameMode) =>
+    m === 'ranked' ? 'bg-emerald-400' : m === 'tournament' ? 'bg-amber-400' : 'bg-sky-400';
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="rounded-full transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-forge-500/50"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Game mode: ${MODE_CONFIG[currentMode].label}. Click to change.`}
+      >
+        <Badge variant={variantFor(currentMode)} size="sm" dot>
+          {MODE_CONFIG[currentMode].label}
+        </Badge>
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 z-50 mt-2 w-44 overflow-hidden rounded-xl border border-dark-700/50 bg-dark-800 shadow-xl"
+        >
+          <div className="border-b border-dark-700/50 px-3 py-2 text-xs font-medium text-dark-400">
+            Game Mode
+          </div>
+          <div className="py-1">
+            {(Object.keys(MODE_CONFIG) as GameMode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="menuitemradio"
+                aria-checked={m === currentMode}
+                onClick={() => {
+                  setMode(m);
+                  setOpen(false);
+                }}
+                className={clsx(
+                  'flex w-full items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-dark-700',
+                  m === currentMode ? 'text-dark-100' : 'text-dark-300',
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <span className={clsx('h-2 w-2 rounded-full', dotFor(m))} />
+                  {MODE_CONFIG[m].label}
+                </span>
+                {m === currentMode && <Check className="h-3.5 w-3.5 text-forge-400" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function TopBar() {
   const integrityStatus = useUIStore((s) => s.integrityStatus);
   const unreadCount = useUIStore((s) => s.unreadCount);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
@@ -152,7 +224,6 @@ export function TopBar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const modeConfig = MODE_CONFIG[currentMode];
   const integrity = INTEGRITY_CONFIG[integrityStatus];
   const IntegrityIcon = integrity.icon;
 
@@ -175,20 +246,8 @@ export function TopBar() {
 
       {/* Right section */}
       <div className="flex items-center gap-3">
-        {/* Mode badge */}
-        <Badge
-          variant={
-            currentMode === 'ranked'
-              ? 'success'
-              : currentMode === 'tournament'
-                ? 'warning'
-                : 'info'
-          }
-          size="sm"
-          dot
-        >
-          {modeConfig.label}
-        </Badge>
+        {/* Mode selector (click to change) */}
+        <ModeSelector />
 
         {/* Integrity status */}
         <Badge variant={integrity.variant} size="sm">
