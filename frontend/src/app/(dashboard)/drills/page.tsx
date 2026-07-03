@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Swords, Shield, X as XIcon, Info } from 'lucide-react';
 import { useDrills } from '@/hooks/useDrills';
+import { useVisionEvents } from '@/hooks/useVisionEvents';
+import { useDrillLabAutoRep } from '@/hooks/useDrillLabAutoRep';
 import { useActiveArsenalTitle, type WeaponSide } from '@/hooks/useArsenal';
 import {
   SideToggle,
@@ -52,6 +54,26 @@ export default function DrillsPage() {
   const [side, setSide] = useState<WeaponSide>('offense');
   const titleId = useActiveArsenalTitle();
   const defensiveDrills = DEFENSIVE_DRILLS_BY_TITLE[titleId] ?? [];
+
+  // Phase 1a Day 3: vision-driven rep auto-completion (event-display-only).
+  // Flag-gated stopgap (NEXT_PUBLIC_VAF_DRILL_LAB_ENABLED) — real per-user flag
+  // infra lands when widening past the solo founder, not now.
+  const vafFlagOn = process.env.NEXT_PUBLIC_VAF_DRILL_LAB_ENABLED === 'true';
+  const vafToken = process.env.NEXT_PUBLIC_VAF_CAPTURE_TOKEN ?? '';
+  // Session-id source is a TRACKED DEFERRAL: no browser session provisioning
+  // exists (/sessions/active returns liveness, not a session_id). The later
+  // stopgap feeds the VAF core POST /sessions/open id via env config; until
+  // then this is unset, so `enabled` stays false and nothing connects.
+  const vafSessionId = process.env.NEXT_PUBLIC_VAF_SESSION_ID ?? null;
+  const { lastEvent: vafLastEvent, connected: vafConnected } = useVisionEvents({
+    sessionId: vafSessionId,
+    token: vafToken,
+    eventType: 'FORMATION_LOCKED',
+    enabled: vafFlagOn && !!vafSessionId && !!vafToken,
+  });
+  // Map play-call-screen → rep (§4c): one FORMATION_LOCKED = one rep, deduped
+  // by event_id. Manual completeRep (via DrillRunner) stays the flag-off path.
+  useDrillLabAutoRep({ lastEvent: vafLastEvent, onRep: () => completeRep(true) });
 
   const completedDrillCount = session.completedDrills.length;
 
@@ -155,6 +177,15 @@ export default function DrillsPage() {
               {totalReps}/{totalTargetReps}{' '}
               <span className="text-sm text-dark-500 font-normal">reps</span>
             </p>
+            {/* Phase 1a Day 3: vision status + latest formation (display-only) */}
+            {vafFlagOn && (
+              <p className="text-xs text-dark-500">
+                Vision: {vafConnected ? 'connected' : 'off'}
+                {vafLastEvent?.payload.offensive_formation
+                  ? ` · ${vafLastEvent.payload.offensive_formation}`
+                  : ''}
+              </p>
+            )}
             {/* 9. Drill Streak */}
             <DrillStreak />
           </div>
