@@ -53,7 +53,7 @@ class WSClient:
         url = f"{self._endpoint}?session_id={self._session_id}"
         self._ws = await websockets.connect(
             url,
-            additional_headers={"Authorization": f"Bearer {self._api_key}"},
+            extra_headers={"Authorization": f"Bearer {self._api_key}"},
         )
         # Server sends session_open on connect.
         first = await self._ws.recv()

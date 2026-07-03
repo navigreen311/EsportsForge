@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Swords, Shield, X as XIcon, Info } from 'lucide-react';
+import api from '@/lib/api';
 import { useDrills } from '@/hooks/useDrills';
 import { useVisionEvents } from '@/hooks/useVisionEvents';
 import { useDrillLabAutoRep } from '@/hooks/useDrillLabAutoRep';
@@ -55,21 +56,35 @@ export default function DrillsPage() {
   const titleId = useActiveArsenalTitle();
   const defensiveDrills = DEFENSIVE_DRILLS_BY_TITLE[titleId] ?? [];
 
-  // Phase 1a Day 3: vision-driven rep auto-completion (event-display-only).
-  // Flag-gated stopgap (NEXT_PUBLIC_VAF_DRILL_LAB_ENABLED) — real per-user flag
-  // infra lands when widening past the solo founder, not now.
+  // Phase 1a: vision-driven rep auto-completion (event-display-only), flag-gated
+  // (NEXT_PUBLIC_VAF_DRILL_LAB_ENABLED). Real per-user flag infra lands when
+  // widening past the solo founder, not now.
   const vafFlagOn = process.env.NEXT_PUBLIC_VAF_DRILL_LAB_ENABLED === 'true';
-  const vafToken = process.env.NEXT_PUBLIC_VAF_CAPTURE_TOKEN ?? '';
-  // Session-id source is a TRACKED DEFERRAL: no browser session provisioning
-  // exists (/sessions/active returns liveness, not a session_id). The later
-  // stopgap feeds the VAF core POST /sessions/open id via env config; until
-  // then this is unset, so `enabled` stays false and nothing connects.
-  const vafSessionId = process.env.NEXT_PUBLIC_VAF_SESSION_ID ?? null;
+  // Session-id is provisioned by the backend broker (browser -> backend -> core),
+  // replacing the earlier NEXT_PUBLIC_VAF_SESSION_ID stub. Runs once when the
+  // flag is on; until a real session_id lands, `enabled` stays false so nothing
+  // connects to a fake session.
+  const [vafSession, setVafSession] = useState<{ sessionId: string; token: string } | null>(null);
+  useEffect(() => {
+    if (!vafFlagOn) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await api.post('/visionaudio/sessions/start');
+        if (!cancelled) setVafSession({ sessionId: data.session_id, token: data.token });
+      } catch {
+        // Broker unavailable / disabled server-side — stay on the manual path.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [vafFlagOn]);
   const { lastEvent: vafLastEvent, connected: vafConnected } = useVisionEvents({
-    sessionId: vafSessionId,
-    token: vafToken,
+    sessionId: vafSession?.sessionId ?? null,
+    token: vafSession?.token ?? null,
     eventType: 'FORMATION_LOCKED',
-    enabled: vafFlagOn && !!vafSessionId && !!vafToken,
+    enabled: vafFlagOn && !!vafSession,
   });
   // Map play-call-screen → rep (§4c): one FORMATION_LOCKED = one rep, deduped
   // by event_id. Manual completeRep (via DrillRunner) stays the flag-off path.
@@ -181,6 +196,7 @@ export default function DrillsPage() {
             {vafFlagOn && (
               <p className="text-xs text-dark-500">
                 Vision: {vafConnected ? 'connected' : 'off'}
+                {vafSession ? ` · ${vafSession.sessionId}` : ''}
                 {vafLastEvent?.payload.offensive_formation
                   ? ` · ${vafLastEvent.payload.offensive_formation}`
                   : ''}

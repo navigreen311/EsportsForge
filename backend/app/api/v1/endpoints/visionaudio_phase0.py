@@ -15,13 +15,27 @@ collide with the legacy /api/v1/visionaudio prefix.
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from app.core.deps import get_current_user
+from app.models.user import User
+
 logger = logging.getLogger("esportsforge.visionaudio_phase0")
+
+# Phase 1a Day-2/3 broker config. Core is backend-facing (its sessions.py
+# docstring: "Called by the EsportsForge backend"), so the browser never talks
+# to core over HTTP — it asks THIS backend to broker a session.
+VAF_CORE_URL = os.environ.get("VAF_CORE_URL", "http://127.0.0.1:8100")
+# The backend's own reachable URL, passed to core as the per-session webhook
+# target. (Core currently also honours its global ESF_BACKEND_URL; keep both
+# aligned to the same port or the webhook lands on the wrong backend.)
+ESF_SELF_URL = os.environ.get("ESF_SELF_URL", "http://127.0.0.1:8000")
 
 # In-memory state for Phase 0. Real state moves to a dedicated DB table
 # (capture_keys, vision_sessions) in Phase 1.
@@ -127,4 +141,55 @@ async def active_sessions() -> ActiveSessionsResponse:
         recent_event_count=len(_RECENT_EVENTS),
         last_event_ts=last_ts,
         titles_seen=[t for t in titles if isinstance(t, str)],
+    )
+
+
+# ---------------------------------------------------------------------------
+# /api/v1/visionaudio/sessions/start  (Phase 1a broker — browser -> backend -> core)
+# ---------------------------------------------------------------------------
+
+
+class StartSessionResponse(BaseModel):
+    session_id: str
+    token: str
+    ws_url: str
+
+
+@router.post(
+    "/visionaudio/sessions/start",
+    response_model=StartSessionResponse,
+    summary="Broker a Drill Lab vision session (browser -> backend -> core)",
+    name="vaf_session_start",
+)
+async def start_session(current_user: User = Depends(get_current_user)) -> StartSessionResponse:
+    """Provision a session for the authenticated user by brokering to VAF core.
+
+    Fits the service boundary (core is backend-facing): the browser calls this
+    authed endpoint; the backend calls core POST /sessions/open and returns the
+    session_id + browser WS token. OFFLINE_LAB (FORMATION-emitting, §3). The
+    webhook_url wires core's events back to THIS backend (#8 audit).
+    """
+    if os.environ.get("VAF_DRILL_LAB_ENABLED") != "true":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="drill_lab_disabled")
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"{VAF_CORE_URL}/api/v1/sessions/open",
+                json={
+                    "user_id": str(current_user.id),
+                    "integrity_mode": "offline_lab",
+                    "active_title": "madden26",
+                    "webhook_url": f"{ESF_SELF_URL}/api/v1/visionaudio/events",
+                },
+            )
+            resp.raise_for_status()
+            session_id = resp.json()["session_id"]
+    except httpx.HTTPError as exc:
+        logger.error("vaf_session_start_broker_failed", extra={"err": str(exc)})
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="core_unavailable")
+    logger.info("vaf_session_started", extra={"session_id": session_id, "user": str(current_user.id)})
+    return StartSessionResponse(
+        session_id=session_id,
+        token="esf-cap-dev-placeholder",  # Phase 0 placeholder browser WS ?token=
+        ws_url=VAF_CORE_URL.replace("http://", "ws://").replace("https://", "wss://"),
     )
