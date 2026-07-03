@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Swords, Shield, X as XIcon, Info } from 'lucide-react';
 import api from '@/lib/api';
+import { drillLabVisionEnabled } from '@/lib/vafFlags';
 import { useDrills } from '@/hooks/useDrills';
 import { useVisionEvents } from '@/hooks/useVisionEvents';
 import { useDrillLabAutoRep } from '@/hooks/useDrillLabAutoRep';
@@ -59,7 +60,7 @@ export default function DrillsPage() {
   // Phase 1a: vision-driven rep auto-completion (event-display-only), flag-gated
   // (NEXT_PUBLIC_VAF_DRILL_LAB_ENABLED). Real per-user flag infra lands when
   // widening past the solo founder, not now.
-  const vafFlagOn = process.env.NEXT_PUBLIC_VAF_DRILL_LAB_ENABLED === 'true';
+  const vafFlagOn = drillLabVisionEnabled(); // shared env-only reader (§ vafFlags) — same gate Settings displays
   // Session-id is provisioned by the backend broker (browser -> backend -> core),
   // replacing the earlier NEXT_PUBLIC_VAF_SESSION_ID stub. Runs once when the
   // flag is on; until a real session_id lands, `enabled` stays false so nothing

@@ -4,6 +4,7 @@ import { Gamepad2, Target, Joystick, Lock, Info } from 'lucide-react';
 import type { GameSettings as GameSettingsType, GameTitle, GameMode, InputType } from '@/types/settings';
 import { GAME_TITLE_LABELS } from '@/types/settings';
 import InfoTooltip from '@/components/global/InfoTooltip';
+import DrillLabVisionStatus from '@/components/settings/DrillLabVisionStatus';
 
 export const GAME_MODE_TOOLTIPS: Record<GameMode, string> = {
   ranked:
@@ -161,6 +162,9 @@ export default function GameSettings({ settings, onUpdate, tier = 'free' }: Game
           })}
         </div>
       </div>
+
+      {/* Drill Lab live vision — read-only exposure (engineer-controlled, ADR 0001) */}
+      <DrillLabVisionStatus />
     </div>
   );
 }
