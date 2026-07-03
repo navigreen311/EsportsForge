@@ -32,10 +32,10 @@ logger = logging.getLogger("esportsforge.visionaudio_phase0")
 # docstring: "Called by the EsportsForge backend"), so the browser never talks
 # to core over HTTP — it asks THIS backend to broker a session.
 VAF_CORE_URL = os.environ.get("VAF_CORE_URL", "http://127.0.0.1:8100")
-# The backend's own reachable URL, passed to core as the per-session webhook
-# target. (Core currently also honours its global ESF_BACKEND_URL; keep both
-# aligned to the same port or the webhook lands on the wrong backend.)
-ESF_SELF_URL = os.environ.get("ESF_SELF_URL", "http://127.0.0.1:8000")
+# Note: core routes webhooks GLOBALLY via its own ESF_BACKEND_URL (a single
+# publisher), not per-session — so the broker does NOT pass a per-session
+# webhook_url (that param was ignored; removed in Finding 1). Align core's
+# ESF_BACKEND_URL to this backend for #8 audit. See docs/runbooks.
 
 # In-memory state for Phase 0. Real state moves to a dedicated DB table
 # (capture_keys, vision_sessions) in Phase 1.
@@ -166,8 +166,9 @@ async def start_session(current_user: User = Depends(get_current_user)) -> Start
 
     Fits the service boundary (core is backend-facing): the browser calls this
     authed endpoint; the backend calls core POST /sessions/open and returns the
-    session_id + browser WS token. OFFLINE_LAB (FORMATION-emitting, §3). The
-    webhook_url wires core's events back to THIS backend (#8 audit).
+    session_id + browser WS token. OFFLINE_LAB (FORMATION-emitting, §3). Core
+    delivers events back to THIS backend via its global ESF_BACKEND_URL (#8
+    audit) — routing is global, not per-session.
     """
     if os.environ.get("VAF_DRILL_LAB_ENABLED") != "true":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="drill_lab_disabled")
@@ -179,7 +180,6 @@ async def start_session(current_user: User = Depends(get_current_user)) -> Start
                     "user_id": str(current_user.id),
                     "integrity_mode": "offline_lab",
                     "active_title": "madden26",
-                    "webhook_url": f"{ESF_SELF_URL}/api/v1/visionaudio/events",
                 },
             )
             resp.raise_for_status()

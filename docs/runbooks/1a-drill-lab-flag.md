@@ -13,6 +13,8 @@
 
 Both must be `"true"` for the live path to run end-to-end (frontend attempts; backend permits). The **backend flag is authoritative** — with it off, the frontend flag has no effect (broker 403s).
 
+**Webhook routing is global, not per-session.** Core delivers events through a single publisher targeting its own `ESF_BACKEND_URL` (`services/visionaudioforge/app/core/webhook.py`) — the broker does **not** pass a per-session `webhook_url` (that param was ignored and was removed, Finding 1). For core events to reach *this* backend, **align core's `ESF_BACKEND_URL` to this backend's URL** (e.g. `http://127.0.0.1:8003` in local dev).
+
 ## Enable (engineer)
 
 1. **Backend:** set `VAF_DRILL_LAB_ENABLED=true` in the backend's environment; **restart** the backend process/ECS task.

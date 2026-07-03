@@ -22,7 +22,9 @@ class OpenSessionRequest(BaseModel):
     user_id: str
     integrity_mode: IntegrityMode
     active_title: TitleEnum | None = None
-    webhook_url: str | None = None  # for the EsportsForge backend's event receiver
+    # No per-session webhook_url: core delivers events via one global publisher
+    # targeting ESF_BACKEND_URL (see app/core/webhook.py). A per-session field
+    # here was dead/ignored and implied routing that doesn't exist (Finding 1).
 
 
 class OpenSessionResponse(BaseModel):
