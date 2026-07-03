@@ -163,7 +163,7 @@ Phase 0 verified frame-level integrity gating (Tournament → frames dropped wit
 
 ### 4e · Prerequisites NOT yet addressed (become first Day-0/Day-1 work)
 
-- **Approval #2 (webhook failure-rate alarm → CloudWatch, Phase 0 lesson L2) — OPEN.** `WebhookPublisher.failure_rate` is exposed as a property but **not wired to any alarm**. Completion doc L2 says 1a acceptance should not start until the alarm (or an operator-checked dashboard) exists.
+- **Approval #2 (webhook failure-rate alarm → CloudWatch, Phase 0 lesson L2) — DEFINED-AS-CODE; DEPLOY DEFERRED.** The metric *is* emitted (`services/visionaudioforge/app/core/metrics.py` → `EsportsForge/VAF`/`WebhookFailureRate`; no-ops without boto3/creds) and the alarm *is* defined (`infra/aws/cloudwatch-vaf-alarms.yaml` — `WebhookFailureRateAlarm`, >0.1% sustained 60 min → SNS `vaf-on-call`). Remaining work is **deploying the stack + test-firing it in a live AWS env** (no local AWS access) — not wiring. Per ADR 0003 / §2.5 this alarm **pages + blocks Phase 1c; it does NOT auto-flip Drill Lab** — the auto-FLIP rollback is a separate wire (page-error / WS-failure rate, Spec #03 §4) deferred behind the runtime-settings wall. See `docs/runbooks/vaf-webhook-alarm.md`.
 - **Approval #6 (ops runbook entry) — OPEN.**
 - **Feature flag provisioning (ADR 0001 / brief Day 4) — OPEN** (flags not yet in `backend/app/core/settings.py`).
 - **Events WS subscriber surface — OPEN.** Phase 0 shipped only the webhook publisher; `app/api/events.py` (`/ws/events/{session_id}`) + dispatcher fan-out is Day-1 build work per the brief.
@@ -252,7 +252,7 @@ Manual downloads, **one clip at a time, with pauses between**. Prior YouTube rat
 **Day 0 (prerequisites / cleanup — must precede Day 1 build):**
 
 1. **Doc reconciliation (from §1.4):** decide the fate of the unmerged `docs/phase-0-completion` branch (merge with 4a/4b/4c edits, or supersede). Remove/retire the "Superseded" addendum and the stale `remaining-milestones` / `revised-timeline` Phase-0-not-complete language so main's docs match the `phase0-complete` tag. ⚠️ (§9, Q-branch).
-2. **Webhook failure-rate alarm (Approval #2 / L2):** wire `WebhookPublisher.failure_rate` to CloudWatch (or an operator-checked dashboard). Hard gate per completion-doc L2.
+2. **Webhook failure-rate alarm (Approval #2 / L2):** wire `WebhookPublisher.failure_rate` to CloudWatch (or an operator-checked dashboard). Hard gate per completion-doc L2. *(Update: metric emit + alarm IaC already exist — `metrics.py` + `infra/aws/cloudwatch-vaf-alarms.yaml`; remaining work is **deploy** in AWS, not wiring. See `docs/runbooks/vaf-webhook-alarm.md`.)*
 3. **Feature flags (ADR 0001 + 0012):** provision `VAF_DRILL_LAB_ENABLED_MASTER` + `VAF_DRILL_LAB_COHORT` in `backend/app/core/settings.py`; add `vaf_pipeline_enabled_for(user_id)` with `allowlist=[founder only]`. Add the ADR 0012 unit test (hash-stable assignment + kill-switch precedence).
 4. **Ops runbook entry (Approval #6):** how to flip the master flag + rollback (~30 s path).
 5. **Corpus procurement (§5.2/5.3):** download 12–15 clips one-at-a-time with pauses into `agents/capture/fixtures/real/`.
@@ -292,7 +292,7 @@ Manual downloads, **one clip at a time, with pauses between**. Prior YouTube rat
 | # | Prerequisite work item | Lineage |
 |---|---|---|
 | P1 | Doc reconciliation — resolve unmerged `docs/phase-0-completion` + retire stale "Phase-0-not-complete" docs so main matches the `phase0-complete` tag (§1.4) | housekeeping / §9 Q-branch |
-| P2 | Webhook failure-rate alarm → CloudWatch (or operator dashboard) | brief approval #2 / completion-doc L2 |
+| P2 | Webhook failure-rate alarm → CloudWatch (or operator dashboard) — IaC exists (`cloudwatch-vaf-alarms.yaml`); deploy/drill deferred to AWS | brief approval #2 / completion-doc L2 |
 | P3 | Feature flags provisioned — `VAF_DRILL_LAB_ENABLED_MASTER` + `VAF_DRILL_LAB_COHORT` (`allowlist=[founder]`) + `vaf_pipeline_enabled_for()` + ADR 0012 unit test | brief approval (ADR 0001→0012) |
 | P4 | Ops runbook entry — flip + rollback (~30 s path) | brief approval #6 |
 | P5 | YouTube corpus procured & staged in `agents/capture/fixtures/real/` (12–15 clips, one-at-a-time, H.264 mp4) | solo-derived §5.2/5.3 |
