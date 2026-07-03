@@ -17,7 +17,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app import __version__
-from app.api import health, ingest, sessions
+from app.api import events, health, ingest, sessions
 from app.core.webhook import publisher
 
 logger = logging.getLogger("vaf.main")
@@ -48,3 +48,4 @@ app = FastAPI(
 app.include_router(health.router)
 app.include_router(sessions.router)
 app.include_router(ingest.router)
+app.include_router(events.router)

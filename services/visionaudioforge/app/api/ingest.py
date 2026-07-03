@@ -20,6 +20,7 @@ import numpy as np
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 from app.core.dispatcher import Dispatcher
+from app.core.event_hub import hub
 from app.core.session import registry
 from app.core.webhook import publisher
 from app.schemas.wire import (
@@ -85,7 +86,9 @@ async def ingest(ws: WebSocket) -> None:
                         continue
                     events = dispatcher.process_frame(frame)
                     for ev in events:
-                        await publisher.enqueue(ev.model_dump(mode="json"))
+                        payload = ev.model_dump(mode="json")
+                        await publisher.enqueue(payload)  # webhook → backend
+                        await hub.publish(session_id, payload)  # WS fan-out → subscribers
 
             elif msg_type == "heartbeat":
                 hb = HeartbeatMessage.model_validate(raw)
