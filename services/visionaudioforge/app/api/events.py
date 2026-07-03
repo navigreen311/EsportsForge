@@ -6,11 +6,18 @@ webhook publisher delivers to the backend, fanned out in-process via
 `app.core.event_hub`. Event-display-only — envelopes stream as-is, with
 no coaching transform (the coaching engine is Phase 1b).
 
-Auth mirrors `/ws/ingest` (`app/api/ingest.py`): Phase 0 session-scoped
-placeholder — a non-empty `Authorization` header, `session_id` from the
-path validated against the session registry. No user-JWT in VAF core
-(state report Q5–6). Per state report §8: no server-side event filtering
-— the client hook predicate-filters.
+Auth is a Phase 0 session-scoped placeholder. Python clients (capture
+agent, TestClient) send a non-empty `Authorization` header, mirroring
+`/ws/ingest`. Browsers cannot set custom headers on a WebSocket, so the
+frontend hook passes the token as a `?token=...` query param instead —
+either non-empty credential satisfies the placeholder. `session_id` (from
+the path) is validated against the session registry. No user-JWT in VAF
+core (state report Q5–6). Per state report §8: no server-side event
+filtering — the client hook predicate-filters.
+
+Note: a `?token=` in the URL can surface in access logs — acceptable for
+the Phase 0 placeholder token + allowlist=[founder]; real token hardening
+precedes any multi-user phase.
 """
 
 from __future__ import annotations
@@ -49,8 +56,11 @@ async def _await_disconnect(ws: WebSocket) -> None:
 @router.websocket("/ws/events/{session_id}")
 async def events(ws: WebSocket, session_id: str) -> None:
     """Stream a session's event envelopes to a connected subscriber."""
-    # Phase 0 session-scoped placeholder auth (mirrors /ws/ingest).
-    if not ws.headers.get("authorization", ""):
+    # Phase 0 session-scoped placeholder auth. Python clients send an
+    # Authorization header; browsers (which can't set WS headers) send the
+    # token as ?token=... instead. Either non-empty credential passes.
+    auth = ws.headers.get("authorization", "") or ws.query_params.get("token", "")
+    if not auth:
         await ws.close(code=status.WS_1008_POLICY_VIOLATION)
         return
     session = await registry.get(session_id)

@@ -98,6 +98,32 @@ def test_ws_multiple_subscribers_both_receive():
             assert ws2.receive_json() == event
 
 
+def test_ws_accepts_query_token_without_header():
+    """Browser path: no Authorization header, token in the query string → accepted.
+
+    Browsers cannot set WS headers; the events surface accepts ?token=... as
+    an additive alternative to the header (header path stays for Python clients).
+    """
+    with TestClient(app) as client:
+        sid = "sid-token"
+        _open_session(client, sid)
+        with client.websocket_connect(f"/ws/events/{sid}?token=browser-tok") as ws:  # no headers
+            event = {"event_type": "FORMATION_LOCKED", "session_id": sid}
+            assert client.portal.call(hub.publish, sid, event) == 1
+            assert ws.receive_json() == event
+
+
+def test_ws_rejects_neither_header_nor_token():
+    """Neither an Authorization header nor a ?token= → rejected 1008."""
+    with TestClient(app) as client:
+        sid = "sid-neither"
+        _open_session(client, sid)
+        with pytest.raises(WebSocketDisconnect) as ei:
+            with client.websocket_connect(f"/ws/events/{sid}") as ws:  # no header, no token
+                ws.receive_json()
+        assert ei.value.code == 1008
+
+
 def test_hub_publish_no_subscribers_returns_zero():
     with TestClient(app) as client:
         assert client.portal.call(hub.publish, "ghost-session", {"event_type": "SNAPSHOT"}) == 0
