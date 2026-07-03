@@ -37,8 +37,10 @@ Prints `dev@example.com` / `devpass123`. Log in with those in the browser.
 
 ## Known limitation — dev DB schema drift (tracked, deferred)
 
-Use a **throwaway `DATABASE_URL`** (above) rather than the default `esportsforge.db`. That default is **schema-drifted** — its `recommendations` table lacks `feedback_at`.
+Use a **throwaway `DATABASE_URL`** (above) rather than the default `esportsforge.db`. That default is **schema-drifted** — the `recommendations.feedback_at` column that first surfaced this is only the symptom.
 
-- **Root cause (benign):** dev builds/maintains the DB via `Base.metadata.create_all` (the app lifespan), **not `alembic upgrade`**. `create_all` only creates *missing tables*; it never ALTERs existing ones. The migration that adds the column (`rec_20260505_0001_add_recommendation_feedback`) **exists and is coherent with the model** — it was simply never applied to that long-lived file.
-- **Fix (deferred, do NOT run here):** `alembic upgrade head` against the DB, or recreate it.
-- **Broader signal (deferred):** the dev create_all-vs-alembic split means long-lived dev DBs drift over time. A **full migrations↔models coherence audit across all tables** is separately deferred (the Alembic investigation).
+**Full audit (Session #11): [../db-migration-drift-audit.md](../db-migration-drift-audit.md).** In short, alembic was effectively abandoned — **two heads** (`df_` + `rec_`, no merge), **no `alembic.ini`**, only **18 of 50 model tables** migrated, and the dev DB is **`create_all`-built / never stamped**.
+
+- **`alembic upgrade head` is NOT the fix** — a throwaway-copy test failed with *"Multiple head revisions are present"*, and even resolving that, an upgrade-from-base would collide with the already-existing `create_all` tables. Do **not** run alembic against the real DB.
+- **Interim:** `create_all` works for dev/test — keep using it; use a throwaway DB for any migration experiments.
+- **Fix = a scoped remediation project** (add `alembic.ini` → merge heads → autogenerate the 32 missing tables → `stamp` existing DBs → switch lifespan to `alembic upgrade`), deliberately all-or-nothing. See the audit doc.
