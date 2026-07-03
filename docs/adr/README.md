@@ -42,3 +42,4 @@ Every ADR has these sections:
 | 0013 | [HUD calibration recurring maintenance](0013-hud-calibration-recurring-maintenance.md) | Accepted | [M5c plan / HUD methodology](../integrations/visionaudioforge/madden26-hud-calibration-methodology.md) |
 | 0014 | [OCR-of-overlay over CNN for formation signals](0014-ocr-overlay-over-cnn-for-formation-signals.md) | Accepted | [M5c plan sub-task 4](../phase-completions/0-vaf-m5c-plan.md) |
 | 0015 | [Tiered budget + sampled-OCR cadence](0015-tiered-budget-and-sampled-ocr-cadence.md) | Accepted | amends [0006](0006-tiered-per-frame-budget.md); [specs/02 §4](../specs/02-visionaudioforge-core.md) |
+| 0016 | [File-mode ingestion reuses live transport](0016-file-mode-ingestion-reuses-live-transport.md) | Accepted | [specs/01 §2](../specs/01-capture-agent.md) (adds `file` source) |
