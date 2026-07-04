@@ -36,6 +36,10 @@ import {
   type DrillMonitoringHandle,
   type FrameAnalysis,
 } from '@/lib/services/visionaudioforge';
+import api from '@/lib/api';
+import { simlabVisionEnabled } from '@/lib/vafFlags';
+import { useVisionEvents } from '@/hooks/useVisionEvents';
+import { useSimLabAutoRep } from '@/hooks/useSimLabAutoRep';
 import { getSimLabDetectionConfig } from '@/lib/drills/drillDetectionConfigs';
 import { WatchingIndicator } from '@/components/session/WatchingIndicator';
 import { CaptureSourceModal } from '@/components/session/CaptureSourceModal';
@@ -244,6 +248,11 @@ function SimLabPageBody() {
   const [watching, setWatching] = useState(false);
   const [showCaptureSourceModal, setShowCaptureSourceModal] = useState(false);
   const watchHandleRef = useRef<DrillMonitoringHandle | null>(null);
+  // Phase 1b: SimLab live-vision path, flag-gated (NEXT_PUBLIC_VAF_SIMLAB_ENABLED,
+  // env-only per ADR 0001). Mirrors Drill Lab's 1a wiring. Flag OFF leaves the
+  // legacy VisionAudioForgeService.startDrillMonitoring poll path untouched.
+  const vafFlagOn = simlabVisionEnabled();
+  const [vafSession, setVafSession] = useState<{ sessionId: string; token: string } | null>(null);
   const [reps, setReps] = useState<RepResult[]>([
     { id: 1, correct: true, timeMs: 2400, scenario: '3rd & Medium' },
     { id: 2, correct: true, timeMs: 1800, scenario: '3rd & Medium' },
@@ -478,9 +487,67 @@ function SimLabPageBody() {
     });
   };
 
+  // Phase 1b live-vision wiring (flag ON). Session is provisioned by the backend
+  // broker (browser -> backend -> core), mirroring Drill Lab's 1a path. Until a
+  // real session_id lands, `enabled` stays false so nothing connects.
+  useEffect(() => {
+    if (!vafFlagOn) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await api.post('/visionaudio/sessions/start');
+        if (!cancelled) setVafSession({ sessionId: data.session_id, token: data.token });
+      } catch {
+        // Broker unavailable / disabled server-side — stay on the manual path.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [vafFlagOn]);
+  const { lastEvent: vafLastEvent } = useVisionEvents({
+    sessionId: vafSession?.sessionId ?? null,
+    token: vafSession?.token ?? null,
+    eventType: 'FORMATION_LOCKED',
+    enabled: vafFlagOn && !!vafSession,
+  });
+  // One FORMATION_LOCKED = one rep (deduped by event_id), recorded only while
+  // "watching". FORMATION_LOCKED carries no success grade (grading is coaching,
+  // deferred), so a detected rep is marked success — same as Drill Lab's 1a
+  // completeRep(true). Reuses handleRepDetected, exactly like the manual buttons.
+  useSimLabAutoRep({
+    lastEvent: vafLastEvent,
+    onRep: (event) => {
+      if (!watching) return;
+      handleRepDetected({
+        playInProgress: false,
+        repCompleted: true,
+        success: true,
+        coverageDetected: null,
+        playDetected: event.payload.offensive_formation ?? null,
+        executionQuality: null,
+        confidence: Math.round((event.confidence ?? 0) * 100),
+        reason: event.payload.offensive_formation
+          ? `Formation locked: ${event.payload.offensive_formation}`
+          : 'Vision-detected rep',
+      });
+    },
+  });
+
   const startWatching = async () => {
     if (!VisionAudioForgeService.getCaptureSource()) {
       setShowCaptureSourceModal(true);
+      return;
+    }
+    // Flag ON: reps are driven by the FORMATION_LOCKED WS subscription
+    // (useVisionEvents + useSimLabAutoRep), already live. Just flip watching on;
+    // no legacy poll handle is created. Flag OFF falls through to the untouched
+    // legacy startDrillMonitoring path below.
+    if (vafFlagOn) {
+      setWatching(true);
+      speakIfEnabled(
+        'VisionAudioForge is now watching your screen. Go to your game and execute the scenario. I will detect each rep automatically.'
+      );
       return;
     }
     const available = await VisionAudioForgeService.isAvailable();

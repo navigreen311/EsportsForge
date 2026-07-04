@@ -13,3 +13,13 @@
 export function drillLabVisionEnabled(): boolean {
   return process.env.NEXT_PUBLIC_VAF_DRILL_LAB_ENABLED === 'true';
 }
+
+/**
+ * SimLab live-vision gate (Phase 1b — SimLab cutover). Same env-only shape as
+ * the Drill Lab flag (ADR 0001: engineer-flipped via deployment config +
+ * restart, no in-app toggle). SimLab keys on FORMATION_LOCKED (live in Madden
+ * adapter v0.1); PLAY_STARTED/PLAY_ENDED are a documented v0.2/v0.3 deferral.
+ */
+export function simlabVisionEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_VAF_SIMLAB_ENABLED === 'true';
+}
