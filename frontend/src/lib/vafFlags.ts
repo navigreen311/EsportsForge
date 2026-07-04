@@ -23,3 +23,15 @@ export function drillLabVisionEnabled(): boolean {
 export function simlabVisionEnabled(): boolean {
   return process.env.NEXT_PUBLIC_VAF_SIMLAB_ENABLED === 'true';
 }
+
+/**
+ * Gameplan live-vision gate (Phase 1b — Gameplan cutover). Same env-only shape
+ * as the Drill Lab / SimLab flags (ADR 0001). Gameplan subscribes to
+ * COVERAGE_LOCKED, which the Madden adapter does NOT emit until v0.3 — so this
+ * is a SOFT-LAUNCH (ADR 0010 §45): with the flag on the subscription is
+ * genuinely wired and live, but stays silent until v0.3. Expected silence, not
+ * a bug.
+ */
+export function gameplanVisionEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_VAF_GAMEPLAN_ENABLED === 'true';
+}

@@ -34,6 +34,10 @@ import {
 import { useActiveArsenalTitle, type WeaponSide } from '@/hooks/useArsenal';
 import type { PackageTab, Play } from '@/types/gameplan';
 import { WatchingPageHint } from '@/components/global/WatchingPageHint';
+import api from '@/lib/api';
+import { gameplanVisionEnabled } from '@/lib/vafFlags';
+import { useVisionEvents } from '@/hooks/useVisionEvents';
+import { deriveCoverageHighlight } from '@/lib/gameplan/coverageHighlight';
 
 type ViewTab = PackageTab | 'script' | 'arsenal';
 
@@ -100,6 +104,45 @@ function GameplanPageBody() {
     setViewTab('kill-sheet');
     setActiveTab('kill-sheet');
   }, [isSessionActive, requestedTab, setActiveTab]);
+
+  // Phase 1b (Gameplan cutover) — SOFT-LAUNCH per ADR 0010 §45. With the flag on
+  // (NEXT_PUBLIC_VAF_GAMEPLAN_ENABLED, env-only per ADR 0001) the COVERAGE_LOCKED
+  // subscription is GENUINELY wired: a real broker session + live WS. But the
+  // Madden adapter emits no coverage until v0.3, so it stays SILENT and the
+  // kill-sheet renders unchanged. This expected silence is NOT a bug — do not
+  // false-flag it. The kill-sheet auto-highlight (spec #03 §117) lands at v0.3
+  // via deriveCoverageHighlight, the single seam below.
+  const gameplanVafFlagOn = gameplanVisionEnabled();
+  const [vafSession, setVafSession] = useState<{ sessionId: string; token: string } | null>(null);
+  useEffect(() => {
+    if (!gameplanVafFlagOn) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await api.post('/visionaudio/sessions/start');
+        if (!cancelled) setVafSession({ sessionId: data.session_id, token: data.token });
+      } catch {
+        // Broker unavailable / disabled server-side — kill-sheet stays static.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [gameplanVafFlagOn]);
+  const { lastEvent: coverageEvent } = useVisionEvents({
+    sessionId: vafSession?.sessionId ?? null,
+    token: vafSession?.token ?? null,
+    eventType: 'COVERAGE_LOCKED',
+    enabled: gameplanVafFlagOn && !!vafSession,
+  });
+  // v0.1: always null (soft-launch silence). v0.3: non-null → highlight + banner.
+  const coverageHighlight = deriveCoverageHighlight(coverageEvent);
+  useEffect(() => {
+    // v0.3 seam: when coverageHighlight is non-null, highlight kill-sheet plays
+    // whose beats match coverageHighlight.coverage, surface the "Cover 3
+    // detected — try …" banner, and time it out after 30s (spec #03 §117).
+    // Inert in v0.1 — no coverage events fire (ADR 0010 §45).
+  }, [coverageHighlight]);
 
   const handleTabChange = (key: ViewTab) => {
     setViewTab(key);
