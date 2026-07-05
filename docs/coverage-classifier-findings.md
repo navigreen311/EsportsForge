@@ -1,6 +1,6 @@
 # Coverage Classifier — Findings & Honest State
 
-- **Status:** In progress — functioning classifier at **macro-F1 0.824** (held-out), target 0.85. NOT production; NOT wired to the adapter.
+- **Status:** In progress — best = **macro-F1 0.824** (early-window fine-tune, held-out), target 0.85. Lever 2 (later window) tried and failed; bottleneck is data quantity (Cover 3). NOT production; NOT wired to the adapter.
 - **Date:** 2026-07-05
 - **Scope:** Offline model training only. NOT wired into the adapter / `detect_coverage` / `COVERAGE_LOCKED`. The v0.3 gate (ADR 0010) stands: nothing lights up until a model hits the bar.
 - **Related:** [ADR 0010](adr/0010-phase-1c-gated-on-adapter-v0-3.md) (v0.3 gates Phase 1c), [ADR 0017](adr/0017-coverage-locked-payload-contract.md) (pinned COVERAGE_LOCKED contract).
@@ -37,9 +37,9 @@ The 40.5% result points to **both** a data problem **and** a representation prob
 
 **Levers, in payoff order:**
 1. **Fine-tune, not frozen probe** — unfreeze `layer4`+. ✅ **DONE — decisive (+0.36 macro-F1). See Lever 1 below.**
-2. **Frame selection** — sample the frame where safeties have visibly rotated (later post-snap), or feed multiple frames per clip. *(next, free)*
-3. **Hyperparameter tuning** — LR / epochs / augmentation. *(free)*
-4. **More data.**
+2. **Frame selection** (later window / more frames). ❌ **TRIED — FAILED** (0.754 < 0.824, floor dropped 0.72→0.65). Frame timing ruled out. See Lever 2 below.
+3. **More data** — esp. Cover 3 (the unstable class). **Now the lead** — the failure above points to data quantity, not timing.
+4. **Hyperparameter tuning** — LR / epochs / augmentation. *(free, secondary)*
 5. **Rotated cross-validation** — ✅ done; it is the eval harness (below), not a model lever.
 
 ## Method notes (so the pipeline is reproducible and not re-broken)
@@ -99,9 +99,45 @@ Per-class F1 (fine-tune vs frozen):
 - Every fold's val is **held-out clips (unseen plays)** — clip-level, no leakage — so 0.824 is an honest generalization number.
 - **Not captured this run:** the train-vs-val gap (the cross-val script logs val only). To confirm the fine-tune isn't overfitting on 336 frames, add per-fold train-acc logging or run a single split via `train_coverage.py --unfreeze`.
 
+## Lever 2 — later window (snap+1.0–2.0s): TRIED AND FAILED
+
+Executed on the RTX 5080 (logged output; numbers self-consistent — fold mean/std check out). Same rotated 5-fold clip-level cross-val, same holdouts, same fine-tune (unfreeze layer4+fc, lr 1e-4, 40 epochs) as the 0.824 run — **only the frames differ**: per-clip snap offsets for ALL clips (batch-2 too), window `snap+1.0–2.0s`, 10 frames/clip, batch-2 pre-snap contamination removed.
+
+| Metric | **Lever 2 (later window)** | Lever 1 baseline (early window) |
+|---|---|---|
+| macro-F1 | **0.754 ± 0.089** | **0.824 ± 0.069** |
+| folds | [0.78, 0.881, 0.647, 0.657, 0.805] | [0.724, 0.941, 0.809, 0.817, 0.83] |
+| floor fold | **0.647** | 0.724 |
+
+- **Negative result.** The later window did **not** help: mean dropped 0.824 → 0.754 (within the ±0.09 fold noise), and — the entire point of Lever 2 — the **floor got worse, not better (0.724 → 0.647).** The later window was supposed to lift the floor by putting every frame in developed rotation; it lowered it. **Frame timing is ruled out as the lever.**
+- **The real signal is per-class instability from small data.** cover3 = **0.626 ± 0.239**, folds [0.87, 0.85, 0.21, 0.58, 0.63] — swings to **0.21** on one holdout; cover1 swings 0.60–0.98. That's the too-little-data signature (15 clips/class, hold out 3 → one hard clip tanks a fold), not a window issue.
+- **Confound (honest):** the two datasets differ in more than window timing — the 0.824 (early) set was 6-frame + batch-2-pre-snap-contaminated + uniform-snap, while Lever 2 is 10-frame + per-clip-clean + later. So this isn't a pure early-vs-late isolation. But the floor **dropping** (opposite of intended) is a clear enough signal that the later window is not the fix.
+- **Best config stays Lever 1** (early window): macro-F1 **0.824 ± 0.069**.
+
 ## Current honest state
 
-A **functioning coverage classifier at macro-F1 0.824 ± 0.069** on held-out clips — all four classes healthy (0.78–0.89), no collapse. **Target 0.85; ~0.03 to go.** One small push — **frame selection** (Lever 2, next) or **hyperparameter tuning** (Lever 3), both free — plausibly closes it; more data is the fallback. Not yet cleared: mean 0.824 < 0.85, floor fold 0.724, and the target is about *production-stable*, so more than one lucky run is needed before the v0.3 gate opens.
+**Best config: Lever 1 fine-tune on the early-window dataset — macro-F1 0.824 ± 0.069** (held-out clips). Target 0.85; ~0.03 to go, but not production-stable (floor 0.724, and Lever 2's floor was worse). **Frame selection (Lever 2) is ruled out.** The bottleneck is **data quantity**, concentrated in **Cover 3** (swings 0.21–0.87 by holdout). Remaining levers: **more data** (esp. Cover 3) is now the lead; **hyperparameter tuning** (Lever 3, free) is a secondary try. The v0.3 gate stays closed until macro-F1 ≥ 0.85 is stable.
+
+### Best-config reproducibility (the 0.824 early-window dataset)
+- The on-disk `coverage_dataset/` was **overwritten** by the Lever-2 extraction (686 frames). The 0.824 dataset (420 frames) is **not on disk** but is **fully recoverable**: the committed extractor `@543f6ee` has the exact params (`WINDOW_START_S=0.5, WINDOW_END_S=2.0, FRAMES_PER_CLIP=6, BATCH2_SNAP=0.0`); re-extraction is deterministic.
+- **Model weights were not saved** (`crossval_coverage.py` reports metrics only). Reproducing 0.824 = restore that extractor config → re-extract → re-run the fine-tune command.
+- Note the recovered 0.824 set carries the batch-2 pre-snap contamination (that was the config that scored best); a *clean early window* (per-clip snaps + `snap+0.5–2.0`) is an untried variant if we want to isolate window vs contamination later.
+
+## Config provenance (exact params per run — so we never lose a config to overwrite again)
+
+| Result | Model | Dataset config | Frames | On disk? |
+|---|---|---|---|---|
+| macro-F1 0.465 ± 0.113 (frozen baseline) | frozen probe (fc only) | early window `snap+0.5–2.0s`, 6/clip, batch-2 uniform `BATCH2_SNAP=0.0` (batch-2 pre-snap contaminated) | 420 (90/120/90/120) | ❌ overwritten |
+| **macro-F1 0.824 ± 0.069 (BEST — Lever 1)** | fine-tune (layer4+fc) | **same early-window dataset** as the frozen row | 420 | ❌ overwritten (recoverable via `@543f6ee` extractor) |
+| macro-F1 0.754 ± 0.089 (Lever 2 — FAILED) | fine-tune (layer4+fc) | later window `snap+1.0–2.0s`, 10/clip, **per-clip snaps for all 70** (batch-2 fix), 23 clips clamped | 686 (147/192/147/200) | ✅ current on disk |
+
+Common to all: rotated 5-fold clip-level CV (holdouts `01,06,11,16` → … → `05,10,15,20`); fine-tune = `crossval_coverage.py --unfreeze --lr 1e-4 --epochs 40 --patience 10`; frozen = same command **without** `--unfreeze`.
+
+Extractor params live in `extract_coverage_frames.py` (`WINDOW_START_S`, `WINDOW_END_S`, `FRAMES_PER_CLIP`, `SNAP_OFFSETS`, and the removed `BATCH2_SNAP`):
+- **0.824 config** = committed `@543f6ee` extractor: `0.5 / 2.0 / 6`, `BATCH2_SNAP=0.0`, no per-clip batch-2 offsets.
+- **0.754 config** = current working-tree extractor: `1.0 / 2.0 / 10`, per-clip `SNAP_OFFSETS` for all 70 clips.
+
+**Artifact-management gap (the lesson learned):** every extraction **overwrites** `coverage_dataset/` in place, so a good config's frames are destroyed when the next config extracts — that's how the 0.824 dataset was lost. **Going forward, extract each config to a config-named output dir** (e.g. `--out coverage_dataset_early6` vs `--out coverage_dataset_late10`) so datasets never clobber each other and a winning config's frames survive. Model weights should also be saved per fold if a config is a keeper (`crossval_coverage.py` currently reports metrics only). (Recorded as a process fix — not applied in this commit.)
 
 ## v0.3 gate (unchanged)
 

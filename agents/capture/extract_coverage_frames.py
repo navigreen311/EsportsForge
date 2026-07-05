@@ -35,9 +35,9 @@ from pathlib import Path
 import cv2
 
 # --- Post-snap window (relative to each clip's snap) ------------------------
-WINDOW_START_S = 0.5   # seconds AFTER the snap
+WINDOW_START_S = 1.0   # seconds AFTER the snap (Lever 2: later = developed rotation)
 WINDOW_END_S = 2.0     # seconds AFTER the snap
-FRAMES_PER_CLIP = 6    # evenly spaced across [snap+start, snap+end]
+FRAMES_PER_CLIP = 10   # evenly spaced across [snap+start, snap+end]
 
 # Per-clip snap offset (seconds into clip, "first movement"), eyeballed from the
 # per-clip contact sheets. Stored here so extraction is reproducible + re-runnable.
@@ -50,13 +50,24 @@ SNAP_OFFSETS: dict[str, float] = {
     "cover3_04": 4.0, "cover3_05": 3.5, "cover3_06": 4.0,
     "cover4_01": 4.0, "cover4_02": 3.0, "cover4_03": 3.5,
     "cover4_04": 3.5, "cover4_05": 3.0, "cover4_06": 3.0,
+    # Batch 2 (_07+): a uniform BATCH2_SNAP was WRONG — batch-2 snaps also wander
+    # (1.25-2.75s, none at 0.9), so every clip is per-clip like batch-1. Read from
+    # the per-clip contact sheets.
+    "cover1_07": 2.0, "cover1_08": 2.75, "cover1_09": 2.75, "cover1_10": 1.5,
+    "cover1_11": 1.75, "cover1_12": 1.75, "cover1_13": 1.5, "cover1_14": 1.75,
+    "cover1_15": 2.0,
+    "cover2_07": 1.25, "cover2_08": 1.75, "cover2_09": 1.5, "cover2_10": 2.0,
+    "cover2_11": 2.0, "cover2_12": 1.75, "cover2_13": 1.5, "cover2_14": 1.75,
+    "cover2_15": 1.5, "cover2_16": 1.5, "cover2_17": 1.5, "cover2_18": 1.5,
+    "cover2_19": 1.5, "cover2_20": 1.5,
+    "cover3_07": 1.5, "cover3_08": 1.5, "cover3_09": 1.75, "cover3_10": 1.5,
+    "cover3_11": 1.5, "cover3_12": 1.25, "cover3_13": 2.0, "cover3_14": 1.5,
+    "cover3_15": 1.5,
+    "cover4_07": 1.5, "cover4_08": 1.5, "cover4_09": 1.5, "cover4_10": 1.5,
+    "cover4_11": 1.75, "cover4_12": 1.75, "cover4_13": 1.5, "cover4_14": 1.75,
+    "cover4_15": 1.75, "cover4_16": 1.75, "cover4_17": 1.75, "cover4_18": 1.5,
+    "cover4_19": 1.75, "cover4_20": 1.75,
 }
-
-# Batch 2 (_07+): recorded AT the snap (record-at-snap habit) -> snap ~0.0s, so
-# the window runs from the clip start. Confirmed on 8 sampled clips (STRAFE from
-# frame one, consistent across classes). No per-clip offsets needed for these.
-BATCH2_SNAP = 0.0
-BATCH1_MAX = 6  # clip number <= 6 => batch 1 (per-clip offset); >= 7 => batch 2
 
 # madden26_coverage_cover3_04.mp4 -> ("cover3", "04")
 CLIP_RE = re.compile(r"(cover[1-4])_(\d{2})", re.IGNORECASE)
@@ -77,14 +88,11 @@ def extract_clip(path: Path, out_root: Path) -> tuple[str, str, int]:
     coverage = m.group(1).lower()          # "cover3"
     clip_id = f"{coverage}_{m.group(2)}"   # "cover3_04"
 
-    # Batch routing: <=06 uses its saved per-clip snap; >=07 snaps at 0.0.
-    clip_num = int(m.group(2))
-    if clip_num <= BATCH1_MAX:
-        snap = SNAP_OFFSETS.get(clip_id)
-        if snap is None:  # fail loudly rather than mis-window a batch-1 clip
-            return (clip_id, "NO_SNAP_OFFSET", 0, None, False)
-    else:
-        snap = BATCH2_SNAP
+    # Every clip (batch-1 AND batch-2) has a per-clip snap offset — batch-2's
+    # snaps wander too, so no uniform offset works. Fail loudly if one is missing.
+    snap = SNAP_OFFSETS.get(clip_id)
+    if snap is None:
+        return (clip_id, "NO_SNAP_OFFSET", 0, None, False)
 
     cap = cv2.VideoCapture(str(path))
     if not cap.isOpened():
