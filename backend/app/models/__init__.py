@@ -45,6 +45,14 @@ from app.models.animaforge import (
     SYSTEM_USER_ID,
 )
 from app.models.daily_forge import DailyForgeCompletion, DailyForgeStreak
+# Live endpoints (/certifications, /push, /referrals, /support) import these
+# models directly, so their tables existed at runtime — but they were never
+# registered here, so Base.metadata (and the migration baseline) missed them.
+# Registered explicitly so metadata is 32 tables regardless of import order.
+from app.models.certification import Certification
+from app.models.push_subscription import PushSubscription
+from app.models.referral import Referral
+from app.models.support_ticket import SupportTicket
 
 __all__ = [
     # Mixins
@@ -108,4 +116,9 @@ __all__ = [
     # Daily Forge
     "DailyForgeCompletion",
     "DailyForgeStreak",
+    # Live endpoints, folded in (alembic remediation)
+    "Certification",
+    "PushSubscription",
+    "Referral",
+    "SupportTicket",
 ]
