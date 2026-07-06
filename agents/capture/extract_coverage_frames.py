@@ -81,6 +81,13 @@ SNAP_OFFSETS: dict[str, float] = {
     "cover3_28": 1.5, "cover3_29": 2.75, "cover3_30": 1.5,
     "cover4_21": 1.5, "cover4_22": 1.5, "cover4_23": 1.5, "cover4_24": 3.0,
     "cover4_25": 1.5,
+    # Batch 4 (round-4, targeted TWO-HIGH / 4-across disguise Cover 3 — the
+    # C3->C4 failing look). Per-clip offsets read from contact sheets; snaps
+    # cluster 1.25-1.75s.
+    "cover3_31": 1.5, "cover3_32": 1.5, "cover3_33": 1.5, "cover3_34": 1.5,
+    "cover3_35": 1.5, "cover3_36": 1.25, "cover3_37": 1.5, "cover3_38": 1.5,
+    "cover3_39": 1.5, "cover3_40": 1.5, "cover3_41": 1.75, "cover3_42": 1.75,
+    "cover3_43": 1.5, "cover3_44": 1.25, "cover3_45": 1.75,
 }
 
 # madden26_coverage_cover3_04.mp4 -> ("cover3", "04")

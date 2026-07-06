@@ -1,6 +1,6 @@
 # Coverage Classifier — Findings & Honest State
 
-- **Status:** In progress. All-time best = **macro-F1 0.824** (early-window fine-tune) but on a *contaminated config whose dataset was lost*; best on the **clean per-clip config = 0.796 ± 0.051** (Round 3, 102 clips, Cover 3 nearly doubled) — the honest yardstick for ongoing work. Target 0.85. Cover-3 doubling **improved + stabilized** Cover 3 (0.626 ± 0.239 → 0.718 ± 0.126, the 0.21 floor fold gone) but did **not** reach target — Cover 3 still the weakest class (0.49 floor fold). Bottleneck refined: Cover 3's remaining misses are **idiosyncratic hard presentations**, not uniform data scarcity. NOT production; NOT wired to the adapter.
+- **Status:** **Banked / paused** at a **functioning ~0.79 macro-F1 classifier** (0.786 ± 0.043, clean per-clip config, 117 clips) — USABLE, no dead class. Target 0.85 **not met**, and now understood: **one specific hard case remains — the two-high-disguise Cover 3 that reads as Cover 4** (C3→C4, 4 clips). **Frame-selection (Lever 2) and targeted-capture (Round 4 / Option A) are both RULED OUT**; **Option B (multi-frame / temporal) is PROVEN necessary** — the disguise is genuinely single-frame-ambiguous, not a data-quantity problem. 0.85 is a target, not a cliff. NOT production; NOT wired to the adapter (v0.3 gate closed). Deferred to a future temporal effort.
 - **Date:** 2026-07-05
 - **Scope:** Offline model training only. NOT wired into the adapter / `detect_coverage` / `COVERAGE_LOCKED`. The v0.3 gate (ADR 0010) stands: nothing lights up until a model hits the bar.
 - **Related:** [ADR 0010](adr/0010-phase-1c-gated-on-adapter-v0-3.md) (v0.3 gates Phase 1c), [ADR 0017](adr/0017-coverage-locked-payload-contract.md) (pinned COVERAGE_LOCKED contract).
@@ -38,9 +38,10 @@ The 40.5% result points to **both** a data problem **and** a representation prob
 **Levers, in payoff order:**
 1. **Fine-tune, not frozen probe** — unfreeze `layer4`+. ✅ **DONE — decisive (+0.36 macro-F1). See Lever 1 below.**
 2. **Frame selection** (later window / more frames). ❌ **TRIED — FAILED** (0.754 < 0.824, floor dropped 0.72→0.65). Frame timing ruled out. See Lever 2 below.
-3. **More data** — esp. Cover 3 (the unstable class). ⚠️ **TRIED (Round 3, Cover 3 15→29) — PARTIAL.** Stabilized Cover 3 and lifted the clean-config mean 0.754 → 0.796, but diminishing returns and still short of 0.85. See Round 3 below.
-4. **Hyperparameter tuning** — LR / epochs / augmentation. *(free, secondary)*
+3. **More data** — esp. Cover 3. ⚠️ **Round 3 (15→29): PARTIAL** (stabilized, 0.754→0.796, diminishing returns). ❌ **Round 4 / Option A (targeted two-high-disguise capture, ~7→~17 examples): FAILED** — flat 0.796→0.786, C3→C4 still 4 misses, same clips fail. Data volume/targeting is exhausted. See Round 4 below.
+4. **Hyperparameter tuning** — LR / epochs / augmentation. *(free, secondary — untried)*
 5. **Rotated cross-validation** — ✅ done; it is the eval harness (below), not a model lever.
+6. **Multi-frame / temporal model** — ✅ **PROVEN NECESSARY (Round 4)**, not speculative: the two-high-disguise C3-vs-C4 is not single-frame-separable. The remaining gap needs this architecture change. Deferred as a future effort.
 
 ## Method notes (so the pipeline is reproducible and not re-broken)
 
@@ -147,19 +148,38 @@ Per-clip (majority vote over 10 frames):
 
 **Implication for the remaining gap:** it's **"specific hard Cover 3 looks" more than raw scarcity.** The productive next data is Cover 3 that **spans presentation variance** — red-zone/goal-line, tight-zoom, compact formations, varied camera angles — not more of the canonical mid-field look (which is why uniform doubling gave diminishing returns). Alternatively, **normalizing capture** (consistent zoom/angle) removes much of this variance at the source; a **temporal/multi-frame model** would specifically help the C3↔C4 shell case.
 
+## Round 4 — Option A: targeted two-high-disguise Cover 3 capture (117 clips): DEFINITIVE — single-frame ceiling hit
+
+Round-3's fold-2 read *looked* diffuse, but the **full 5-fold Cover-3 confusion** (every held-out C3 clip, `diag_option_a.py`) showed a **dominant axis: C3 → C4, 4 of 7 misses** (`cover3_07/13/14/15`) — each a **two-high / 4-across disguise** where no single-high safety is distinct at the captured instant. Option A tested whether *targeted* capture of that exact look closes it: **+15 disguise clips** (`cover3_31–45`, 10 eyeball-confirmed two-high), Cover 3 → **44 clips**, disguise examples ~7 → ~17. **Same** config, CV, and fine-tune as Round 3 — only the disguise data grew.
+
+**Real logged result (117 clips):** macro-F1 **0.786 ± 0.043**, per-class cover1 0.789 / cover2 0.858 / cover3 0.693 / cover4 0.804.
+
+| Metric | **Round 4 (117 clips, ~17 disguise)** | Round 3 (102 clips, ~7 disguise) |
+|---|---|---|
+| macro-F1 | **0.786 ± 0.043** | 0.796 ± 0.051 |
+| cover3 F1 | 0.693 | 0.718 |
+| **C3→C4 misses** | **4** — `cover3_07/13/14/15` **still fail** | 4 of 7 |
+
+- **Flat — targeted capture did NOT move it.** macro-F1 0.796 → 0.786 (within noise), Cover 3 0.718 → 0.693 (within noise), and — the whole point — **C3→C4 is still 4 misses; the same clips still fail**, `cover3_14` confidently wrong (`[cover4:10]`, zero C3 votes). ~10 targeted disguise examples changed the failing clips **not at all**.
+- **This is a definitive negative, not a noisy one.** Round 3 added *random* Cover-3 data (diminishing returns). Round 4 added *exactly the confused look, in quantity* — and the confusion held. The same four clips fail the same way.
+
+### Definitive finding: the two-high-disguise C3-vs-C4 is not single-frame-separable
+The disguise **is** two-high / 4-across at the snap — that's the offense's intent. A still frame in the `snap+1–2s` window is **genuinely ambiguous**: C3 (rotating to single-high) and C4 (staying two-high/quarters) *look the same in that frame*; only the **temporal safety rotation after the frame** separates them. More single-frame examples of an ambiguous frame cannot teach a distinction the frame does not contain. **Single-frame classification has hit its ceiling on this look.**
+
+### Conclusion: Option B (temporal) is PROVEN necessary
+Option B (multi-frame / temporal input capturing the late safety rotation) is **no longer speculative** — Option A ruled out the cheaper lever and demonstrated the separating information is not in a single frame. Closing the remaining gap requires the **architecture change**, deferred as a deliberate future effort (not a quick tweak). This is a clean stopping point: bank the ~0.79 single-frame model and the finding.
+
 ## Current honest state
 
 **Two numbers, both honest, different configs:**
 - **All-time best: macro-F1 0.824 ± 0.069** (Lever 1, early-window fine-tune) — but on a **contaminated config** (6-frame, batch-2 pre-snap, uniform snap) whose **dataset was lost to overwrite**, recoverable only via the `@543f6ee` extractor. Not the config we iterate on.
-- **Best on the clean per-clip config: macro-F1 0.796 ± 0.051** (Round 3, 102 clips) — reproducible, on disk, and the **honest yardstick** for ongoing work. Up from Lever 2's 0.754 on the identical config.
+- **Best on the clean per-clip config: macro-F1 ~0.79** — **0.796 ± 0.051** (Round 3, 102 clips) and **0.786 ± 0.043** (Round 4, 117 clips) are flat within noise. Reproducible, on disk, the **honest yardstick**. Adding targeted data past Round 3 did not raise it.
 
-Target 0.85 — **~0.05 to go, not yet met, not production-stable.** **Frame selection (Lever 2) ruled out. More data (Round 3) helped but with diminishing returns.** The bottleneck is no longer generic Cover-3 scarcity but **Cover 3's idiosyncratic hard presentations** (fold-2 diagnosis: diffuse confusion, each hard clip fails for a different visual reason). Remaining levers: **presentation-diverse Cover-3 data** (red-zone, tight-zoom, compact sets) or **capture normalization**; a **temporal/multi-frame model** for the C3↔C4 shell case; **hyperparameter tuning** (free, untried). The v0.3 gate stays closed until macro-F1 ≥ 0.85 is stable.
+Target 0.85 — **~0.06 to go, not met, not production-stable.** **Both data levers are exhausted:** frame-selection (Lever 2) ruled out, and both *random* (Round 3) and *targeted* (Round 4 / Option A) Cover-3 data are done — the latter proving the remaining miss (**C3→C4 two-high disguise, 4 clips**) is **not single-frame-separable**. The only lever left that can close it is **Option B (multi-frame / temporal)** — an architecture change, deferred. Hyperparameter tuning (free, untried) might buy a little but won't fix an information-not-in-the-frame problem. The v0.3 gate stays closed until macro-F1 ≥ 0.85 is stable.
 
-**Bottom line (honest framing):** we have a **functioning ~0.80 macro-F1 classifier** — usable, no dead class, Cover 3 stabilized. **0.85 is a target, not a cliff:** the ~0.05 gap is a quality bar for the v0.3 gate, not a wall the current model falls off. Clearing it needs a **targeted or architectural lever, not more volume** — random additional Cover-3 clips have diminishing returns (Round 3 proved it). Note the diagnosis found **diffuse** confusion (C3 → C1/C2/C4, each on a different off-nominal look), so "the confused look" is a *set of hard presentation types*, not one adjacent coverage.
+**Bottom line (honest framing):** we have a **functioning ~0.79 macro-F1 classifier** — usable, no dead class, Cover 3 stabilized. **0.85 is a target, not a cliff:** the gap is a quality bar for the v0.3 gate, not a wall the current model falls off. The remaining miss is **one specific hard case** — the two-high-disguise Cover 3 that reads as Cover 4 — and Round 4 proved it needs the **temporal architecture**, not more volume. This is a clean, honest place to **bank and pause** the single-frame line.
 
-**Next lever — a fresh-session decision (two paths to 0.85):**
-- **(a) Targeted capture** of the specific hard *presentations* the fold-2 diagnosis surfaced — red-zone/goal-line, tight-zoom, compact formations, varied angles — instead of more canonical mid-field looks. Cheapest; directly attacks the identified misses.
-- **(b) Deferred multi-frame / temporal model** — a still frame misses the **late safety-rotation cue** that most cleanly separates the zone shells (esp. the C3↔C4 3-vs-4-deep case); a short clip / multi-frame input captures it. Architectural, higher effort, addresses the shell-blur at the representation level.
+**Next lever — Option B (temporal), deferred:** a still frame misses the **late safety-rotation cue** that separates the C3↔C4 shell; a short-clip / multi-frame input captures it. Round 4 moved this from "a path we could try" to "the path that's required." A deliberate future effort, not a quick tweak.
 
 **Standing rule reaffirmed:** only numbers **traceable to an executed run with logged output** count as results (see the fabrication finding above). Every figure in this doc meets that bar.
 
@@ -175,14 +195,16 @@ Target 0.85 — **~0.05 to go, not yet met, not production-stable.** **Frame sel
 | macro-F1 0.465 ± 0.113 (frozen baseline) | frozen probe (fc only) | early window `snap+0.5–2.0s`, 6/clip, batch-2 uniform `BATCH2_SNAP=0.0` (batch-2 pre-snap contaminated) | 420 (90/120/90/120) | ❌ overwritten |
 | **macro-F1 0.824 ± 0.069 (BEST — Lever 1)** | fine-tune (layer4+fc) | **same early-window dataset** as the frozen row | 420 | ❌ overwritten (recoverable via `@543f6ee` extractor) |
 | macro-F1 0.754 ± 0.089 (Lever 2 — FAILED) | fine-tune (layer4+fc) | later window `snap+1.0–2.0s`, 10/clip, **per-clip snaps for all 70** (batch-2 fix), 23 clips clamped | 686 (147/192/147/200) | ❌ overwritten by Round 3 (recoverable via `@4300cce` extractor: 70 offsets, no `DROP`) |
-| **macro-F1 0.796 ± 0.051 (Round 3 — more data)** | fine-tune (layer4+fc) | **same later-window clean config** as Lever 2 + **102 clips** (Cover 3 15→29; 3 truncated clips dropped via `DROP`), 30 clips clamped | 1003 (235/241/287/240) | ✅ current on disk |
+| macro-F1 0.796 ± 0.051 (Round 3 — more data) | fine-tune (layer4+fc) | same later-window clean config + **102 clips** (Cover 3 15→29; 3 dropped via `DROP`), 30 clamped | 1003 (235/241/287/240) | ❌ overwritten by Round 4 (recoverable via `@15e304a` extractor: 105 offsets) |
+| **macro-F1 0.786 ± 0.043 (Round 4 — Option A, targeted disguise)** | fine-tune (layer4+fc) | **same config** + **117 clips** (Cover 3 →44; +15 two-high-disguise `cover3_31–45`; 3 dropped via `DROP`), 33 clamped | 1152 (235/241/436/240) | ✅ current on disk |
 
 Common to all: rotated 5-fold clip-level CV (holdouts `01,06,11,16` → … → `05,10,15,20`); fine-tune = `crossval_coverage.py --unfreeze --lr 1e-4 --epochs 40 --patience 10`; frozen = same command **without** `--unfreeze`.
 
 Extractor params live in `extract_coverage_frames.py` (`WINDOW_START_S`, `WINDOW_END_S`, `FRAMES_PER_CLIP`, `SNAP_OFFSETS`, and the removed `BATCH2_SNAP`):
 - **0.824 config** = committed `@543f6ee` extractor: `0.5 / 2.0 / 6`, `BATCH2_SNAP=0.0`, no per-clip batch-2 offsets.
 - **0.754 config** = `@4300cce` extractor: `1.0 / 2.0 / 10`, per-clip `SNAP_OFFSETS` for all 70 clips, no `DROP`.
-- **0.796 config** = current extractor: `1.0 / 2.0 / 10`, per-clip `SNAP_OFFSETS` for all 105 clips, `DROP = {cover1_22, cover3_29, cover4_24}` → 102 clips extracted.
+- **0.796 config** = `@15e304a` extractor: `1.0 / 2.0 / 10`, per-clip `SNAP_OFFSETS` for all 105 clips, `DROP = {cover1_22, cover3_29, cover4_24}` → 102 clips extracted.
+- **0.786 config** = current extractor: `1.0 / 2.0 / 10`, per-clip `SNAP_OFFSETS` for all 120 clips (adds `cover3_31–45` two-high disguise), same `DROP` → 117 clips extracted. Evaluated with `diag_option_a.py` (crossval + per-clip Cover-3 confusion).
 
 **Artifact-management gap (the lesson learned):** every extraction **overwrites** `coverage_dataset/` in place, so a good config's frames are destroyed when the next config extracts — that's how the 0.824 dataset was lost. **Going forward, extract each config to a config-named output dir** (e.g. `--out coverage_dataset_early6` vs `--out coverage_dataset_late10`) so datasets never clobber each other and a winning config's frames survive. Model weights should also be saved per fold if a config is a keeper (`crossval_coverage.py` currently reports metrics only). (Recorded as a process fix — not applied in this commit.)
 
