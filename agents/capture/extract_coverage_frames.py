@@ -67,10 +67,29 @@ SNAP_OFFSETS: dict[str, float] = {
     "cover4_11": 1.75, "cover4_12": 1.75, "cover4_13": 1.5, "cover4_14": 1.75,
     "cover4_15": 1.75, "cover4_16": 1.75, "cover4_17": 1.75, "cover4_18": 1.5,
     "cover4_19": 1.75, "cover4_20": 1.75,
+    # Batch 3 (round-3, Cover-3-weighted): snaps wander 1.25-3.0s, per-clip from
+    # contact sheets. cover1_22=2.5, cover3_29=2.75, cover4_24=3.0 are OVERRUNS
+    # (snap+2.0 runs past clip end -> clamped) and are DROPPED post-extraction.
+    "cover1_16": 1.5, "cover1_17": 1.75, "cover1_18": 2.0, "cover1_19": 1.25,
+    "cover1_20": 1.5, "cover1_21": 1.25, "cover1_22": 2.5, "cover1_23": 1.25,
+    "cover1_24": 1.5, "cover1_25": 1.5,
+    "cover2_21": 1.5, "cover2_22": 1.25, "cover2_23": 1.5, "cover2_24": 1.25,
+    "cover2_25": 1.75,
+    "cover3_16": 1.5, "cover3_17": 1.5, "cover3_18": 1.5, "cover3_19": 1.75,
+    "cover3_20": 1.75, "cover3_21": 1.75, "cover3_22": 1.75, "cover3_23": 2.0,
+    "cover3_24": 1.5, "cover3_25": 1.5, "cover3_26": 1.75, "cover3_27": 1.25,
+    "cover3_28": 1.5, "cover3_29": 2.75, "cover3_30": 1.5,
+    "cover4_21": 1.5, "cover4_22": 1.5, "cover4_23": 1.5, "cover4_24": 3.0,
+    "cover4_25": 1.5,
 }
 
 # madden26_coverage_cover3_04.mp4 -> ("cover3", "04")
 CLIP_RE = re.compile(r"(cover[1-4])_(\d{2})", re.IGNORECASE)
+
+# Clips excluded from the dataset by explicit decision. Skipped during extraction
+# so the corpus is deterministic + reproducible (vs deleting frame files by hand,
+# which risks leftovers). Round-3: user-selected drop of 3 clips -> 102-clip set.
+DROP: set[str] = {"cover1_22", "cover3_29", "cover4_24"}
 
 
 def _frame_indices(start_f: int, end_f: int, n: int) -> list[int]:
@@ -87,6 +106,9 @@ def extract_clip(path: Path, out_root: Path) -> tuple[str, str, int]:
         return (path.name, "NO_LABEL", 0, None, False)
     coverage = m.group(1).lower()          # "cover3"
     clip_id = f"{coverage}_{m.group(2)}"   # "cover3_04"
+
+    if clip_id in DROP:
+        return (clip_id, "DROPPED", 0, None, False)
 
     # Every clip (batch-1 AND batch-2) has a per-clip snap offset — batch-2's
     # snaps wander too, so no uniform offset works. Fail loudly if one is missing.
@@ -147,9 +169,14 @@ def main() -> int:
     per_class: dict[str, int] = {}
     problems: list[str] = []
     overruns: list[str] = []
+    dropped: list[str] = []
     total_written = 0
     for clip in clips:
         clip_id, label, n, snap, overran = extract_clip(clip, out_root)
+        if label == "DROPPED":
+            dropped.append(clip_id)
+            print(f"  {clip_id:14s} -> DROPPED (excluded from dataset)")
+            continue
         if label.startswith(("NO_", "OPEN_")):
             problems.append(f"{clip_id}: {label}")
         else:
@@ -164,6 +191,8 @@ def main() -> int:
     print("per-class:")
     for label in sorted(per_class):
         print(f"  {label:9s} {per_class[label]}")
+    if dropped:
+        print(f"\nDROPPED (excluded by DROP set, {len(dropped)}): {dropped}")
     if overruns:
         print(f"\nWINDOW OVERRUN (snap+{WINDOW_END_S}s past clip end -> window clamped): {overruns}")
     if problems:
