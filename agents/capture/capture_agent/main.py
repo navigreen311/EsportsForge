@@ -29,7 +29,7 @@ import sys
 import time
 from pathlib import Path
 
-from .capture import FilePlaybackSource, TestVideoSource
+from .capture import FilePlaybackSource, HdmiCaptureSource, TestVideoSource
 from .config import AgentConfig, load_config
 from .transport import WSClient
 
@@ -51,9 +51,14 @@ def _build_source(cfg: AgentConfig):
             playback_mode=cfg.capture.playback_mode,
             normalize_1080p=cfg.capture.normalize_1080p,
         )
+    if src == "capture-card":
+        return HdmiCaptureSource(
+            device_name=cfg.capture.device_name,
+            target_fps=cfg.transport.target_fps,
+        )
     raise SystemExit(
-        f"Phase 1a capture agent supports source in {{test-video, file}}; got {src}. "
-        "capture-card and pc-monitor sources land in Phase 1.1."
+        f"Capture agent supports source in {{test-video, file, capture-card}}; got {src}. "
+        "pc-monitor source lands in Phase 1.1."
     )
 
 
