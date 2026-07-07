@@ -75,3 +75,14 @@ Across the 6 hardening configs (4 crops × seeds), **16 of 20 validation clips a
 
 ### Implication
 The model is **~0.86 mean (clears ADR 0010's mean bar)** with a **fully characterized 4-clip residual across three separate failure modes**. Remaining work is **fine-grained hardening** (per-clip/ensemble for 13/14, seed-robustness for 11, temporal-or-park for 15) — **not a broad fix, and not more data.**
+
+## Addendum 2 (2026-07-07) — `cover3_11` parked (data quality), seed-ensemble ruled out
+
+Followed the addendum-1 open item "seed-robustness for 11" to a conclusion. Two locked outcomes:
+
+- **`cover3_11` — DISPOSITION: DATA QUALITY, not model fragility → PARKED.** The frame-level votes are **near-uniform** (5–6 of 9 C3 @seed1337 → **4-4** and **3-3-3** ties @seeds 42/7), so the "flip to Cover 2" is a tiebreak, not a confident misread. Looking at the clip: it is a genuine single-high Cover 3 (correctly labeled) but **human-controlled** (`STRAFE` HUD + movement cone — a person manually steering the deep defender, distorting the clean zone shell) **and a short clamped-overrun clip** (3.3s; extract window compressed to a 0.8s late slice). So it is atypical vs the clean shells the other clips show. **Parked as a known edge case; candidate for re-capture as a clean, non-controlled clip.** Not chased further — forcing one atypical clip risks overfit.
+- **SEED-ENSEMBLE — RULED OUT as a production lever.** A 3-seed logit-averaging ensemble (seeds 1337/42/7, ORIG crop, `eval_seed_ensemble.py`) was evaluated as a *production-model candidate*, framed as whole-model seed-robustness, not an 11 rescue. Result: **macro-F1 flat (0.865 ± 0.038 vs 0.866 single-seed), the 16 stable clips unchanged, and `cover3_11` reaches only a hair-thin 5-3 C3** (same margin as seed1337 — not stabilized). **3× cost, no production gain.** The production candidate **remains the single-seed (1337) ORIG-crop model.**
+- **Side note:** under the ORIG crop, `cover3_13` is a strong C3 (`[c1:1, c3:9]`) at every seed — its only failure was the *tighter* crop, confirming the 13↔14 trade is **crop-specific**, not general.
+
+### Updated residual
+Of the original 4-clip residual: **`cover3_11` and `cover3_15` are now PARKED** (data-quality / hard-two-high — neither is a model bug more work should chase). The **one remaining live item is the `cover3_13`↔`cover3_14` crop trade** (per-clip / ensemble candidate) — noting `cover3_13` is already correct under the ORIG production crop, so the live pain is really just `cover3_14`.
