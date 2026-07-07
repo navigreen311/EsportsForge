@@ -58,3 +58,20 @@ More *total* pixels (384) did not fix `cover3_13`; a crop that makes the **deep-
 - The banked, reproducible artifact is the **single-frame ~0.79 model** (reference, `ce33860`) plus the **region-crop ~0.86 pipeline** (`diag_crop.py`/`diag_crop_param.py`). Nothing is wired to the adapter; the **v0.3 gate (ADR 0010) stays closed** until ≥0.85 is stable (not just mean-clearing).
 - Future coverage work should treat **"resolve the signal at the right representation"** as the first question (echoing ADR 0014's OCR-over-CNN pivot) — here, cropping to where the discriminative pixels live beat both more data (Round 3/4) and more global resolution (384).
 - Standing rule retained: only numbers **traceable to an executed run with logged output** count as results.
+
+## Addendum (2026-07-06) — recon: data reality + the 4-clip failure taxonomy
+
+A facts-only recon pass (no training) fixed two things the body left open: how expensive more data is, and exactly what the residual gap is made of. Both bear on whether remaining work is a broad fix or fine-grained hardening.
+
+### Data reality
+- **120 labeled clips IS the corpus** (cover1=25, cover2=25, cover3=45, cover4=25; 117 after `DROP`). There are **no cheap unlabeled coverage clips** to draw on: of 148 files in the capture folder, 120 are this set and the other 28 are 10 full-game quarter clips (unsegmented) + 18 *offensive-formation* clips (for the ADR 0014 formation detector, not coverage). `fixtures/real/` (42 broadcast clips) is a separate validation set. **Expansion = a deliberate capture campaign at ~3–5 min/clip.**
+- **Labels are correct-by-construction, not eyeballed:** the defense is *called* in practice mode, encoded in the filename (`coverN`), and regex-routed to a class folder at extraction. The only manual per-clip step is **snap-timing** (read from a contact sheet). So the "6-clip-motivated" caveat in this ADR is strictly about the **crop-region choice**, **not** label trust.
+
+### The 4-clip failure taxonomy (the whole residual at ~0.86)
+Across the 6 hardening configs (4 crops × seeds), **16 of 20 validation clips are stable-correct** on every crop and seed. The remaining gap is exactly four clips, spanning **three distinct failure modes**:
+- **`cover3_13` / `cover3_14` — a genuine 2-clip CROP TRADE.** The tighter crop fixes `14` but loses `13`; every other config does the reverse. No other clip shows this. → wants **per-clip / ensemble**, not one magic crop.
+- **`cover3_11` — SEED INSTABILITY.** Correct under all four crops @seed1337, but flips to **Cover 2** at seeds 42/7. A distinct mode → wants **seed-robustness**, unrelated to the crop.
+- **`cover3_15` — hard TWO-HIGH.** Stable-wrong (Cover 4) across all 6 configs. **~11 two-high clips already sit in TRAIN and the model still misses it → hard-not-under-sampled.** This is the one genuine candidate for the **deferred temporal** approach, or it parks as a known miss. **More coverage data will not crack it.**
+
+### Implication
+The model is **~0.86 mean (clears ADR 0010's mean bar)** with a **fully characterized 4-clip residual across three separate failure modes**. Remaining work is **fine-grained hardening** (per-clip/ensemble for 13/14, seed-robustness for 11, temporal-or-park for 15) — **not a broad fix, and not more data.**
