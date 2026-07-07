@@ -1,7 +1,7 @@
 # ADR 0018 — Coverage Classifier: the Lever Is Deep-Secondary Region-Crop, Not Temporal Rotation
 
-- **Status:** Accepted
-- **Date:** 2026-07-06
+- **Status:** Accepted — **coverage classifier DONE-FOR-NOW / cleared for downstream** (read the *Closing / Status* section at the end first). Production model = single-seed (1337) ORIG deep-secondary region-crop → 320, macro-F1 ~0.86 (clears ADR 0010's mean bar).
+- **Date:** 2026-07-06 (closed 2026-07-07)
 - **Reference:** [CLAUDE.md](../../CLAUDE.md) — project development context. Aligns with the Forge "adapters extended without core changes" principle (Rule 5): the coverage classifier and its training/eval pipeline live entirely offline in the Madden adapter's capture agent (`agents/capture/`); core is untouched. (The canonical Forge-rules doc `FORGE_ARCHITECTURE_PATTERN.md` is referenced repo-wide but not yet committed — tracked debt, see ADR 0013 followups.)
 - **Revises:** the **"temporal / multi-frame proven necessary"** conclusion recorded in [docs/coverage-classifier-findings.md](../coverage-classifier-findings.md) (Round 4, committed `ce33860`). That inference did **not** survive a direct look at the pixels — see below. Temporal is **deprioritized** for these failures; it survives only as a candidate for the single `cover3_15` two-high case.
 - **Establishing case:** Option B ("temporal") kickoff — the pre-registered windowing pass that gated it, then the resolution/crop experiment and a crop-robustness + seed-stability hardening sweep.
@@ -86,3 +86,19 @@ Followed the addendum-1 open item "seed-robustness for 11" to a conclusion. Two 
 
 ### Updated residual
 Of the original 4-clip residual: **`cover3_11` and `cover3_15` are now PARKED** (data-quality / hard-two-high — neither is a model bug more work should chase). The **one remaining live item is the `cover3_13`↔`cover3_14` crop trade** (per-clip / ensemble candidate) — noting `cover3_13` is already correct under the ORIG production crop, so the live pain is really just `cover3_14`.
+
+## Closing / Status (2026-07-07) — read this first
+
+**DECISION: the coverage classifier is DONE-FOR-NOW and cleared for downstream use.** Production model = **single-seed (seed 1337), ORIG deep-secondary region-crop → 320**; macro-F1 **~0.86**, which **clears ADR 0010's mean bar** (macro-F1 ≥ 0.85 on held-out). The seed-ensemble was evaluated and **RULED OUT** (no macro gain, 3× cost — Addendum 2).
+
+**RESIDUAL — 3 of 20 validation clips, all diagnosed, none a cheap-fixable model bug** (16/20 are stable-correct across every crop and seed):
+- **`cover3_11` → PARKED (data quality):** human-controlled (`STRAFE`) + short clamped-overrun clip; re-capture candidate.
+- **`cover3_14` → PARKED (crop trade):** the tighter crop fixes it but breaks `cover3_13`; no single fixed crop serves both. A per-clip / ensemble fix was judged **not worth the permanent production complexity** for one clip whose miss **does not move the frame-level macro**.
+- **`cover3_15` → PARKED (hard two-high):** the one genuine **deferred-temporal** candidate; more data has already been shown not to crack it.
+
+**EXPLICIT REOPEN CONDITIONS** (when it's worth returning — and when it isn't):
+- A **clean-clip re-capture campaign** (non-human-controlled, well-timed clips) → could shrink the `11`/`14` residual naturally via better data. **This is the preferred path over per-clip routing.**
+- `cover3_15`'s two-high sub-case → revisit **only** if the deferred temporal approach is taken up for that specific look.
+- **Otherwise coverage is COMPLETE for current purposes. Do NOT add per-clip routing / ensembles for the parked clips** (reflexively grinding `cover3_14` is explicitly out of scope).
+
+**WHAT THIS UNBLOCKS:** clearing the model mean bar is the gate that downstream coverage-consuming work (e.g. Gameplan coverage-downstream) was waiting on. **Caveat — separate gate:** ADR 0010's **v0.3 adapter stability gate** (adapter production-stable for 7 days; `COVERAGE_LOCKED` emit-rate) is **downstream and still open** — clearing the *model* bar is **not** the adapter sign-off. Coverage-consuming features remain gated on that adapter step per ADR 0010.
