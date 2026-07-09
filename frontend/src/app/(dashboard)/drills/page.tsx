@@ -65,14 +65,16 @@ export default function DrillsPage() {
   // replacing the earlier NEXT_PUBLIC_VAF_SESSION_ID stub. Runs once when the
   // flag is on; until a real session_id lands, `enabled` stays false so nothing
   // connects to a fake session.
-  const [vafSession, setVafSession] = useState<{ sessionId: string; token: string } | null>(null);
+  const [vafSession, setVafSession] = useState<{ sessionId: string; token: string; wsUrl: string } | null>(null);
   useEffect(() => {
     if (!vafFlagOn) return;
     let cancelled = false;
     (async () => {
       try {
         const { data } = await api.post('/visionaudio/sessions/start');
-        if (!cancelled) setVafSession({ sessionId: data.session_id, token: data.token });
+        // Thread the broker's ws_url through (§B) so the socket self-configures
+        // from the core address — no NEXT_PUBLIC_VAF_WS_URL needed.
+        if (!cancelled) setVafSession({ sessionId: data.session_id, token: data.token, wsUrl: data.ws_url });
       } catch {
         // Broker unavailable / disabled server-side — stay on the manual path.
       }
@@ -84,6 +86,7 @@ export default function DrillsPage() {
   const { lastEvent: vafLastEvent, connected: vafConnected } = useVisionEvents({
     sessionId: vafSession?.sessionId ?? null,
     token: vafSession?.token ?? null,
+    wsUrl: vafSession?.wsUrl ?? null,
     eventType: 'FORMATION_LOCKED',
     enabled: vafFlagOn && !!vafSession,
   });
