@@ -24,6 +24,18 @@ One 40s live capture of running gameplay closed the gap and then some:
 
 The two missing digits (`5`, `9`) are both confirmed. **White-style library is complete.**
 
+> **CORRECTION (added after the reader build+eval — see
+> [digit-ocr-reader-build-eval.md](digit-ocr-reader-build-eval.md)):** this
+> "complete 0-9" claim is **misleading**. The completeness came entirely from the
+> **play clock**, which is a **distinct glyph style** (small, dark-on-white-box) from
+> the ADR-target fields (game-clock-seconds, distance = larger, white-on-dark).
+> Patch-NCC templates do **not** transfer across the styles (same-style 0.95 vs
+> cross-style 0.15), so the play-clock library is **not usable** for the target
+> fields. In the target style the campaign has only `{0,1,2,3,4,9}` (game clock) and
+> `{3,5}` (distance) — **no `1` or `7` in distance**, so the `1↔7` fix is **not
+> verifiable** on the ADR-target fields with this data. **Phase 1 did NOT achieve a
+> usable library for the target fields.**
+
 ## Segmentation spike (G3) — VERDICT
 
 **Score-style and white-style are the SAME TYPEFACE FAMILY but DIFFERENT STROKE
