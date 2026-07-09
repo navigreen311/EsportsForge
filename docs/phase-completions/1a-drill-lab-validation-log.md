@@ -2,7 +2,7 @@
 
 - **Scope:** in-process pipeline (file -> dispatcher -> OCR -> events), bounded per clip, OFFLINE_LAB.
 - **Fixture classes (corrected):** OVERLAY = `playcall_*` + `practice_*` (both show the play-call overlay -> extraction); BROADCAST = `yt_*` only (no overlay -> transport + zero false-positive).
-- **Deferred (recorded, not run):** #2 live page display (browser->core connect), #7 rollback-alarm wire (P2 CloudWatch), #8 webhook audit (:8002).
+- **Deferred (recorded, not run):** ~~#2 live page display (browser->core connect)~~ **PROVEN 2026-07-09 — see "Stage D" below**; #7 rollback-alarm wire (P2 CloudWatch), #8 webhook audit (:8002).
 - **Tracked robustness finding (not fixed here):** broadcast/null-HUD frames trigger a caught `Madden26Payload` ValidationError (score/clock required non-null) -> event logged+dropped, non-fatal. Payload-schema fix is separate work.
 
 ## Overlay clips - FORMATION extraction
@@ -52,3 +52,62 @@
 - Mismatches (wrong formation): none.
 - Broadcast false-positive FORMATION_LOCKED: none (criterion #3 holds).
 - Pipeline throughput (with OCR): 2.4-52.5 fps. (File-input/capture-path throughput is ~319 fps source-level, Day 1 - #4's actual subject.)
+
+## Stage D - Live browser render (criterion #2) - PROVEN 2026-07-09
+
+Criterion #2 (live page display: browser <- core over the events WebSocket) was
+deferred through Day 1-3 and never proven until now. Proven live off a real PS5
+capture-card feed, on `ai-feature/hud-recal-live`, with the WS-URL fix applied.
+
+**Full chain, each link instrumented (not narrated):**
+
+`PS5 -> HDMI capture card ("USB3.0 Video") -> ffmpeg (dshow) -> capture agent
+(source=capture-card) -> VAF core /ws/ingest -> dispatcher -> OCR -> FORMATION_LOCKED
+-> event_hub -> /ws/events/{session_id} -> browser (useVisionEvents) -> render + auto-rep`
+
+| Link | Evidence |
+|---|---|
+| agent -> core ingest (session-scoped) | core: `WebSocket /ws/ingest?session_id=ses_...8Q3 [accepted]` |
+| browser -> core subscribe (same session) | core: `events_subscriber_connected` on `ses_...8Q3` |
+| broker returns usable ws_url | `POST /visionaudio/sessions/start` -> 200, `ws_url":"ws://127.0.0.1:8100"` |
+| core emits real events | probe on `/ws/events/{sid}` captured a real envelope (below) |
+| browser renders | Vision line showed the formation; rep counter advanced (auto-rep driven by live feed) |
+
+**Real captured envelope (probe subscriber on the browser's exact WS surface):**
+
+```json
+{ "event_type": "FORMATION_LOCKED",
+  "confidence": 0.615,
+  "payload": { "offensive_formation": "IForm Pro", "offensive_formation_family": "i_form_pro",
+               "down": 1, "distance": 10, "clock": "0:26", "quarter": 1,
+               "score_home": null, "score_away": null,  // correct per ADR 0017, not broken
+               "defensive_formation": null, "title": "madden26" } }
+```
+
+**The fix (commit `25318c8`):** the frontend discarded the broker's `ws_url` and
+read an unset `NEXT_PUBLIC_VAF_WS_URL`, so the WS had no base URL. Now `page.tsx`
+threads `data.ws_url` into `useVisionEvents`, which prefers it (env var kept as a
+harmless fallback). Source-only change; `.env.local` / `config.live.toml` are local
+and uncommitted.
+
+**Dev-environment gotchas (cost real time, will recur):**
+- `backend/app` has **no `load_dotenv`** -> `VAF_DRILL_LAB_ENABLED` and `VAF_CORE_URL`
+  must be **shell-exported**, not placed in a `.env`, or `/sessions/start` returns
+  403 `drill_lab_disabled`.
+- Dev backend port is **:8002 per ADR 0011** (NOT the :8000 repo default, NOT the
+  stale :8001 in the main-tree `.env.local`). Wrong port -> `page.tsx` silently
+  swallows the session-start error -> "page loads, no events, no error."
+
+**Incidental (NOT a Stage-D defect):** the worktree dev sqlite was schema-drifted on
+the auth path (no `alembic_version`; `create_all()`-built; missing
+`recommendations.feedback_at`), which 500'd every authed request. Unblocked by
+swapping in the current main-tree sqlite (backup: `backend/esportsforge.db.bak-staged`).
+Real remediation is `feat/alembic-remediation` (43842fe, unmerged).
+
+**Open, deliberately not chased here:**
+- `adapter_budget_breach` on hot-tier frames under CPU-only OCR (no accelerator) -
+  harmless; OCR-tier frames still emit. Sparse cadence is by design (ADR 0015).
+- The hook currently surfaces only `FORMATION_LOCKED`; the `SNAPSHOT` delivery path
+  is identical (same hub fan-out), just not filtered-in by the display.
+- Banked from ADR 0017: digit-OCR pass (scores, clock-seconds 1<->7, single-digit
+  distance) and the canonical-family mapping gap.
