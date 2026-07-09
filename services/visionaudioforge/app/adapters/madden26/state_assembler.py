@@ -97,10 +97,12 @@ def assemble(
             st["_last_locked_formation"] = locked
             last_live = st.get("_last_live_state", {})
             payload = Madden26Payload(
-                score_home=last_live.get("score_home", 0),
-                score_away=last_live.get("score_away", 0),
-                quarter=last_live.get("quarter", 1),
-                clock=last_live.get("clock", "0:00"),
+                # Carry the real last-live game state (may be null before the HUD
+                # has ever read) rather than fabricating 0-0/0:00.
+                score_home=last_live.get("score_home"),
+                score_away=last_live.get("score_away"),
+                quarter=last_live.get("quarter"),
+                clock=last_live.get("clock"),
                 down=last_live.get("down"),
                 distance=last_live.get("distance"),
                 field_position=last_live.get("field_position"),
@@ -130,12 +132,20 @@ def assemble(
         else:
             sm[f] = raw
 
-    quarter = ocr.quarter or last_state.get("quarter") or 1
+    quarter = ocr.quarter or last_state.get("quarter")   # may be None (unreadable)
+    # Graceful degrade: if NOTHING core was readable this cycle (menu / replay /
+    # mis-region), skip the SNAPSHOT instead of emitting an all-null/fabricated one.
+    # A PARTIAL read still emits, degrading field-by-field (null where unreadable).
+    core = (sm["score_home"], sm["score_away"], sm["clock"], sm["down"], sm["distance"])
+    if updated_fields is not None and not any(v is not None for v in core):
+        st["_last_live_state"] = {f: sm[f] for f in _LIVE_FIELDS}
+        st["_last_live_state"]["quarter"] = quarter
+        return []
     payload = Madden26Payload(
-        score_home=sm["score_home"] or 0,
-        score_away=sm["score_away"] or 0,
+        score_home=sm["score_home"],        # nullable — no fabricated 0 on unreadable
+        score_away=sm["score_away"],
         quarter=quarter,                    # very stable; not smoothed
-        clock=sm["clock"] or "0:00",
+        clock=sm["clock"],                  # nullable — no fabricated "0:00"
         down=sm["down"],
         distance=sm["distance"],
         field_position=sm["field_position"],
