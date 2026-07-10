@@ -57,32 +57,41 @@ def _crop(frame: np.ndarray, spec: FieldSpec) -> np.ndarray:
     return frame[y : y + h, x : x + w]
 
 
-def sat_mean(frame: np.ndarray, spec: FieldSpec) -> float:
-    """Mean per-pixel colour saturation in the zone. Clean HUD box is near-grey
-    (~low); a green-static HDMI-glitch frame is highly saturated (~high)."""
-    roi = _crop(frame, spec).astype(np.int16)
+# ---------------------------------------------------------------------------
+# Two entry styles. Patch-based `*_patch` functions operate on an ALREADY-CROPPED
+# field patch — this is the pipeline contract (ocr_pipeline crops the zone via
+# hud_regions + its own _crop, then hands the reader the patch; the reader never
+# touches the full frame). The frame+spec wrappers below just crop and delegate,
+# and are what the standalone eval/gate harness uses.
+# ---------------------------------------------------------------------------
+
+
+def sat_mean_patch(patch: np.ndarray) -> float:
+    """Mean per-pixel colour saturation of a field patch. Clean HUD box is
+    near-grey (~low); a green-static HDMI-glitch frame is highly saturated."""
+    roi = patch.astype(np.int16)
     b, g, r = roi[..., 0], roi[..., 1], roi[..., 2]
     hi = np.maximum(np.maximum(b, g), r)
     lo = np.minimum(np.minimum(b, g), r)
     return float((hi - lo).mean())
 
 
-def is_corrupt(frame: np.ndarray, spec: FieldSpec, thresh: float = 28.0) -> bool:
-    return sat_mean(frame, spec) >= thresh
+def is_corrupt_patch(patch: np.ndarray, thresh: float = 28.0) -> bool:
+    return sat_mean_patch(patch) >= thresh
 
 
-def field_present(frame: np.ndarray, spec: FieldSpec) -> bool:
-    """White-on-dark digits present: the zone must hold both dark box background
-    and bright ink. Rejects blank/menu (all-dark) and field cutaways (all-bright,
-    which pass a plain brightness check but have no bar)."""
-    g = cv2.cvtColor(_crop(frame, spec), cv2.COLOR_BGR2GRAY)
+def field_present_patch(patch: np.ndarray) -> bool:
+    """White-on-dark digits present in the patch: it must hold both dark box
+    background and bright ink. Rejects blank/menu (all-dark) and field cutaways
+    (all-bright, which pass a plain brightness check but have no bar)."""
+    g = cv2.cvtColor(patch, cv2.COLOR_BGR2GRAY)
     return (g < 60).mean() > 0.15 and (g > 180).mean() > 0.08
 
 
-def segment(frame: np.ndarray, spec: FieldSpec) -> list[np.ndarray] | None:
-    """Return one normalised GHxGW uint8 glyph per slot, or None if the field
-    can't be cleanly segmented (caller abstains)."""
-    g = cv2.cvtColor(_crop(frame, spec), cv2.COLOR_BGR2GRAY)
+def segment_patch(patch: np.ndarray, n_slots: int) -> list[np.ndarray] | None:
+    """Segment an already-cropped field patch into normalised GHxGW glyphs, or
+    None if it can't be cleanly segmented (caller abstains)."""
+    g = cv2.cvtColor(patch, cv2.COLOR_BGR2GRAY)
     g = cv2.resize(g, None, fx=8, fy=8, interpolation=cv2.INTER_CUBIC)
     _, bw = cv2.threshold(g, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     bw = cv2.morphologyEx(bw, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
@@ -95,8 +104,8 @@ def segment(frame: np.ndarray, spec: FieldSpec) -> list[np.ndarray] | None:
     g = g[:, cols[0] : cols[-1] + 1]
     Wc = bw.shape[1]
     out: list[np.ndarray] = []
-    for k in range(spec.n_slots):
-        a, b = k * Wc // spec.n_slots, (k + 1) * Wc // spec.n_slots
+    for k in range(n_slots):
+        a, b = k * Wc // n_slots, (k + 1) * Wc // n_slots
         sub, subg = bw[:, a:b], g[:, a:b]
         num, lab, stats, _ = cv2.connectedComponentsWithStats(
             (sub > 0).astype(np.uint8), 8
@@ -109,6 +118,23 @@ def segment(frame: np.ndarray, spec: FieldSpec) -> list[np.ndarray] | None:
         glyph = subg[ys[0] : ys[-1] + 1, xs[0] : xs[-1] + 1]
         out.append(cv2.resize(glyph, (GW, GH), interpolation=cv2.INTER_CUBIC))
     return out
+
+
+# Frame+spec wrappers (crop, then delegate) — used by the standalone eval/gate.
+def sat_mean(frame: np.ndarray, spec: FieldSpec) -> float:
+    return sat_mean_patch(_crop(frame, spec))
+
+
+def is_corrupt(frame: np.ndarray, spec: FieldSpec, thresh: float = 28.0) -> bool:
+    return is_corrupt_patch(_crop(frame, spec), thresh)
+
+
+def field_present(frame: np.ndarray, spec: FieldSpec) -> bool:
+    return field_present_patch(_crop(frame, spec))
+
+
+def segment(frame: np.ndarray, spec: FieldSpec) -> list[np.ndarray] | None:
+    return segment_patch(_crop(frame, spec), spec.n_slots)
 
 
 def vec(glyph: np.ndarray) -> np.ndarray:
@@ -188,16 +214,24 @@ class DigitReader:
         r.means = {k[len("tmpl_"):]: z[k] for k in z.files if k.startswith("tmpl_")}
         return r
 
-    def read(self, frame: np.ndarray) -> tuple[str | None, list[SlotResult]]:
-        """Return (digit string, per-slot detail) or (None, ...) on abstain.
-        Abstains on: corruption, absent field, failed segmentation, or any slot
-        below tau / margin. A null beats a wrong digit (never-fabricate)."""
-        if is_corrupt(frame, self.spec) or not field_present(frame, self.spec):
+    def read_patch(self, patch: np.ndarray) -> tuple[str | None, list[SlotResult]]:
+        """PIPELINE ENTRY: read an ALREADY-CROPPED field patch (the pipeline crops
+        the zone via hud_regions + _crop and hands it here). Returns (digit string,
+        per-slot detail) or (None, ...) on abstain. Abstains on: corruption, absent
+        field, failed segmentation, or any slot below tau / margin. A null beats a
+        wrong digit (never-fabricate)."""
+        if patch is None or patch.size == 0:
             return None, []
-        glyphs = segment(frame, self.spec)
+        if is_corrupt_patch(patch) or not field_present_patch(patch):
+            return None, []
+        glyphs = segment_patch(patch, self.spec.n_slots)
         if glyphs is None:
             return None, []
         results = [self.classify(vec(g)) for g in glyphs]
         if any(r.best < self.tau or r.margin < self.delta for r in results):
             return None, results
         return "".join(r.digit for r in results), results
+
+    def read(self, frame: np.ndarray) -> tuple[str | None, list[SlotResult]]:
+        """Frame entry (standalone eval/gate): crop the reader's zone, then read."""
+        return self.read_patch(_crop(frame, self.spec))
