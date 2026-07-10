@@ -42,6 +42,12 @@ export interface EventEnvelope {
 export interface UseVisionEventsOptions {
   sessionId: string | null | undefined;
   token: string | null | undefined;
+  /**
+   * WS base URL (e.g. `ws://127.0.0.1:8100`). The broker (`/sessions/start`)
+   * returns this as `ws_url`; the Day-3 page threads it through so the socket
+   * self-configures. Falls back to NEXT_PUBLIC_VAF_WS_URL when not supplied.
+   */
+  wsUrl?: string | null;
   /** Event type to surface. Day 1 streams all events; the client filters. */
   eventType?: string;
   enabled?: boolean;
@@ -59,6 +65,7 @@ const RECONNECT_MAX_MS = 10_000;
 export function useVisionEvents({
   sessionId,
   token,
+  wsUrl,
   eventType = 'FORMATION_LOCKED',
   enabled = true,
 }: UseVisionEventsOptions): UseVisionEventsResult {
@@ -77,7 +84,7 @@ export function useVisionEvents({
       return;
     }
 
-    const base = process.env.NEXT_PUBLIC_VAF_WS_URL ?? '';
+    const base = wsUrl ?? process.env.NEXT_PUBLIC_VAF_WS_URL ?? '';
     const url =
       `${base}/ws/events/${encodeURIComponent(sessionId)}` +
       `?token=${encodeURIComponent(token)}`;
@@ -156,7 +163,7 @@ export function useVisionEvents({
       }
       wsRef.current = null;
     };
-  }, [sessionId, token, eventType, enabled]);
+  }, [sessionId, token, wsUrl, eventType, enabled]);
 
   return { lastEvent, connected, error };
 }

@@ -24,10 +24,14 @@ class FootballPayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    score_home: int
-    score_away: int
-    quarter: int
-    clock: str  # "MM:SS"
+    # Nullable so an unreadable/degraded frame (menu, replay, mis-region, or a HUD
+    # element OCR can't resolve) emits null rather than a fabricated value. A
+    # partial read degrades field-by-field; a fully-blank read is skipped upstream
+    # (state_assembler). Broadcast/overlay frames read null by design. (v2.3.0-live)
+    score_home: int | None = None
+    score_away: int | None = None
+    quarter: int | None = None
+    clock: str | None = None  # "MM:SS" or None when unreadable
     down: int | None = None
     distance: int | None = None
     field_position: str | None = None  # "OWN_35", "OPP_22", "MIDFIELD"

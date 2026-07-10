@@ -168,6 +168,124 @@ def _parse_distance(text: str) -> int | None:
     return None
 
 
+# This HUD's italic numeral font confuses glyphs on EasyOCR. Substitutions
+# observed on the live broadcast bar (v2.3.0-live, ~9 clean gameplay frames):
+#   2->Z, 1->7, 5->S, 0->O, 8->B, 6->G, 7->T, and '&' commonly reads as a
+#   leading '8'. INFERRED FROM A SMALL SAMPLE — an unseen digit could need more;
+#   the live run is the real test.
+_HUD_DIGIT_SUB = str.maketrans(
+    {"Z": "2", "S": "5", "I": "1", "L": "1", "O": "0", "B": "8", "G": "6", "T": "7"}
+)
+_ORD_TOKEN_RE = re.compile(r"([0-9ZSILOB])?\s*(ST|ND|RD|TH)")
+_ORD_SUFFIX = {"ST": 1, "ND": 2, "RD": 3, "TH": 4}
+
+
+def _ord_to_int(lead: str | None, suffix: str, lo: int, hi: int) -> int | None:
+    """Map an ordinal token (leading glyph + ST/ND/RD/TH) to an int in [lo, hi].
+    Prefers the leading digit (glyph-corrected, 7->1); falls back to the suffix."""
+    val = None
+    if lead:
+        d = lead.translate(_HUD_DIGIT_SUB).replace("7", "1")
+        try:
+            val = int(d)
+        except ValueError:
+            val = None
+    if val is None:
+        val = _ORD_SUFFIX.get(suffix)
+    return val if (val is not None and lo <= val <= hi) else None
+
+
+def _parse_right_cluster(text: str) -> dict:
+    """Positionally parse the WIDE right-cluster HUD box.
+
+    On the live PS5 broadcast bar the cluster reads (left->right):
+        <quarter-ordinal> <clock> [<play_clock>] <down-ordinal> & <distance>
+    e.g. '2nd 1:02 :32 2ND & 6'. Tight per-element boxes don't OCR on this bar
+    (EasyOCR's detector needs the wider context), so we read the whole cluster
+    once and split it on the TWO ordinal tokens: the first is the quarter, the
+    last is the down; the clock sits between them, the distance after the down.
+    Returns {quarter, clock, play_clock, down, distance} (any may be None).
+    """
+    out = {"quarter": None, "clock": None, "play_clock": None,
+           "down": None, "distance": None}
+    if not text:
+        return out
+    up = text.upper()
+    ords = list(_ORD_TOKEN_RE.finditer(up))
+    if ords:
+        out["quarter"] = _ord_to_int(ords[0].group(1), ords[0].group(2), 1, 5)
+        if len(ords) > 1:
+            out["down"] = _ord_to_int(ords[-1].group(1), ords[-1].group(2), 1, 4)
+    down_tok = ords[-1] if len(ords) > 1 else None
+    mid = up[ords[0].end():down_tok.start()] if (ords and down_tok) else (up[ords[0].end():] if ords else up)
+    tail = up[down_tok.end():] if down_tok else ""
+
+    # clock: first 3-4 char digit-ish run in the middle. This HUD reads '1' as
+    # '7' pervasively, so apply 7->1 (consistent with _parse_play_clock/
+    # _parse_distance). AMBIGUITY: a genuine 7-minute/second collides — biased to
+    # '1' from a 1-heavy sample; the live run (known clock) is the real test.
+    for grp in re.findall(r"[0-9OISLBZ][0-9OISLBZ:.]{1,3}[0-9OISLBZ]", mid):
+        c = _parse_clock(grp.translate(_HUD_DIGIT_SUB).replace("7", "1"))
+        if c:
+            out["clock"] = c
+            break
+
+    # distance: after the down ordinal. Two glyph quirks on this HUD:
+    #   - '&' reads as EITHER a literal '&' ('& 6') OR a leading '8' ('84' = '&4').
+    #   - '1' reads as '7' ('& 10' -> '&70').
+    # Realistic distance is 1-25, so a 2-digit value that's impossible (>25)
+    # disambiguates: leading '8' was the '&' glyph; leading '7' was a '1'.
+    if any(w in up for w in ("KICK", "PUNT", "GOAL")):
+        out["distance"] = None
+    else:
+        dt = tail.translate(_HUD_DIGIT_SUB)
+        m = re.search(r"(\d{1,2})\s*$", dt.strip()) or re.search(r"(\d{1,2})", dt)
+        if m:
+            ds = m.group(1)
+            if len(ds) == 2 and ds[0] == "8":       # leading '8' = the '&' glyph
+                ds = ds[1]
+            if len(ds) == 2 and ds[0] == "7" and int(ds) > 25:  # '7X' impossible -> '1X'
+                ds = "1" + ds[1]
+            try:
+                v = int(ds)
+                if 1 <= v <= 25:
+                    out["distance"] = v
+            except ValueError:
+                pass
+
+    # play_clock: best-effort, least reliable (a 2-digit run in mid that isn't
+    # the clock). A null play_clock is acceptable — don't force a bad value.
+    clock_digits = re.sub(r"\D", "", out["clock"] or "")
+    for grp in re.findall(r"(?<![0-9OISLBZ])([0-9OISLBZ]{2})(?![0-9OISLBZ])", mid):
+        cand = grp.translate(_HUD_DIGIT_SUB)
+        if cand == clock_digits[-2:]:
+            continue
+        pc = _parse_play_clock(cand)
+        if pc is not None:
+            out["play_clock"] = pc
+            break
+    return out
+
+
+def _parse_down_distance(text: str) -> tuple[int | None, int | None]:
+    """Parse the MERGED down+distance panel, e.g. '2ND & 6' -> (2, 6).
+
+    The live PS5 broadcast bar renders down and distance as one contiguous
+    string (v2.3.0-live, E3), unlike the v2.2.0 split boxes. Down comes from the
+    leading ordinal (1-4); distance from the number after '&'/'AND' (reusing
+    _parse_distance's ampersand + trailing-digit logic). Special downs render
+    'KICKOFF'/'PUNT'/'GOAL' with no numeric distance -> distance None."""
+    if not text:
+        return (None, None)
+    up = text.upper()
+    if any(w in up for w in ("KICK", "PUNT", "GOAL")):
+        return (_parse_ordinal_to_int(up, 1, 4), None)
+    head = re.split(r"&|\bAND\b", up, maxsplit=1)[0]
+    down = _parse_ordinal_to_int(head, 1, 4)
+    distance = _parse_distance(up)
+    return (down, distance)
+
+
 def _parse_clock(text: str) -> str | None:
     """Parse 'M:SS' or 'MM:SS' clock. Tolerates 1↔7 and missing colon.
 
@@ -366,6 +484,24 @@ def _parse_score(text: str) -> int | None:
     return v if 0 <= v <= 199 else None
 
 
+def _parse_scores_pair(text: str) -> tuple[int | None, int | None]:
+    """Split a combined '<home> x <home>' broadcast-bar score box into
+    (home, away). The live PS5 bar shows the two scores either side of an 'x'
+    separator (e.g. '7 x 7', '14  10'). EasyOCR drops the isolated italic score
+    glyph, so reading the wider pair box gives the detector more to latch onto
+    (v2.3.0-live, E5). Returns (None, None) when fewer than two numbers survive
+    — the caller then degrades scores to null."""
+    if not text:
+        return (None, None)
+    subbed = text.upper().translate(_SCORE_GLYPH_SUB)
+    nums = re.findall(r"\d{1,3}", subbed)
+    if len(nums) >= 2:
+        home, away = int(nums[0]), int(nums[-1])
+        if 0 <= home <= 199 and 0 <= away <= 199:
+            return (home, away)
+    return (None, None)
+
+
 # --- Play-call overlay formation-name reading (M5c sub-task 4 pivot, ADR 0014) ---
 # Madden's play-call banner reads "<Formation Name> - N Plays" (e.g. "Trips TE
 # Offset - 12 Plays"). The full name is the primary label; the canonical-8 family
@@ -461,30 +597,24 @@ class OCRPipeline:
         s_away_text, s_away_conf = _read_text(_crop(frame, scoreboard["score_away"]))
         clock_text, clock_conf = _read_text(_crop(frame, scoreboard["clock"]), "0123456789:")
 
-        # Quarter / down — ordinal text. No allowlist (EasyOCR drops
-        # results when allowlist excludes letters in "1ST"/"2ND" etc.).
+        # Quarter — ordinal text. No allowlist (EasyOCR drops results when the
+        # allowlist excludes letters in "1ST"/"2ND" etc.).
         q_text, q_conf = _read_text(_crop(frame, scoreboard["quarter"]))
-        down_text, down_conf = _read_text(_crop(frame, dnd["down"]))
 
-        # Distance — read freely; regex pulls digits after "&"/"AND".
-        dist_text, dist_conf = _read_text(_crop(frame, dnd["distance"]))
+        # Down + distance — single merged panel on the v2.3.0-live bar
+        # ("2ND & 6"), regex-split into both.
+        dd_text, dd_conf = _read_text(_crop(frame, dnd["down_distance"]))
 
         # Play clock — digit-only; can be "--" → null.
         pc_text, pc_conf = _read_text(_crop(frame, dnd["play_clock"]), "0123456789")
 
-        # Field position — Madden 26 numeric form, possibly preceded by
-        # an arrow glyph. Read freely so EasyOCR captures the glyph as
-        # noise and our regex pulls the digits.
-        fp_text, fp_conf = _read_text(_crop(frame, dnd["field_position"]))
-
         score_home_v = _parse_score(s_home_text)
         score_away_v = _parse_score(s_away_text)
         quarter_v = _parse_ordinal_to_int(q_text, 1, 5)
-        down_v = _parse_ordinal_to_int(down_text, 1, 4)
-        distance_v = _parse_distance(dist_text)
+        down_v, distance_v = _parse_down_distance(dd_text)
         play_clock_v = _parse_play_clock(pc_text)
         clock_v = _parse_clock(clock_text)
-        fp_v = _parse_field_position(fp_text)
+        fp_v = None  # field_position parked for the live path (no analog on the bar)
 
         # Team abbreviations.
         ha_text, ha_conf = _read_text(
@@ -501,8 +631,7 @@ class OCRPipeline:
         # Aggregate confidence — average of the per-region confidences.
         confs = [
             c for c in [s_home_conf, s_away_conf, q_conf, clock_conf,
-                        down_conf, dist_conf, pc_conf, fp_conf,
-                        ha_conf, aa_conf]
+                        dd_conf, pc_conf, ha_conf, aa_conf]
             if c > 0
         ]
         overall = sum(confs) / len(confs) if confs else 0.0
@@ -521,73 +650,114 @@ class OCRPipeline:
             confidence_overall=round(overall, 3),
         )
 
-    # Field -> (region-group, subregion-key, allowlist, parser). Mirrors read_frame
-    # exactly; read_fields reads only the requested subset (M5c sub-task 7.5.2, the
-    # sampled-OCR cadence path). read_frame is left untouched as the validated
-    # full-read artifact the v2.1.0 regression baseline reproduces against.
-    _FIELD_SPEC = {
-        "score_home":     ("scoreboard", "score_home", None, _parse_score),
-        "score_away":     ("scoreboard", "score_away", None, _parse_score),
-        "clock":          ("scoreboard", "clock", "0123456789:", _parse_clock),
-        "quarter":        ("scoreboard", "quarter", None,
-                           lambda t: _parse_ordinal_to_int(t, 1, 5)),
-        "team_home_abbr": ("scoreboard", "team_home_abbr",
-                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-                           lambda t: (t.upper().strip() or None)),
-        "team_away_abbr": ("scoreboard", "team_away_abbr",
-                           "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-                           lambda t: (t.upper().strip() or None)),
-        "down":           ("down_distance", "down", None,
-                           lambda t: _parse_ordinal_to_int(t, 1, 4)),
-        "distance":       ("down_distance", "distance", None, _parse_distance),
-        "play_clock":     ("down_distance", "play_clock", "0123456789", _parse_play_clock),
-        "field_position": ("down_distance", "field_position", None, _parse_field_position),
-    }
+    _ABBR_ALLOW = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
     def read_fields(self, frame: np.ndarray, fields) -> dict:
         """Read ONLY the requested HUD fields (the cadence-sampled path).
 
-        Returns {field: parsed_value, ...} for the requested fields plus
-        "_confidence" (mean over the read regions). Fields not requested are
-        absent — the caller carries their last value forward. Per-field read
-        logic (bbox, allowlist, parser) mirrors read_frame exactly.
+        v2.3.0-live broadcast-bar reads: scores come from the combined
+        'scores_combined' pair box split into home/away (falling back to the
+        individual boxes), and down+distance from the single merged
+        'down_distance' box split into both. field_position is parked (no analog
+        on the bar). Returns {field: parsed_value, ...} for the requested fields
+        plus "_confidence" (mean over the read regions); unrequested fields are
+        absent so the caller carries their last value forward.
         """
-        groups = {"scoreboard": self.regions["scoreboard"]["subregions"],
-                  "down_distance": self.regions["down_distance"]["subregions"]}
+        want = set(fields)
+        sb = self.regions["scoreboard"]["subregions"]
+        dd = self.regions["down_distance"]["subregions"]
         out: dict = {}
         confs: list[float] = []
-        for field in fields:
-            spec = self._FIELD_SPEC.get(field)
-            if spec is None:
-                continue
-            grp, key, allow, parser = spec
-            text, conf = _read_text(_crop(frame, groups[grp][key]), allow)
+
+        def rd(bbox, allow=None):
+            text, conf = _read_text(_crop(frame, bbox), allow)
             if conf > 0:
                 confs.append(conf)
-            out[field] = parser(text)
+            return text
+
+        # Scores — the large italic score numeral does NOT reliably OCR on this
+        # bar (EasyOCR's detector drops it: a known-7-7 frame reads None/None, and
+        # combined-box attempts return spurious 0/5 noise). Per the pre-agreed E5
+        # stopping point: NULL scores rather than emit misreads; the payload is
+        # nullable so SNAPSHOT still flows. BANKED FOLLOW-UP: scores need a
+        # dedicated pass (digit template match / small classifier), not a glyph
+        # tweak. _parse_scores_pair / scores_combined are kept for that revisit.
+        if "score_home" in want:
+            out["score_home"] = None
+        if "score_away" in want:
+            out["score_away"] = None
+        if "team_home_abbr" in want:
+            out["team_home_abbr"] = (rd(sb["team_home_abbr"], self._ABBR_ALLOW).upper().strip() or None)
+        if "team_away_abbr" in want:
+            out["team_away_abbr"] = (rd(sb["team_away_abbr"], self._ABBR_ALLOW).upper().strip() or None)
+        # quarter / clock / play_clock / down / distance — read the WIDE right
+        # cluster in ONE box and split positionally. Tight per-element crops don't
+        # OCR on this broadcast bar (EasyOCR's detector needs the wider context);
+        # the wide box reads at c~0.65-0.97 where the tight boxes read nothing.
+        cluster_fields = ("quarter", "clock", "play_clock", "down", "distance")
+        if want.intersection(cluster_fields):
+            rc = _parse_right_cluster(rd(dd["right_cluster"]))
+            for f in cluster_fields:
+                if f in want:
+                    out[f] = rc[f]
+        # field_position: parked for the live path (no analog on the broadcast bar).
         out["_confidence"] = round(sum(confs) / len(confs), 3) if confs else 0.0
         return out
 
-    # --- Play-call overlay (formation name) — v2.2.0 play_call context ---
+    # --- Play-call overlay (formation name) — v2.3.0-live play_call context ---
+
+    _SUBTITLE_KEYS = ("formation_name", "formation_name_2", "formation_name_3")
 
     def read_formation_name(self, frame: np.ndarray) -> FormationNameReading:
-        """Read the offensive formation from the play-call overlay banner.
+        """Read the offensive formation from the play-call overlay.
 
-        Returns is_play_call_screen=False (and null name) when the overlay is not
-        visible — the banner region on live gameplay reads field/players, which
-        does not match the '<name> - N Plays' pattern. The v2.2.0 play_call
-        context must be present (empty reading otherwise).
+        v2.3.0-live SUBTITLE-FIRST (corrected after live testing): the play-call
+        flow has TWO sub-views, and only ONE reflects the COMMITTED formation:
+          * PLAY-SELECT (PRIMARY) — the play-card SUBTITLE ('<Family>
+            <Sub-formation>', e.g. 'Pistol Wing Flex'), repeated under each card
+            and majority-voted. This is the formation the user DRILLED INTO to
+            pick a play — i.e. the one they will snap. Reads cleanly (0.7-1.0).
+          * FORMATION-SELECT (fallback only) — the centered '<Formation> - N
+            Plays' banner. This shows the formation the user is HOVERING while
+            BROWSING, which changes as they scroll — locking it grabs a browse
+            transient, not the committed formation (live bug: locked 'Gun Empty
+            Trey' while the user snapped 'Pistol Wing Flex'). So the banner is a
+            last resort, used only when no subtitle reads at all.
+        Per-frame reads are mode-voted across the play-call screen by the
+        adapter's TemporalSmoother. Returns is_play_call_screen=False (null name)
+        when nothing confident reads.
         """
-        region = self.play_call_regions.get("formation_name")
-        if region is None:
+        pc = self.play_call_regions
+        if not pc:
             return FormationNameReading(None, None, 0.0, False)
-        text, conf = _read_text(_crop(frame, region["bbox"]))
-        # The "N Plays" suffix is the state signal: only the play-call screen has it.
-        on_screen = bool(_PLAYS_RE.search(text)) and conf > 0.4
-        if not on_screen:
-            return FormationNameReading(None, None, round(conf, 3), False)
-        name = _parse_formation_name(text)
-        return FormationNameReading(name, _formation_to_canonical(name), round(conf, 3), True)
+
+        # 1) PRIMARY: play-card subtitles (play-select = COMMITTED formation).
+        #    Return on the FIRST confident card (usually card 1) — cheap (~1 OCR).
+        #    Per-frame reads are mode-voted across the screen by the smoother, so
+        #    a single-card read + temporal vote is robust without reading all 3.
+        for key in self._SUBTITLE_KEYS:
+            region = pc.get(key)
+            if region is None:
+                continue
+            text, conf = _read_text(_crop(frame, region["bbox"]))
+            name = _parse_formation_name(text)
+            if name and conf > 0.5:
+                return FormationNameReading(
+                    name, _formation_to_canonical(name), round(conf, 3), True)
+
+        # No committed-formation subtitle -> browsing (formation-select) or not a
+        # play-call screen. Do NOT read the formation-select banner for the name:
+        # it shows the BROWSED (hovered) formation and locking it produced the live
+        # wrong-lock ('Gun Empty Trey' while snapping 'Pistol Wing Flex'). We lock
+        # ONLY the committed play-select subtitle; the lock waits for play-select.
+        # Use the standalone "N Plays" counter just for the is_play_call flag.
+        state_conf = 0.0
+        on_screen = False
+        plays_region = pc.get("plays_count")
+        if plays_region is not None:
+            ptext, state_conf = _read_text(_crop(frame, plays_region["bbox"]))
+            on_screen = bool(_PLAYS_RE.search(ptext)) and state_conf > 0.4
+        return FormationNameReading(None, None, round(state_conf, 3), on_screen)
 
     def is_play_call_screen(self, frame: np.ndarray) -> bool:
         """Cheap state check: is the pre-snap play-call overlay currently visible?"""

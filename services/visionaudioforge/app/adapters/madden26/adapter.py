@@ -96,9 +96,11 @@ class Madden26Adapter:
         # frame. Periodic reads catch the value whenever the HUD shows it; the
         # play-epoch reset (still driven by the boundary) keeps a new play's read
         # from smoothing against the prior play's. (7.5.5 finding.)
+        # field_position parked for the live path (v2.3.0-live — no analog on the
+        # broadcast bar); down+distance read from one merged region.
         "down_distance": {"cadence": "every_n", "n": 12, "phase": 3,
                           "context": LIVE_GAMEPLAY,
-                          "fields": ["down", "distance", "field_position"]},
+                          "fields": ["down", "distance"]},
         "clock": {"cadence": "every_n", "n": 10, "phase": 0, "context": LIVE_GAMEPLAY,
                   "fields": ["clock"]},
         "score_quarter": {"cadence": "every_n", "n": 40, "phase": 25,
@@ -106,7 +108,12 @@ class Madden26Adapter:
                           "fields": ["score_home", "score_away", "quarter"]},
         # play_clock is not in the Phase-0 payload — it returns with the M5b snap
         # detector. Omitted here to keep OCR load off the hot path.
-        "formation": {"cadence": "on_play_call", "max_reads_per_screen": 5,
+        # Read the formation periodically across the WHOLE play-call screen (not a
+        # capped burst): the old on_play_call cap of 5 was spent during
+        # formation-select BROWSING and never reached the play-select subtitle
+        # (the committed formation). every_n:9 (~0.75s @12fps) samples browse +
+        # play-select; the smoother mode-votes the committed formation. (v2.3.0-live)
+        "formation": {"cadence": "every_n", "n": 9, "phase": 4,
                       "context": PLAY_CALL, "fields": ["offensive_formation"]},
     }
 

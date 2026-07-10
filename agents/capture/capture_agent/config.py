@@ -20,6 +20,10 @@ from pathlib import Path
 class CaptureConfig:
     source: str  # "capture-card" | "pc-monitor" | "test-video" | "file"
     device_index: int = 0
+    # HDMI capture-card (source="capture-card"): ffmpeg/dshow addresses the card
+    # by NAME. device_index is retained as a documented fallback knob but the
+    # ffmpeg path selects by name (the on-hand card is not grabbable via OpenCV).
+    device_name: str = "USB3.0 Video"
     monitor_index: int = 0
     crop: tuple[int, int, int, int] = (0, 0, 1920, 1080)
     test_video: str = ""
@@ -102,6 +106,7 @@ def load_config(path: str | Path | None = None) -> AgentConfig:
         capture=CaptureConfig(
             source=raw["capture"]["source"],
             device_index=raw["capture"].get("device_index", 0),
+            device_name=raw["capture"].get("device_name", "USB3.0 Video"),
             monitor_index=raw["capture"].get("monitor_index", 0),
             crop=tuple(raw["capture"].get("crop", [0, 0, 1920, 1080])),  # type: ignore[arg-type]
             test_video=raw["capture"].get("test_video", ""),
