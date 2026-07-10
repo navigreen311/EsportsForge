@@ -29,8 +29,19 @@ async def lifespan(app: FastAPI):
     # Use importlib to avoid shadowing the `app: FastAPI` lifespan parameter.
     import importlib
     importlib.import_module("app.models")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # Schema is managed by Alembic migrations (single source of truth), not
+    # create_all. env.py runs asyncio.run() internally, so run the sync command
+    # in a worker thread to avoid nesting it in this already-running event loop.
+    import asyncio
+    from pathlib import Path
+
+    from alembic import command
+    from alembic.config import Config
+
+    _backend_dir = Path(__file__).resolve().parent.parent
+    _cfg = Config(str(_backend_dir / "alembic.ini"))
+    _cfg.set_main_option("script_location", str(_backend_dir / "alembic"))
+    await asyncio.to_thread(command.upgrade, _cfg, "head")
     validate_config(settings)
     setup_logging(log_level=settings.log_level, json_format=settings.environment == "production")
     _start_time = time.time()
