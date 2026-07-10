@@ -1,6 +1,6 @@
 # Digit-OCR Pass — Reader Build + Eval (white-style, patch-NCC)
 
-Build+eval of the white-style digit reader banked from **[ADR 0017](../adr/0017-live-feed-hud-recal-and-glyph-ocr-limit.md)**
+Build+eval of the white-style digit reader banked from **[ADR 0019](../adr/0019-live-feed-hud-recal-and-glyph-ocr-limit.md)**
 (fix the broadcast-bar `1↔7`: clock-seconds + single-digit distance). Standalone
 work on `ai-feature/digit-ocr`; **nothing wired into `ocr_pipeline`, nothing
 production-ready.** Scores are out of scope (Phase-2 scoring campaign, per the spike).
@@ -67,7 +67,7 @@ Calibrated by rendering the box onto raw frames and inspecting extraction (the
 ## What the next capture MUST get (target styles only — the play clock does NOT help)
 - Game-clock seconds through **6, 7, 8** (a longer running-clock run gets these free).
 - Single-digit distances — especially **`1` and `7`** — plus `2,4,6,8,9`.
-- The real **`4th & 1`** (the ADR-0017 failure case) — still uncaptured.
+- The real **`4th & 1`** (the ADR-0019 failure case) — still uncaptured.
 
 ## Alternative on the table (not chosen)
 A small **CNN with stroke-width / scale augmentation** could span styles where NCC

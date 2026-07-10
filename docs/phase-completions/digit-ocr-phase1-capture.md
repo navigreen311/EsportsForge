@@ -1,6 +1,6 @@
 # Digit-OCR Pass — Phase 1 Capture + Segmentation Spike (white-style)
 
-Banked follow-up from **[ADR 0017](../adr/0017-live-feed-hud-recal-and-glyph-ocr-limit.md)**:
+Banked follow-up from **[ADR 0019](../adr/0019-live-feed-hud-recal-and-glyph-ocr-limit.md)**:
 a dedicated digit-OCR pass for the broadcast-bar italic numerals — one pass to fix
 all three symptoms (scores non-detection, clock-seconds `1↔7`, single-digit distance
 `1↔7`). This session is **data capture + a font spike only** — no reader built.
@@ -59,7 +59,7 @@ template of the thin white `7` will not correlate with the bold score `7`.
 
 - `3rd & 5` — single-digit distance (clock_run).
 - `4th & 3` — single-digit distance (4th_and_3, frames 3-5).
-- **`4th & 1` (the ADR-0017 failure case) was NOT captured** — the game didn't deal
+- **`4th & 1` (the ADR-0019 failure case) was NOT captured** — the game didn't deal
   clean short-yardage bar frames (two `4th & short` attempts hit a glitched frame and
   a delay-of-game blanked box). **Still wanted, not blocking.**
 
