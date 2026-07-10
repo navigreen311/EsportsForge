@@ -52,6 +52,11 @@ coverage/
 agents/capture/fixtures/real/*.mp4
 agents/capture/fixtures/real/*.webm
 agents/capture/fixtures/real/*.mkv
+# Coverage clip corpus + derived frame dataset — large binaries (All-22 clips
+# + extracted .jpg frames). Corpus lives in the Projects clone; dataset is
+# regenerable via agents/capture/extract_coverage_frames.py.
+agents/capture/fixtures/coverage/*.mp4
+agents/capture/coverage_dataset/
 # Validation report JSONs — kept small and committed; only the giant
 # media files are excluded above.
 
