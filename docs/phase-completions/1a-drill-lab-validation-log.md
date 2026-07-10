@@ -80,7 +80,7 @@ capture-card feed, on `ai-feature/hud-recal-live`, with the WS-URL fix applied.
   "confidence": 0.615,
   "payload": { "offensive_formation": "IForm Pro", "offensive_formation_family": "i_form_pro",
                "down": 1, "distance": 10, "clock": "0:26", "quarter": 1,
-               "score_home": null, "score_away": null,  // correct per ADR 0017, not broken
+               "score_home": null, "score_away": null,  // correct per ADR 0019, not broken
                "defensive_formation": null, "title": "madden26" } }
 ```
 
@@ -109,5 +109,5 @@ Real remediation is `feat/alembic-remediation` (43842fe, unmerged).
   harmless; OCR-tier frames still emit. Sparse cadence is by design (ADR 0015).
 - The hook currently surfaces only `FORMATION_LOCKED`; the `SNAPSHOT` delivery path
   is identical (same hub fan-out), just not filtered-in by the display.
-- Banked from ADR 0017: digit-OCR pass (scores, clock-seconds 1<->7, single-digit
+- Banked from ADR 0019: digit-OCR pass (scores, clock-seconds 1<->7, single-digit
   distance) and the canonical-family mapping gap.

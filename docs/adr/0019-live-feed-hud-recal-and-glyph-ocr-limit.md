@@ -1,4 +1,4 @@
-# ADR 0017 — Live-Feed HUD Recalibration (v2.3.0-live) and the Broadcast-Bar Glyph-OCR Limit
+# ADR 0019 — Live-Feed HUD Recalibration (v2.3.0-live) and the Broadcast-Bar Glyph-OCR Limit
 
 - **Status:** Accepted
 - **Date:** 2026-07-08
