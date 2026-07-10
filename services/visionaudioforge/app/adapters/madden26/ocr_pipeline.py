@@ -573,6 +573,21 @@ class OCRPipeline:
             self.regions = data["regions"]
             self.play_call_regions = {}
 
+        # Style-aware clock-SECONDS reader (patch-NCC). EasyOCR's blanket 7->1
+        # clock sub collapses a real :17->:11 in the seconds; this reader replaces
+        # ONLY the two seconds digits with abstain-over-guess. Minutes/colon stay
+        # on the EasyOCR path. Loaded from the committed template set; if absent,
+        # clock falls back to the pure-EasyOCR read (no crash).
+        self._clock_seconds_reader = None
+        tmpl = Path(__file__).parent / "digit_templates" / "gcsec_templates.npz"
+        if tmpl.exists():
+            try:
+                from .digit_reader import GCSEC, DigitReader
+
+                self._clock_seconds_reader = DigitReader.load(str(tmpl), GCSEC)
+            except Exception:  # never let the reader break pipeline init
+                logger.exception("clock_seconds_reader_load_failed")
+
     def read_frame(self, frame: np.ndarray) -> OCRSnapshot:
         """Read every HUD region. Returns a snapshot.
 
@@ -697,12 +712,32 @@ class OCRPipeline:
         cluster_fields = ("quarter", "clock", "play_clock", "down", "distance")
         if want.intersection(cluster_fields):
             rc = _parse_right_cluster(rd(dd["right_cluster"]))
+            # Override ONLY the clock SECONDS with the patch-NCC reader (minutes,
+            # quarter, down, distance untouched). Reader abstain -> null clock.
+            if "clock" in want and self._clock_seconds_reader is not None:
+                rc["clock"] = self._reader_clock_seconds(frame, rc["clock"])
             for f in cluster_fields:
                 if f in want:
                     out[f] = rc[f]
         # field_position: parked for the live path (no analog on the broadcast bar).
         out["_confidence"] = round(sum(confs) / len(confs), 3) if confs else 0.0
         return out
+
+    def _reader_clock_seconds(self, frame: np.ndarray, easyocr_clock: str | None) -> str | None:
+        """Replace the clock SECONDS with the patch-NCC reader; keep minutes from
+        the EasyOCR clock read. Contract: crop the clock_seconds zone here (via the
+        pipeline's own _crop) and hand the reader the patch — it never sees the full
+        frame. Reader abstains -> None (null clock; the string_clock smoother carries
+        the last good value; never a guessed :11)."""
+        sub = self.regions["scoreboard"]["subregions"].get("clock_seconds")
+        if sub is None:
+            return easyocr_clock  # zone not calibrated -> leave EasyOCR clock as-is
+        secs, _ = self._clock_seconds_reader.read_patch(_crop(frame, sub))
+        if secs is None:
+            return None  # abstain: never fabricate seconds
+        if easyocr_clock and ":" in easyocr_clock:
+            return f"{easyocr_clock.split(':')[0]}:{secs}"
+        return None  # no trustworthy minutes -> null (carry last)
 
     # --- Play-call overlay (formation name) — v2.3.0-live play_call context ---
 
