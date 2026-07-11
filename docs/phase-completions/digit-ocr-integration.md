@@ -4,7 +4,7 @@ Wires the proven style-aware digit reader
 ([digit-ocr-reader-result.md](digit-ocr-reader-result.md)) into the live OCR pipeline
 for the **game-clock-seconds** field, fixing the ADR-0019 `1↔7` symptom
 (`:17`→`:11`) in production. Clock **minutes** stay on the existing EasyOCR path,
-untouched. Distance is not wired (`1↔7` now CONFIRMED held-out, but integration is a separate session).
+untouched. Single-digit **distance** is now also wired (`1↔7` fix, agreement-gated — see below).
 
 ## What changed (3 files)
 
@@ -70,7 +70,7 @@ every-10-frames change does not stress. (Also blocked on a missing HDMI-source c
 - **Clock-seconds `1↔7`: FIXED in the pipeline** (`read_fields` path), proven on live
   pixels through the pipeline's own method.
 - **Minutes / quarter / down / distance:** untouched, existing path.
-- **Distance `1↔7`:** reader built, verdict **CONFIRMED held-out** (2nd independent live views: `3RD & 7`→7 @ NCC 1.0, new `2ND & 1`→1 @ NCC 0.98–1.0). Not yet wired into `ocr_pipeline` — a separate build+live-verify session.
+- **Distance `1↔7`:** reader built, verdict **CONFIRMED held-out**, and now **WIRED** into `ocr_pipeline` (`read_fields`, `distance_digit` sub-zone `[1693,1010,33,44]`, digits 1-9). Applied via an **agreement-or-1↔7 gate** (`_reader_distance`): override only when the reader agrees with EasyOCR (clean 2/3/4/5/6/8/9) or they form the `{1,7}` pair (the fix); else keep EasyOCR; multi-digit (≥10) stays on EasyOCR. The gate is never-fabricate-safe — it never emits worse than EasyOCR, and defers on the confusable 3/5/6/8 cluster where a marginal-frame glyph could misread. Saved-frame verified (held-out `& 1`: EasyOCR 7 → gated 1; all 9 clean digits correct). Real-time live-verify (incl. a multi-digit `& 10`) banked as an optional follow-up.
 - **Scores:** still blocked (Phase-2 scoring campaign).
 - **Optional follow-up:** a real-time live-services run to watch SNAPSHOT emission under
   load; `read_frame` (non-live path) could take the same seconds override for symmetry.

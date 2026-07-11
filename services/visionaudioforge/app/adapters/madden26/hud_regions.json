@@ -13,7 +13,8 @@
       "scores: a large italic numeral that EasyOCR's detector drops in isolation (known-weak, ADR 0013 -> total non-detection on this bar). scores_combined reads the '<n> x <n>' pair in one box and splits; individual boxes are the fallback. If both fail live, scores degrade to null (the payload is nullable) and a dedicated score-OCR pass (template/digit-classifier) is banked as follow-up.",
       "play_call: the human play-call screen has NO '<Formation> - N Plays' banner. The formation is read from the play-card SUBTITLE ('<Family> <Sub-formation>', e.g. 'Singleback Deuce Close'), which repeats under all visible cards -> read multiple cards and majority-vote. The play-call-screen STATE SIGNAL moved from the banner's 'N Plays' suffix to the standalone plays_count element (top-right '15 Plays'). See ADR 0014 + the live recal report.",
       "ContextDetector RETUNED (v2.3.0-live) against 54 live frames: rule is now 0.30<=dark_frac<=0.78 AND bar_mean>=60 (bottom-bar luma rejects the pause menu). 0 FP / 0 FN across both play-call sub-views + gameplay/pause/replay/corrupted. Formation read is banner-first (formation-select '<Formation> - N Plays') with play-card-subtitle fallback (play-select).",
-      "clock_seconds [1383,1013,68,40]: the SECONDS-ONLY sub-crop of the clock box (the 'SS' of 'M:SS'), added for the style-aware digit reader (digit_reader.py). EasyOCR's blanket 7->1 clock sub collapses a real :17->:11 in the SECONDS; the patch-NCC reader reads the two seconds digits from this zone with abstain-over-guess and splices them into the clock, leaving minutes/colon on the existing EasyOCR path. Zone gate-verified live (clock 4:32->4:27, isolates cleanly, reads :37/:31/:27 correctly). See docs/phase-completions/digit-ocr-reader-result.md."
+      "clock_seconds [1383,1013,68,40]: the SECONDS-ONLY sub-crop of the clock box (the 'SS' of 'M:SS'), added for the style-aware digit reader (digit_reader.py). EasyOCR's blanket 7->1 clock sub collapses a real :17->:11 in the SECONDS; the patch-NCC reader reads the two seconds digits from this zone with abstain-over-guess and splices them into the clock, leaving minutes/colon on the existing EasyOCR path. Zone gate-verified live (clock 4:32->4:27, isolates cleanly, reads :37/:31/:27 correctly). See docs/phase-completions/digit-ocr-reader-result.md.",
+      "distance_digit [1693,1010,33,44]: the single distance digit after the '&' (excludes the ampersand; '&' ends ~x=1690, digit sits ~1695-1720). Feeds the patch-NCC distance reader (digits 1-9) to fix the single-digit '1<->7' distance collision. Applied via an agreement-or-1<->7 gate in ocr_pipeline._reader_distance so it never fabricates on the confusable 3/5/6/8 cluster; multi-digit distances (>=10) stay on the EasyOCR right_cluster path. Held-out verified (2ND & 7->7, 2ND & 1->1 @ NCC ~1.0)."
     ]
   },
   "hud_contexts": {
@@ -40,7 +41,8 @@
           "subregions": {
             "right_cluster":  [1265, 995, 530, 62],
             "play_clock":     [1450, 1002, 96, 44],
-            "down_distance":  [1600, 1006, 176, 40]
+            "down_distance":  [1600, 1006, 176, 40],
+            "distance_digit": [1693, 1010, 33, 44]
           }
         }
       }
