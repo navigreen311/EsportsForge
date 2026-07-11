@@ -74,7 +74,7 @@ class CFBPlayerTwin:
             if not h.get("defended", False):
                 trick_fails[trick] = trick_fails.get(trick, 0) + 1
 
-        weakest = max(trick_fails, key=trick_fails.get) if trick_fails else "none"
+        weakest = max(trick_fails, key=lambda k: trick_fails[k]) if trick_fails else "none"
 
         return TrickPlayProfile(
             recognition_score=min(100, (correct / max(total, 1)) * 100),

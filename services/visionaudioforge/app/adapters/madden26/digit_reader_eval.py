@@ -138,6 +138,7 @@ def main() -> None:
             key = (-(t - c), -leaks, t)
             if best is None or key > best[0]:
                 best = (key, tau, delta)
+    assert best is not None  # both loops run >=1 iteration, so best is always set
     _, TAU, DELTA = best
     reader.tau, reader.delta = TAU, DELTA
     print(f"views: train={len(train_v)} val={len(val_v)} eval={len(eval_v)}")

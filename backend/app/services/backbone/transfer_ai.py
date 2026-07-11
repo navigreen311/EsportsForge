@@ -178,7 +178,7 @@ class TransferAI:
                 continue
 
             avg_pressure = sum(p.get("pressure_index", 0.5) for p in plays) / len(plays)
-            last_tourney = max((p.get("tournament_name") for p in plays), default=None)
+            last_tourney = max((p["tournament_name"] for p in plays if p.get("tournament_name")), default=None)
 
             proven.append(
                 ProvenPlay(

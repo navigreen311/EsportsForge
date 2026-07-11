@@ -52,7 +52,9 @@ jobs:
         run: flake8 app/ tests/ --max-line-length=120 --exclude=__pycache__,migrations
 
       - name: Run mypy
-        run: mypy app/ tests/ --ignore-missing-imports --no-strict-optional
+        # Strictness (strict_optional None-safety + warn_unused_ignores /
+        # warn_redundant_casts / strict_equality) is configured in backend/mypy.ini.
+        run: mypy app/ tests/
 
   # ---------------------------------------------------------------------------
   # VisionAudioForge Linting — flake8 + mypy
@@ -84,7 +86,9 @@ jobs:
         run: flake8 app/
 
       - name: Run mypy
-        run: mypy app/ --ignore-missing-imports --no-strict-optional
+        # strict-optional (None-safety) is on by default; the warn flags add
+        # dead-ignore / redundant-cast / non-overlapping-equality checks.
+        run: mypy app/ --ignore-missing-imports --warn-unused-ignores --warn-redundant-casts --strict-equality
 
   # ---------------------------------------------------------------------------
   # Frontend Linting — ESLint + TypeScript check

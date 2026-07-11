@@ -52,7 +52,7 @@ def _import_animaforge_runtime() -> tuple[Any, Any]:
     (e.g. running this branch in isolation before Agent #1 merges).
     """
     try:
-        from app.models.animaforge import AnimaForgeJob  # type: ignore
+        from app.models.animaforge import AnimaForgeJob
     except ImportError as exc:  # pragma: no cover - merge-order guard
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -63,10 +63,10 @@ def _import_animaforge_runtime() -> tuple[Any, Any]:
         ) from exc
 
     try:
-        from app.services.animaforge.client import AnimaForgeService  # type: ignore
+        from app.services.animaforge.client import AnimaForgeService
     except ImportError:
         # Fall back to the stub in `app.services.animaforge.__init__`
-        from app.services.animaforge import AnimaForgeService  # type: ignore
+        from app.services.animaforge import AnimaForgeService
 
     return AnimaForgeJob, AnimaForgeService
 

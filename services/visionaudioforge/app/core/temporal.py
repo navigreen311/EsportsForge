@@ -67,8 +67,13 @@ def _aggregate(kind: str, buf: list[Any]) -> Any:
         if not nums:
             return buf[-1]
         med = statistics.median(nums)
+
         # keep original formatting: buffered value whose number is nearest median
-        return min(buf, key=lambda v: abs((_to_number(v) if _to_number(v) is not None else 1e18) - med))
+        def _dist(v: Any) -> float:
+            n = _to_number(v)
+            return abs((n if n is not None else 1e18) - med)
+
+        return min(buf, key=_dist)
     return buf[-1]
 
 

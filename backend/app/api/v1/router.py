@@ -24,7 +24,7 @@ def _mount(module_path: str, prefix: str, tags: list[str]) -> None:
         mod = importlib.import_module(module_path)
         # FastAPI types tags as list[str | Enum] | None — list is invariant, so a
         # plain list[str] doesn't satisfy mypy. Strings ARE valid at runtime; cast.
-        api_router.include_router(mod.router, prefix=prefix, tags=list(tags))  # type: ignore[arg-type]
+        api_router.include_router(mod.router, prefix=prefix, tags=list(tags))
     except ImportError as exc:
         logger.warning("Could not import %s: %s", module_path, exc)
     except AttributeError:

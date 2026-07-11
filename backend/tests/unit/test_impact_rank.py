@@ -280,6 +280,7 @@ class TestOutcomeLearning:
     ):
         rankings = engine.rank_weaknesses("player-123", "madden26", sample_player_data)
         ranking = rankings[0]
+        assert ranking.weakness.impact_score is not None
         original_damage = ranking.weakness.impact_score.win_rate_damage
 
         result = engine.update_from_outcome(
@@ -288,6 +289,7 @@ class TestOutcomeLearning:
             {"verdict": "improved", "observed_lift": 0.05, "games_played": 5},
         )
         assert result is not None
+        assert result.weakness.impact_score is not None
         assert result.weakness.impact_score.win_rate_damage < original_damage
 
     def test_update_from_outcome_regressed(
@@ -295,6 +297,7 @@ class TestOutcomeLearning:
     ):
         rankings = engine.rank_weaknesses("player-123", "madden26", sample_player_data)
         ranking = rankings[0]
+        assert ranking.weakness.impact_score is not None
         original_confidence = ranking.weakness.impact_score.confidence
 
         result = engine.update_from_outcome(
@@ -303,6 +306,7 @@ class TestOutcomeLearning:
             {"verdict": "regressed", "observed_lift": -0.03, "games_played": 3},
         )
         assert result is not None
+        assert result.weakness.impact_score is not None
         assert result.weakness.impact_score.confidence < original_confidence
 
     def test_update_from_outcome_no_change(
@@ -310,6 +314,7 @@ class TestOutcomeLearning:
     ):
         rankings = engine.rank_weaknesses("player-123", "madden26", sample_player_data)
         ranking = rankings[0]
+        assert ranking.weakness.impact_score is not None
         original_confidence = ranking.weakness.impact_score.confidence
 
         result = engine.update_from_outcome(
@@ -318,6 +323,7 @@ class TestOutcomeLearning:
             {"verdict": "no_change", "games_played": 5},
         )
         assert result is not None
+        assert result.weakness.impact_score is not None
         # Confidence should increase slightly on no_change
         assert result.weakness.impact_score.confidence >= original_confidence
 

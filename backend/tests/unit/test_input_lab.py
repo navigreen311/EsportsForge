@@ -68,7 +68,7 @@ class TestGetAdapter:
 
     def test_invalid_raises(self):
         with pytest.raises(ValueError, match="Unsupported"):
-            get_adapter("trackball")  # type: ignore[arg-type]
+            get_adapter("trackball")
 
 
 # ---------------------------------------------------------------------------

@@ -184,7 +184,7 @@ async def _fetch_youtube_transcript(url: str) -> str:
     if not vid:
         return ""
     try:
-        from youtube_transcript_api import YouTubeTranscriptApi  # type: ignore
+        from youtube_transcript_api import YouTubeTranscriptApi
 
         chunks = YouTubeTranscriptApi.get_transcript(vid)
         return "\n".join(c["text"] for c in chunks if c.get("text"))
@@ -240,7 +240,7 @@ async def upload_url(
 
 def _read_pdf(buf: bytes) -> str:
     try:
-        from pypdf import PdfReader  # type: ignore
+        from pypdf import PdfReader
     except Exception:
         raise HTTPException(
             status_code=503,
@@ -252,7 +252,7 @@ def _read_pdf(buf: bytes) -> str:
 
 def _read_docx(buf: bytes) -> str:
     try:
-        from docx import Document  # type: ignore  # python-docx
+        from docx import Document  # python-docx
     except Exception:
         raise HTTPException(
             status_code=503,

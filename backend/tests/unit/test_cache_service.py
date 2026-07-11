@@ -56,6 +56,8 @@ async def test_agent_output_different_users(cache: CacheService):
 
     r1 = await cache.get_cached_output("scout_bot", "user-1")
     r2 = await cache.get_cached_output("scout_bot", "user-2")
+    assert r1 is not None
+    assert r2 is not None
     assert r1["rec"] == "A"
     assert r2["rec"] == "B"
 

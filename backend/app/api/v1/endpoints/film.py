@@ -57,6 +57,7 @@ async def tag_moment(payload: dict[str, Any]):
             status_code=400,
             detail="replay_id, timestamp, and tag are required",
         )
+    assert replay_id is not None and tag is not None and timestamp is not None
     return film_ai.tag_moment(
         replay_id=replay_id,
         timestamp=float(timestamp),
@@ -118,6 +119,7 @@ async def stamp_recommendation(payload: dict[str, Any]):
             status_code=400,
             detail="recommendation, patch_version, and title are required",
         )
+    assert recommendation is not None and patch_version is not None and title is not None
     return meta_version_engine.stamp_recommendation(
         recommendation=recommendation,
         patch_version=patch_version,

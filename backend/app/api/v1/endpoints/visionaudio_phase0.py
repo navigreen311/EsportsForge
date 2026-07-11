@@ -128,7 +128,7 @@ class ActiveSessionsResponse(BaseModel):
     summary="Frontend reads this to show 'vision live' indicator",
 )
 async def active_sessions() -> ActiveSessionsResponse:
-    titles = sorted({ev.get("title") for ev in _RECENT_EVENTS if ev.get("title")})
+    titles = sorted({ev["title"] for ev in _RECENT_EVENTS if ev.get("title")})
     last_ts = None
     if _RECENT_EVENTS:
         ts = _RECENT_EVENTS[-1].get("timestamp")

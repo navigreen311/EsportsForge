@@ -73,6 +73,7 @@ async def test_update_session_merges_metrics(manager: SessionManager):
     await manager.update_session("user-1", {"score": 7})
     updated = await manager.update_session("user-1", {"quarter": 2})
 
+    assert updated is not None
     assert updated["metrics"]["score"] == 7
     assert updated["metrics"]["quarter"] == 2
 
@@ -149,5 +150,6 @@ async def test_start_session_overwrites_existing(manager: SessionManager):
     s2 = await manager.start_session("user-1", "cfb26", "dynasty")
 
     active = await manager.get_active_session("user-1")
+    assert active is not None
     assert active["session_id"] == s2["session_id"]
     assert active["title"] == "cfb26"

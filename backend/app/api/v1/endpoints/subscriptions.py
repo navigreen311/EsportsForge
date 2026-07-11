@@ -138,6 +138,7 @@ async def create_checkout_session(
             metadata={"user_id": str(current_user.id), "tier": tier},
         )
 
+        assert session.url is not None
         return CheckoutResponse(
             checkout_url=session.url,
             session_id=session.id,
