@@ -21,7 +21,6 @@ export default function TransferAIWidget({
   focusArea = 'pressure',
 }: TransferAIWidgetProps) {
   const gap = labScore - liveScore;
-  const gapPercentage = (gap / labScore) * 100;
 
   return (
     <Card padding="md">

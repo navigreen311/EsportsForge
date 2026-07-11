@@ -27,13 +27,6 @@ const tierStyles: Record<
   Developing: { text: "text-dark-400", bg: "bg-dark-700/50" },
 };
 
-function getTierFromPercentile(percentile: number): BenchmarkMetric["tier"] {
-  if (percentile >= 90) return "Elite";
-  if (percentile >= 75) return "Advanced";
-  if (percentile >= 40) return "Competitive";
-  return "Developing";
-}
-
 function DeltaIndicator({ delta }: { delta: number }) {
   if (delta > 0) {
     return (

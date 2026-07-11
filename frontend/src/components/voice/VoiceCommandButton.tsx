@@ -1,6 +1,6 @@
 'use client';
 
-import { Mic, MicOff, Volume2 } from 'lucide-react';
+import { Mic, Volume2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useVoiceForge } from '@/hooks/useVoiceForge';
 import { matchVoiceCommand } from '@/lib/voiceCommandRouter';

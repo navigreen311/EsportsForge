@@ -13,9 +13,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Copy, Download, Twitter, X } from "lucide-react";
-// Owned by Agent #3 — import only.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type { AnimaPlayerType } from "@/lib/animaforge/types";
 import { AnimaPlayer } from "@/components/animaforge/AnimaPlayer";
 import { useAnimaForgeAvailable } from "@/hooks/useAnimaForge";
 

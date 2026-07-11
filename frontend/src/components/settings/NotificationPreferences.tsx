@@ -72,7 +72,7 @@ const notificationTypes: NotificationTypeItem[] = [
   { key: 'loopAiUpdated', label: 'LoopAI model updated', description: 'Your personal performance model has been retrained.', icon: Bot, iconColor: 'bg-cyan-500/10 text-cyan-400', defaultOn: false },
 ];
 
-export default function NotificationPreferences({ preferences, onUpdate }: NotificationPreferencesProps) {
+export default function NotificationPreferences(_props: NotificationPreferencesProps) {
   const [pushEnabled, setPushEnabled] = useState(true);
   const [typeToggles, setTypeToggles] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};

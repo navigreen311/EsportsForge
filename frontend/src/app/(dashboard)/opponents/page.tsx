@@ -42,7 +42,6 @@ export default function OpponentsPage() {
     setSearch,
     filter,
     setFilter,
-    sort,
     setSort,
   } = useOpponents();
   const [localSort, setLocalSort] = useState<string>('threatLevel');

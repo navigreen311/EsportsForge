@@ -10,7 +10,6 @@ import {
   Shield,
   Calendar,
   Gamepad2,
-  Star,
   ArrowUpRight,
   ArrowDownRight,
   Minus,

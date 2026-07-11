@@ -101,7 +101,7 @@ const INITIAL_NOTIFICATIONS: Notification[] = [
   },
 ];
 
-export function NotificationCenter({ onClose }: { onClose: () => void }) {
+export function NotificationCenter(_props: { onClose: () => void }) {
   const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
 
   const unreadCount = notifications.filter((n) => !n.read).length;

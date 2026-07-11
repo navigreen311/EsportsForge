@@ -11,7 +11,6 @@ interface SimLabLaunchButtonProps {
 
 export default function SimLabLaunchButton({
   drillId,
-  drillName,
   variant,
 }: SimLabLaunchButtonProps) {
   const href = `/drills/simlab?drill=${drillId}`;

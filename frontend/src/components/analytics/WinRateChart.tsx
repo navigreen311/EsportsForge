@@ -2,8 +2,6 @@
 
 import { WinRateDataPoint } from '@/types/analytics';
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,

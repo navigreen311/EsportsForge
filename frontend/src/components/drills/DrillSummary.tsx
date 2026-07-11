@@ -8,7 +8,6 @@ import {
   TrendingUp,
   RotateCcw,
   CheckCircle2,
-  XCircle,
   BarChart3,
 } from 'lucide-react';
 
@@ -34,11 +33,6 @@ export default function DrillSummary({
           completedDrills.length
         ).toFixed(1)
       : '0';
-
-  const totalImprovement = skillProgress.reduce(
-    (sum, sp) => sum + (sp.current - sp.baseline),
-    0
-  );
 
   return (
     <div className="rounded-xl border border-forge-500/30 bg-gradient-to-b from-forge-950/20 to-dark-900/80 p-6">

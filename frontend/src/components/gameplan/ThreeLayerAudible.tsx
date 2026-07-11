@@ -2,7 +2,6 @@
 
 import type { AudibleNode } from '@/types/gameplan';
 import { ArrowDown } from 'lucide-react';
-import clsx from 'clsx';
 
 export const LAYER3_COUNTERS: Record<string, string> = {
   'aud-1a': 'HB Dive — punish light box if they over-rotate to coverage',
