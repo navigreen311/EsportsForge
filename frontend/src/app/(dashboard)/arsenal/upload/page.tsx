@@ -20,7 +20,7 @@ import api from '@/lib/api';
 import { useActiveArsenalTitle, useUpdateWeapon } from '@/hooks/useArsenal';
 import { TITLE_DISPLAY_NAME } from '@/lib/arsenal/titleMeta';
 import { VoiceForgeService } from '@/lib/services/voiceforge';
-import { useArsenalVoice, toneSpeed } from '@/lib/arsenal/voiceSettings';
+import { useArsenalVoice } from '@/lib/arsenal/voiceSettings';
 import type { Weapon } from '@/hooks/useArsenal';
 
 type Mode = 'text' | 'url' | 'document' | 'video';
@@ -89,7 +89,7 @@ export default function UploadPage() {
         const execCount = (weapon.instructions ?? []).length;
         VoiceForgeService.speak(
           `New weapon added to your Arsenal: ${weapon.name}. I have extracted ${setupCount} setup ${setupCount === 1 ? 'step' : 'steps'} and ${execCount} execution ${execCount === 1 ? 'step' : 'steps'}. Tap "read it" or "practice it" to continue.`,
-          { interruptCurrent: true, speed: toneSpeed(voice.tone) }
+          { interruptCurrent: true, tone: voice.tone }
         );
       }
     } catch (e: unknown) {

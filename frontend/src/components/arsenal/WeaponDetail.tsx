@@ -54,7 +54,8 @@ import { WatchingIndicator } from '@/components/session/WatchingIndicator';
 import { CaptureSourceModal } from '@/components/session/CaptureSourceModal';
 import {
   useArsenalVoice,
-  toneSpeed,
+  registerVoicesChangedListener,
+  type CoachTone,
 } from '@/lib/arsenal/voiceSettings';
 import {
   buildFullReadScript,
@@ -328,7 +329,9 @@ export function WeaponDetail({
   }, [startInPracticeMode, weapon]);
 
   useEffect(() => {
+    const cleanup = registerVoicesChangedListener();
     return () => {
+      cleanup();
       cancelRef.current = true;
       VoiceForgeService.stop();
     };
@@ -352,13 +355,12 @@ export function WeaponDetail({
     if (target === 'execution')
       segments = segments.filter((s) => s.section === 'execution');
 
-    const speed = toneSpeed(voice.tone);
     for (const seg of segments) {
       if (cancelRef.current) break;
       setActive({ section: seg.section, stepIndex: seg.stepIndex });
       // First call interrupts whatever was queued (e.g. previous read).
       await VoiceForgeService.speakAsync(seg.text, {
-        speed,
+        tone: voice.tone,
         interruptCurrent: seg === segments[0],
       });
     }
@@ -464,7 +466,7 @@ export function WeaponDetail({
             voiceEnabled={
               voice.enabled && voice.guidedPractice && VoiceForgeService.isAvailable()
             }
-            speed={toneSpeed(voice.tone)}
+            tone={voice.tone}
             onExit={() => setMode('view')}
             onMarkPracticed={() => {
               logUsage.mutate({
@@ -845,7 +847,7 @@ function Section({
 interface PracticeModeProps {
   weapon: Weapon;
   voiceEnabled: boolean;
-  speed: number;
+  tone: CoachTone;
   onExit: () => void;
   onMarkPracticed: () => void;
 }
@@ -895,7 +897,7 @@ interface PracticeRep {
 function PracticeMode({
   weapon,
   voiceEnabled,
-  speed,
+  tone,
   onExit,
   onMarkPracticed,
 }: PracticeModeProps) {
@@ -986,12 +988,12 @@ function PracticeMode({
             successCount >= TARGET_SUCCESS_REPS
               ? `Three clean reps detected. You have ${weapon.name} ready to deploy. ArsenalAI will signal the moment in your next game.`
               : `Detected. ${weapon.name} executed correctly. Rep ${next.length} complete. Practice it again to build consistency.`,
-            { interruptCurrent: true, speed }
+            { interruptCurrent: true, tone }
           );
         } else {
           VoiceForgeService.speak(
             `Missed. ${analysis.reason || 'Review the setup steps.'} Try it again.`,
-            { interruptCurrent: true, speed }
+            { interruptCurrent: true, tone }
           );
         }
       }
@@ -1036,7 +1038,7 @@ function PracticeMode({
     let cancelled = false;
     (async () => {
       await VoiceForgeService.speakAsync(prefix + cur.text, {
-        speed,
+        tone,
         interruptCurrent: true,
       });
       if (cancelled || cancelRef.current) return;
@@ -1066,7 +1068,7 @@ function PracticeMode({
           // Force re-speak by quickly bouncing index; the speak effect re-runs
           // only when idx changes, so call directly.
           await VoiceForgeService.speakAsync(prefix + cur.text, {
-            speed,
+            tone,
             interruptCurrent: true,
           });
         } else if (heard.includes('stop') || heard.includes('exit')) {

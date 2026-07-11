@@ -13,7 +13,7 @@ import { VoiceForgeService } from '@/lib/services/voiceforge';
 import { useSessionStore } from '@/lib/sessionStore';
 import api from '@/lib/api';
 import { PreExecutionBrief } from './PreExecutionBrief';
-import { useArsenalVoice, toneSpeed } from '@/lib/arsenal/voiceSettings';
+import { useArsenalVoice } from '@/lib/arsenal/voiceSettings';
 import { buildDebriefLine } from '@/lib/arsenal/voiceScripts';
 import { useWeapon } from '@/hooks/useArsenal';
 
@@ -131,7 +131,7 @@ export function ArsenalAlert() {
       window.setTimeout(() => {
         VoiceForgeService.speak(line, {
           interruptCurrent: true,
-          speed: toneSpeed(voice.tone),
+          tone: voice.tone,
           priority: 'high',
         });
       }, 2000);

@@ -6,6 +6,9 @@
  * implementation to hit the REST API while keeping the same public interface.
  */
 
+import type { CoachTone } from "@/lib/arsenal/voiceSettings";
+import { resolveVoiceForTone } from "@/lib/arsenal/voiceSettings";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -15,8 +18,13 @@ export interface SpeakOptions {
   priority?: "low" | "normal" | "high";
   /** If true, cancel any in-progress utterance before speaking. */
   interruptCurrent?: boolean;
-  /** Playback speed (0.5 – 2.0). Defaults to 1. */
+  /** Playback speed (0.5 – 2.0). Defaults to 1. Takes precedence over `tone`. */
   speed?: number;
+  /**
+   * Coaching tone to use. Resolves to a browser voiceURI + rate automatically.
+   * Ignored when `speed` is also provided.
+   */
+  tone?: CoachTone;
 }
 
 export interface ListenOptions {
@@ -104,7 +112,19 @@ export const VoiceForgeService = {
       }
 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = Math.min(2, Math.max(0.5, opts.speed ?? 1));
+
+      if (opts.tone && opts.speed === undefined) {
+        const resolved = resolveVoiceForTone(opts.tone);
+        utterance.rate = Math.min(2, Math.max(0.5, resolved.rate));
+        if (resolved.voiceURI) {
+          const voice = synth
+            .getVoices()
+            .find((v) => v.voiceURI === resolved.voiceURI);
+          if (voice) utterance.voice = voice;
+        }
+      } else {
+        utterance.rate = Math.min(2, Math.max(0.5, opts.speed ?? 1));
+      }
 
       synth.speak(utterance);
     } catch {
@@ -129,7 +149,20 @@ export const VoiceForgeService = {
       try {
         if (opts.interruptCurrent) synth.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = Math.min(2, Math.max(0.5, opts.speed ?? 1));
+
+        if (opts.tone && opts.speed === undefined) {
+          const resolved = resolveVoiceForTone(opts.tone);
+          utterance.rate = Math.min(2, Math.max(0.5, resolved.rate));
+          if (resolved.voiceURI) {
+            const voice = synth
+              .getVoices()
+              .find((v) => v.voiceURI === resolved.voiceURI);
+            if (voice) utterance.voice = voice;
+          }
+        } else {
+          utterance.rate = Math.min(2, Math.max(0.5, opts.speed ?? 1));
+        }
+
         utterance.onend = () => resolve();
         utterance.onerror = () => resolve();
         synth.speak(utterance);

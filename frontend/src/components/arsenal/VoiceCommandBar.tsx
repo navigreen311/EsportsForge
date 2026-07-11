@@ -16,7 +16,7 @@ import {
   useMyArsenal,
   useActiveArsenalTitle,
 } from '@/hooks/useArsenal';
-import { useArsenalVoice, toneSpeed } from '@/lib/arsenal/voiceSettings';
+import { useArsenalVoice } from '@/lib/arsenal/voiceSettings';
 import { TITLE_DISPLAY_NAME } from '@/lib/arsenal/titleMeta';
 import api from '@/lib/api';
 import { useSessionStore } from '@/lib/sessionStore';
@@ -57,7 +57,7 @@ export function VoiceCommandBar({ onOpenWeapon, onPracticeWeapon }: Props) {
   const speak = (text: string) =>
     VoiceForgeService.speak(text, {
       interruptCurrent: true,
-      speed: toneSpeed(voice.tone),
+      tone: voice.tone,
     });
 
   const findWeapon = (phrase: string) => {

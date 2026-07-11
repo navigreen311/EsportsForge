@@ -12,7 +12,7 @@ import { Volume2, StopCircle, X, Zap } from 'lucide-react';
 import { useWeapon } from '@/hooks/useArsenal';
 import { Modal } from '@/components/shared/Modal';
 import { VoiceForgeService } from '@/lib/services/voiceforge';
-import { useArsenalVoice, toneSpeed } from '@/lib/arsenal/voiceSettings';
+import { useArsenalVoice } from '@/lib/arsenal/voiceSettings';
 import { buildPreExecBrief, titleFamily } from '@/lib/arsenal/voiceScripts';
 import { useSessionStore } from '@/lib/sessionStore';
 import api from '@/lib/api';
@@ -65,7 +65,7 @@ export function PreExecutionBrief({
     setReading(true);
     const text = buildPreExecBrief(weapon, urgency);
     await VoiceForgeService.speakAsync(text, {
-      speed: toneSpeed(voice.tone),
+      tone: voice.tone,
       interruptCurrent: true,
     });
     setReading(false);
