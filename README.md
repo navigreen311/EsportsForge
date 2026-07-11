@@ -72,3 +72,6 @@ EsportsForge/
 ## Development
 
 See [CLAUDE.md](CLAUDE.md) for AI-assisted development workflow.
+
+Static type-checking & linting across all services (mypy/flake8/tsc strictness, CI
+jobs, how to run locally): [docs/ci-type-checking.md](docs/ci-type-checking.md).
