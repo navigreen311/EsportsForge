@@ -4,7 +4,7 @@ Wires the proven style-aware digit reader
 ([digit-ocr-reader-result.md](digit-ocr-reader-result.md)) into the live OCR pipeline
 for the **game-clock-seconds** field, fixing the ADR-0019 `1↔7` symptom
 (`:17`→`:11`) in production. Clock **minutes** stay on the existing EasyOCR path,
-untouched. Distance is not wired (verdict still PENDING — one glyph view per digit).
+untouched. Distance is not wired (`1↔7` now CONFIRMED held-out, but integration is a separate session).
 
 ## What changed (3 files)
 
@@ -70,7 +70,7 @@ every-10-frames change does not stress. (Also blocked on a missing HDMI-source c
 - **Clock-seconds `1↔7`: FIXED in the pipeline** (`read_fields` path), proven on live
   pixels through the pipeline's own method.
 - **Minutes / quarter / down / distance:** untouched, existing path.
-- **Distance `1↔7`:** reader built, verdict still PENDING (one glyph view per digit).
+- **Distance `1↔7`:** reader built, verdict **CONFIRMED held-out** (2nd independent live views: `3RD & 7`→7 @ NCC 1.0, new `2ND & 1`→1 @ NCC 0.98–1.0). Not yet wired into `ocr_pipeline` — a separate build+live-verify session.
 - **Scores:** still blocked (Phase-2 scoring campaign).
 - **Optional follow-up:** a real-time live-services run to watch SNAPSHOT emission under
   load; `read_frame` (non-live path) could take the same seconds override for symmetry.
