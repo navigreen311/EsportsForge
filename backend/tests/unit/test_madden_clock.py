@@ -1,5 +1,7 @@
 """Unit tests for ClockAI — clock management intelligence."""
 
+from typing import Any
+
 import pytest
 
 from app.schemas.madden26.clock import (
@@ -19,7 +21,7 @@ def clock_ai() -> ClockAI:
 
 def _make_state(**overrides) -> GameState:
     """Helper to build a GameState with sensible defaults."""
-    defaults = dict(
+    defaults: dict[str, Any] = dict(
         quarter=4,
         time_remaining_seconds=120,
         score_user=21,

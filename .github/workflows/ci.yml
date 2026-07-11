@@ -49,10 +49,10 @@ jobs:
           pip install flake8 mypy types-redis
 
       - name: Run flake8
-        run: flake8 app/ --max-line-length=120 --exclude=__pycache__,migrations
+        run: flake8 app/ tests/ --max-line-length=120 --exclude=__pycache__,migrations
 
       - name: Run mypy
-        run: mypy app/ --ignore-missing-imports --no-strict-optional
+        run: mypy app/ tests/ --ignore-missing-imports --no-strict-optional
 
   # ---------------------------------------------------------------------------
   # VisionAudioForge Linting — flake8 + mypy

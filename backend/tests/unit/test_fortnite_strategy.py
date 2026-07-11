@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from app.schemas.fortnite.gameplay import (
@@ -45,7 +47,7 @@ def twin_engine() -> FortniteTwin:
 
 
 def _make_storm(**overrides) -> StormState:
-    defaults = {
+    defaults: dict[str, Any] = {
         "zone_phase": ZonePhase.THIRD_ZONE,
         "seconds_until_close": 45,
         "storm_damage_per_tick": 5.0,
@@ -57,7 +59,7 @@ def _make_storm(**overrides) -> StormState:
 
 
 def _make_player(**overrides) -> PlayerPosition:
-    defaults = {
+    defaults: dict[str, Any] = {
         "x": 200.0,
         "y": 200.0,
         "health": 100,

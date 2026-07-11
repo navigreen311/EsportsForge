@@ -8,6 +8,7 @@ from app.main import app
 
 TEST_DB_URL = "sqlite+aiosqlite:///./test_esportsforge.db"
 
+
 @pytest_asyncio.fixture
 async def test_db():
     engine = create_async_engine(TEST_DB_URL)
@@ -19,6 +20,7 @@ async def test_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
+
 
 @pytest_asyncio.fixture
 async def client(test_db):

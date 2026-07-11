@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from app.schemas.cfb26.recruiting import (
@@ -25,9 +27,9 @@ def _make_roster(positions: list[str] | None = None) -> list[dict]:
     """Helper to build a basic roster."""
     if positions is None:
         positions = ["QB", "QB", "RB", "RB", "RB", "WR", "WR", "WR", "WR",
-                      "TE", "TE", "OL", "OL", "OL", "OL", "OL",
-                      "DL", "DL", "DL", "DL", "LB", "LB", "LB", "LB",
-                      "CB", "CB", "CB", "S", "S", "S", "K", "P"]
+                     "TE", "TE", "OL", "OL", "OL", "OL", "OL",
+                     "DL", "DL", "DL", "DL", "LB", "LB", "LB", "LB",
+                     "CB", "CB", "CB", "S", "S", "S", "K", "P"]
     return [
         {
             "name": f"Player_{i}",
@@ -42,7 +44,7 @@ def _make_roster(positions: list[str] | None = None) -> list[dict]:
 
 def _make_recruit(**overrides) -> RecruitData:
     """Helper to build a RecruitData."""
-    defaults = {
+    defaults: dict[str, Any] = {
         "name": "Test Recruit",
         "position": Position.QB,
         "star_rating": 4,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from app.schemas.cfb26.momentum import (
@@ -21,7 +23,7 @@ def engine() -> MomentumGuard:
 
 def _make_game_state(**overrides) -> GameStateInput:
     """Helper to build a GameStateInput with sensible defaults."""
-    defaults = {
+    defaults: dict[str, Any] = {
         "home_team": "Alabama",
         "away_team": "Auburn",
         "home_score": 14,
