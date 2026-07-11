@@ -297,7 +297,7 @@ export default function PlayDetail({
           )}
           {/* PlayerTwin Execution Badge */}
           {PLAY_EXECUTION_PCT[play.id] !== undefined && (
-            <PlayerTwinBadge executionPct={PLAY_EXECUTION_PCT[play.id]} />
+            <PlayerTwinBadge executionPct={PLAY_EXECUTION_PCT[play.id]!} />
           )}
           {/* Meta Expiry Warning */}
           <MetaExpiryWarning playId={play.id} />
@@ -512,15 +512,15 @@ export default function PlayDetail({
                 <>
                   <p className="text-forge-300/90">
                     <span className="text-forge-400">✓ Works against:</span>{' '}
-                    {COVERAGE_MATRIX[play.beats].worksAgainst.join(', ')}
+                    {COVERAGE_MATRIX[play.beats]!.worksAgainst.join(', ')}
                   </p>
                   <p className="text-forge-300/90">
                     <span className="text-red-400">✗ Vulnerable to:</span>{' '}
-                    {COVERAGE_MATRIX[play.beats].vulnerableTo}
+                    {COVERAGE_MATRIX[play.beats]!.vulnerableTo}
                   </p>
                   <p className="text-forge-300/90">
                     <span className="text-amber-400">→ Counter with:</span>{' '}
-                    {COVERAGE_MATRIX[play.beats].counter}
+                    {COVERAGE_MATRIX[play.beats]!.counter}
                   </p>
                 </>
               )}

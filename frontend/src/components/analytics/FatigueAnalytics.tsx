@@ -130,7 +130,7 @@ export default function FatigueAnalytics() {
                 <div className="w-8 text-[9px] text-dark-500 flex items-center">
                   {day}
                 </div>
-                {heatmapData[dayIdx].map((value, colIdx) => (
+                {heatmapData[dayIdx]!.map((value, colIdx) => (
                   <div
                     key={colIdx}
                     className={`h-6 w-full rounded text-[9px] flex items-center justify-center ${getCellColor(value)}`}

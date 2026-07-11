@@ -99,10 +99,10 @@ function FilterDropdown({
 
 export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>('By Title');
-  const [titleFilter, setTitleFilter] = useState(TITLES[0]);
-  const [tierFilter, setTierFilter] = useState(TIERS[0]);
-  const [skillFilter, setSkillFilter] = useState(SKILLS[0]);
-  const [timeframe, setTimeframe] = useState(TIMEFRAMES[1]);
+  const [titleFilter, setTitleFilter] = useState(TITLES[0]!);
+  const [tierFilter, setTierFilter] = useState(TIERS[0]!);
+  const [skillFilter, setSkillFilter] = useState(SKILLS[0]!);
+  const [timeframe, setTimeframe] = useState(TIMEFRAMES[1]!);
 
   return (
     <div className="min-h-screen bg-[#0A0C10] text-zinc-100 p-6 space-y-6">

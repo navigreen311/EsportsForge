@@ -317,8 +317,8 @@ export default function OnboardingPage() {
             <p className="mt-2 text-dark-400">Here is what EsportsForge can do for you.</p>
           </div>
           <div className="rounded-xl border border-dark-700 bg-dark-900 p-8">
-            <h3 className="text-xl font-bold text-forge-400">{TOUR_PANELS[tourIndex].title}</h3>
-            <p className="mt-3 text-dark-300">{TOUR_PANELS[tourIndex].desc}</p>
+            <h3 className="text-xl font-bold text-forge-400">{TOUR_PANELS[tourIndex]!.title}</h3>
+            <p className="mt-3 text-dark-300">{TOUR_PANELS[tourIndex]!.desc}</p>
           </div>
           {/* Progress dots */}
           <div className="flex justify-center gap-2">

@@ -69,7 +69,7 @@ export default function DrillRunner({
   const [pressureMode, setPressureMode] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const progress = drill.reps > 0 ? (drill.completedReps / drill.reps) * 100 : 0;
-  const diffConfig = difficultyConfig[drill.difficulty];
+  const diffConfig = difficultyConfig[drill.difficulty]!;
   const mastery = DRILL_MASTERY[drill.id] ?? 'not-started';
   const { speak, stop, isAvailable: voiceAvailable } = useVoiceForge();
 

@@ -910,7 +910,7 @@ function PracticeMode({
   const watchHandleRef = useRef<DrillMonitoringHandle | null>(null);
   idxRef.current = idx;
 
-  const cur = steps[idx];
+  const cur = steps[idx]!;
   const inExecutionPhase = cur?.phase === 'execution';
   const successfulReps = practiceReps.filter((r) => r.success).length;
   const TARGET_SUCCESS_REPS = 3;

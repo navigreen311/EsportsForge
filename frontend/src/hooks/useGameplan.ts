@@ -210,7 +210,7 @@ export function useGameplan() {
   const [selectedPlayId, setSelectedPlayId] = useState<string | null>('play-1');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const opponent = mockOpponents.find((o) => o.id === selectedOpponentId) ?? mockOpponents[0];
+  const opponent = mockOpponents.find((o) => o.id === selectedOpponentId) ?? mockOpponents[0]!;
 
   const gameplan: Gameplan = useMemo(
     () => ({

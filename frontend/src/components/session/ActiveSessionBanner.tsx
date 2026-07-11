@@ -94,7 +94,7 @@ export function ActiveSessionBanner({ onEndSession }: ActiveSessionBannerProps) 
 
   // First step that isn't done is the current step.
   const currentIdx = STEPS.findIndex((s) => !session.steps[s.key]);
-  const currentStep = currentIdx === -1 ? STEPS[STEPS.length - 1] : STEPS[currentIdx];
+  const currentStep = currentIdx === -1 ? STEPS[STEPS.length - 1]! : STEPS[currentIdx]!;
 
   const stepStatus = (idx: number): StepStatus => {
     if (idx < currentIdx || currentIdx === -1) return 'done';

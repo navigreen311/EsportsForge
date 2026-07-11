@@ -79,7 +79,7 @@ interface LocalMeta {
 }
 
 function getTodayStr(): string {
-  return new Date().toISOString().split('T')[0];
+  return new Date().toISOString().split('T')[0]!;
 }
 
 function defaultMeta(): LocalMeta {
@@ -168,7 +168,7 @@ export function DailyForgeCard() {
     };
   }, []);
 
-  const mission = MOCK_MISSIONS[meta.missionIndex % MOCK_MISSIONS.length];
+  const mission = MOCK_MISSIONS[meta.missionIndex % MOCK_MISSIONS.length]!;
   const allComplete = status.all_complete;
 
   const checks: boolean[] = [
@@ -256,7 +256,7 @@ export function DailyForgeCard() {
   const calendarDots = Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (13 - i));
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = d.toISOString().split('T')[0]!;
     const isToday = dateStr === getTodayStr();
     const completed = meta.history.includes(dateStr) || (isToday && allComplete);
     return { dateStr, isToday, completed };

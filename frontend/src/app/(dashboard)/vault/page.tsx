@@ -509,7 +509,7 @@ export default function VaultPage() {
 
   const handleAddEntry = () => {
     if (!addTitle.trim()) return;
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0]!;
     const newEntry: VaultEntry = {
       id: String(Date.now()),
       title: addTitle.trim(),

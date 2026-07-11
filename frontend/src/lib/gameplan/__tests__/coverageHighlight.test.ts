@@ -85,7 +85,7 @@ test('subscription surfaces a COVERAGE_LOCKED and the seam stays inert (v0.1)', 
     const { lastEvent } = useVisionEvents(OPTS);
     return { lastEvent, highlight: deriveCoverageHighlight(lastEvent) };
   });
-  const ws = FakeWebSocket.instances[0];
+  const ws = FakeWebSocket.instances[0]!;
   act(() => ws.emitOpen());
 
   // Nothing surfaced yet → graceful empty.
@@ -105,7 +105,7 @@ test('non-coverage events are filtered out (FORMATION_LOCKED ignored)', () => {
     const { lastEvent } = useVisionEvents(OPTS);
     return { lastEvent, highlight: deriveCoverageHighlight(lastEvent) };
   });
-  const ws = FakeWebSocket.instances[0];
+  const ws = FakeWebSocket.instances[0]!;
   act(() => ws.emitOpen());
   act(() =>
     ws.emitMessage({

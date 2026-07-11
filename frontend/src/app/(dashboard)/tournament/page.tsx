@@ -233,7 +233,7 @@ export default function TournamentPage() {
   const [counterToast, setCounterToast] = useState<string | null>(null);
   const [bulletDetail, setBulletDetail] = useState<{ opponent: string; bullet: MemoryBullet } | null>(null);
   const [showAddMemoryCard, setShowAddMemoryCard] = useState(false);
-  const [newCardOpponent, setNewCardOpponent] = useState<string>(OPPONENT_QUEUE[0].name);
+  const [newCardOpponent, setNewCardOpponent] = useState<string>(OPPONENT_QUEUE[0]!.name);
   const [newCardText, setNewCardText] = useState('');
   const [customCards, setCustomCards] = useState<Record<string, MemoryBullet[]>>({});
   const [playDetail, setPlayDetail] = useState<typeof GAMEPLAN[number] | null>(null);
@@ -266,7 +266,7 @@ export default function TournamentPage() {
   }, [drillModeActive]);
 
   const activeClockIndex = drillModeActive
-    ? CLOCK_TREE.findIndex((n, i) => drillModeRemaining <= n.seconds && (i === CLOCK_TREE.length - 1 || drillModeRemaining > CLOCK_TREE[i + 1].seconds))
+    ? CLOCK_TREE.findIndex((n, i) => drillModeRemaining <= n.seconds && (i === CLOCK_TREE.length - 1 || drillModeRemaining > CLOCK_TREE[i + 1]!.seconds))
     : -1;
 
   // C12: real-time fatigue + break timer
@@ -432,7 +432,7 @@ export default function TournamentPage() {
 
       // Cycle phases every 4 seconds
       const phaseIndex = Math.floor(elapsed / 4) % 4;
-      setBreathPhase(phases[phaseIndex]);
+      setBreathPhase(phases[phaseIndex]!);
 
       if (remaining <= 0) {
         clearInterval(interval);
@@ -512,7 +512,7 @@ export default function TournamentPage() {
       fetch(`${apiBase}/api/v1/tiltguard/reset-logged`, { method: 'POST' }).catch(() => {});
       // Auto-nav to next-round prep after a brief delay
       setTimeout(() => {
-        const next = OPPONENT_QUEUE[0];
+        const next = OPPONENT_QUEUE[0]!;
         router.push(`/war-room?opponent=${slug(next.name)}`);
       }, 2500);
     }
@@ -521,7 +521,7 @@ export default function TournamentPage() {
 
   // Task 2C: voice command handlers (also bound to clickable pills, C2)
   const speakBriefing = useCallback(() => {
-    const firstOpp = OPPONENT_QUEUE[0];
+    const firstOpp = OPPONENT_QUEUE[0]!;
     const cards = MEMORY_CARDS[firstOpp.name];
     const text = cards
       ? `Next opponent: ${firstOpp.name}. ${firstOpp.archetype}. ${cards.map((c) => c.text).join('. ')}`
@@ -553,7 +553,7 @@ export default function TournamentPage() {
   }, [voice, speakBriefing, startReset, speakRecord]);
 
   // Task 2F: bracket intelligence
-  const hardestOpponent = OPPONENT_QUEUE.reduce((min, opp) => opp.winRate < min.winRate ? opp : min, OPPONENT_QUEUE[0]);
+  const hardestOpponent = OPPONENT_QUEUE.reduce((min, opp) => opp.winRate < min.winRate ? opp : min, OPPONENT_QUEUE[0]!);
   const winRates = OPPONENT_QUEUE.map((o) => o.winRate);
   const maxRate = Math.max(...winRates);
   const minRate = Math.min(...winRates);

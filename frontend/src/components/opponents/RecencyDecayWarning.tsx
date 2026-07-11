@@ -19,7 +19,7 @@ interface StaleDataHeaderProps {
 export function isDataStale(lastSeen: string): boolean {
   const weekMatch = lastSeen.match(/(\d+)w/);
   if (weekMatch) {
-    return parseInt(weekMatch[1], 10) >= 2;
+    return parseInt(weekMatch[1]!, 10) >= 2;
   }
   return false;
 }
