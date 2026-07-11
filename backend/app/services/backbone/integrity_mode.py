@@ -92,6 +92,26 @@ class IntegrityMode:
     # -- Async instance variants (used when db is injected) -----------------
 
     async def _get_active_mode_async(self, user_id: str) -> IntegritySettings:
+        if self.db is not None:
+            from sqlalchemy import select
+            from app.models.integrity_mode import IntegrityMode as _IMModel
+
+            result = await self.db.execute(
+                select(_IMModel).where(_IMModel.user_id == user_id)
+            )
+            row = result.scalar_one_or_none()
+            if row is not None:
+                try:
+                    env = Environment(row.environment.value)
+                except ValueError:
+                    env = Environment.OFFLINE_LAB
+                mode = IntegritySettings(
+                    user_id=user_id,
+                    environment=env,
+                    timing=Timing.PRE_GAME,
+                )
+                _user_modes[user_id] = mode
+                return mode
         return _get_active_mode_impl(user_id)
 
     async def _set_mode_async(

@@ -53,9 +53,35 @@ class TransferAI:
         """Fetch aggregated stats for a skill in a specific mode.
 
         Returns dict with keys: attempts, successes, avg_exec_time_ms.
-        In production this queries the ForgeDataFabric.
+        When db is bound, aggregates from GameSession.stats[skill]; otherwise
+        returns empty stats (graceful fallback for offline / test contexts).
         """
-        # Stub — returns empty stats until data layer is wired
+        if self.db is not None:
+            from sqlalchemy import select
+            from app.models.game_session import GameSession
+
+            result = await self.db.execute(
+                select(GameSession).where(
+                    GameSession.user_id == user_id,
+                    GameSession.mode == mode.value,
+                )
+            )
+            sessions = result.scalars().all()
+            attempts = 0
+            successes = 0
+            exec_times: list[float] = []
+            for s in sessions:
+                raw = (s.stats or {}).get(skill, {})
+                attempts += raw.get("attempts", 0)
+                successes += raw.get("successes", 0)
+                t = raw.get("avg_exec_time_ms")
+                if t is not None:
+                    exec_times.append(float(t))
+            return {
+                "attempts": attempts,
+                "successes": successes,
+                "avg_exec_time_ms": sum(exec_times) / len(exec_times) if exec_times else None,
+            }
         return {"attempts": 0, "successes": 0, "avg_exec_time_ms": None}
 
     async def _get_all_skills(self, user_id: str, title: str) -> list[str]:
