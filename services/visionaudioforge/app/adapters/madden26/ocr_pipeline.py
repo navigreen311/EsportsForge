@@ -588,6 +588,20 @@ class OCRPipeline:
             except Exception:  # never let the reader break pipeline init
                 logger.exception("clock_seconds_reader_load_failed")
 
+        # Style-aware single-digit DISTANCE reader (patch-NCC). Fixes the ADR-0019
+        # single-digit `1<->7` distance collision. Applied via an agreement-or-1<->7
+        # gate (see _reader_distance) so it never fabricates on the confusable
+        # 3/5/6/8 cluster. Loaded from the committed template set (digits 1-9).
+        self._distance_reader = None
+        dtmpl = Path(__file__).parent / "digit_templates" / "dist_templates.npz"
+        if dtmpl.exists():
+            try:
+                from .digit_reader import DIST, DigitReader
+
+                self._distance_reader = DigitReader.load(str(dtmpl), DIST)
+            except Exception:
+                logger.exception("distance_reader_load_failed")
+
     def read_frame(self, frame: np.ndarray) -> OCRSnapshot:
         """Read every HUD region. Returns a snapshot.
 
@@ -716,6 +730,8 @@ class OCRPipeline:
             # quarter, down, distance untouched). Reader abstain -> null clock.
             if "clock" in want and self._clock_seconds_reader is not None:
                 rc["clock"] = self._reader_clock_seconds(frame, rc["clock"])
+            if "distance" in want and self._distance_reader is not None:
+                rc["distance"] = self._reader_distance(frame, rc["distance"])
             for f in cluster_fields:
                 if f in want:
                     out[f] = rc[f]
@@ -738,6 +754,32 @@ class OCRPipeline:
         if easyocr_clock and ":" in easyocr_clock:
             return f"{easyocr_clock.split(':')[0]}:{secs}"
         return None  # no trustworthy minutes -> null (carry last)
+
+    def _reader_distance(self, frame: np.ndarray, easyocr_distance: int | None) -> int | None:
+        """Fix single-digit distance `1<->7` with the patch-NCC reader, gated so it
+        never fabricates. The reader covers digits 1-9 but the 3/5/6/8 cluster has
+        modest headroom, so we override ONLY when the reader corroborates or corrects
+        in a trusted way:
+          * multi-digit (>=10) or no EasyOCR value -> keep EasyOCR (reader is single-digit).
+          * reader abstains -> keep EasyOCR.
+          * reader AGREES with EasyOCR -> use it (clean single-digit read).
+          * reader & EasyOCR form the {1,7} pair -> reader wins (the ADR-0019 fix).
+          * else (disagree, not 1<->7, e.g. a marginal-frame misread) -> keep EasyOCR.
+        """
+        if easyocr_distance is None or easyocr_distance >= 10:
+            return easyocr_distance
+        sub = self.regions["down_distance"]["subregions"].get("distance_digit")
+        if sub is None:
+            return easyocr_distance
+        digit, _ = self._distance_reader.read_patch(_crop(frame, sub))
+        if digit is None:
+            return easyocr_distance  # abstain -> keep EasyOCR
+        reader_val = int(digit)
+        if reader_val == easyocr_distance:
+            return reader_val
+        if {reader_val, easyocr_distance} == {1, 7}:
+            return reader_val  # the 1<->7 symptom -> trust the reader
+        return easyocr_distance  # disagree, non-1<->7 -> never fabricate; keep EasyOCR
 
     # --- Play-call overlay (formation name) — v2.3.0-live play_call context ---
 
