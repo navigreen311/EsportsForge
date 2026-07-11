@@ -18,7 +18,7 @@ It does **not** define vocabulary (that's the language profile), does **not** de
 
 ## Recommendation: stack and deployment
 
-**Stack: FastAPI + asyncio + Pydantic, deployed as a separate ECS service.** Same reasoning as the VisionAudioForge core (docs/integrations/visionaudioforge/02-core-service-spec.md):
+**Stack: FastAPI + asyncio + Pydantic, deployed as a separate ECS service.** Same reasoning as the VisionAudioForge core (docs/specs/02-visionaudioforge-core.md):
 
 - Same stack as the EsportsForge backend → shared logging / Pydantic / Dockerfile pattern.
 - WebSockets + async are first-class (cue stream + audio chunk delivery).
