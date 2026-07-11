@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from app.schemas.opponent import (
@@ -37,7 +39,7 @@ def _make_games(count: int = 5, include_plays: bool = True) -> list[dict]:
     """Generate synthetic game data."""
     games = []
     for i in range(count):
-        game = {
+        game: dict[str, Any] = {
             "game_id": f"game-{i}",
             "result": "win" if i % 3 != 0 else "loss",
             "score": f"{21 + i}-{14 + i}",

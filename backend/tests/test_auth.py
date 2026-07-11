@@ -1,5 +1,6 @@
 import pytest
 
+
 @pytest.mark.asyncio
 async def test_register_user(client):
     response = await client.post("/api/v1/auth/register", json={
@@ -13,6 +14,7 @@ async def test_register_user(client):
     assert data["email"] == "test@example.com"
     assert data["tier"] == "free"
 
+
 @pytest.mark.asyncio
 async def test_register_duplicate_email(client):
     payload = {"email": "dupe@example.com", "username": "user1", "password": "SecurePass123!"}
@@ -20,6 +22,7 @@ async def test_register_duplicate_email(client):
     payload["username"] = "user2"
     response = await client.post("/api/v1/auth/register", json=payload)
     assert response.status_code in (400, 409)
+
 
 @pytest.mark.asyncio
 async def test_login(client):
@@ -33,6 +36,7 @@ async def test_login(client):
     data = response.json()
     assert "access_token" in data
 
+
 @pytest.mark.asyncio
 async def test_login_wrong_password(client):
     await client.post("/api/v1/auth/register", json={
@@ -42,6 +46,7 @@ async def test_login_wrong_password(client):
         "email": "wrong@example.com", "password": "WrongPassword!"
     })
     assert response.status_code in (400, 401)
+
 
 @pytest.mark.asyncio
 async def test_protected_route_no_auth(client):

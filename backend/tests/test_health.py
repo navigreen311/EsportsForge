@@ -1,5 +1,6 @@
 import pytest
 
+
 @pytest.mark.asyncio
 async def test_health_endpoint(client):
     response = await client.get("/api/health")
@@ -9,6 +10,7 @@ async def test_health_endpoint(client):
     # which workflow is running (sqlite vs Postgres). Endpoint contract test.
     assert data["status"] in ("healthy", "degraded")
     assert data["service"] == "esportsforge"
+
 
 @pytest.mark.asyncio
 async def test_platform_status(client):

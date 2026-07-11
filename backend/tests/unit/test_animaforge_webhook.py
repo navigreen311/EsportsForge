@@ -102,7 +102,8 @@ async def client(
 
     app.dependency_overrides[get_db] = override_get_db
 
-    transport = ASGITransport(app=app)
+    # FastAPI is a valid ASGI app; httpx's ASGITransport.app type is narrower.
+    transport = ASGITransport(app=app)  # type: ignore[arg-type]
     async with AsyncClient(
         transport=transport, base_url="http://test"
     ) as ac:

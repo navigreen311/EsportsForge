@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from app.schemas.simulation import (
@@ -19,7 +21,7 @@ from app.services.backbone import sim_lab
 # ---------------------------------------------------------------------------
 
 def _make_state(**overrides) -> GameState:
-    defaults = {
+    defaults: dict[str, Any] = {
         "title": "madden26",
         "quarter": 4,
         "time_remaining": 120.0,

@@ -1,5 +1,6 @@
 import pytest
 
+
 @pytest.mark.asyncio
 async def test_chat_endpoint(client):
     response = await client.post("/api/v1/chat", json={
@@ -11,6 +12,7 @@ async def test_chat_endpoint(client):
     assert "response" in data
     assert isinstance(data["response"], str)
     assert len(data["response"]) > 0
+
 
 @pytest.mark.asyncio
 async def test_chat_returns_actions(client):

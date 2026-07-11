@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from app.schemas.nba2k26.builds import (
@@ -24,7 +26,7 @@ def engine() -> BuildForge:
 
 def _make_build(**overrides) -> Build:
     """Helper to build a Build with sensible defaults."""
-    defaults = {
+    defaults: dict[str, Any] = {
         "name": "Test Build",
         "position": Position.SG,
         "archetype": Archetype.TWO_WAY,
