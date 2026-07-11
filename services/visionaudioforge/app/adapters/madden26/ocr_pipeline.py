@@ -725,61 +725,125 @@ class OCRPipeline:
         # the wide box reads at c~0.65-0.97 where the tight boxes read nothing.
         cluster_fields = ("quarter", "clock", "play_clock", "down", "distance")
         if want.intersection(cluster_fields):
-            rc = _parse_right_cluster(rd(dd["right_cluster"]))
-            # Override ONLY the clock SECONDS with the patch-NCC reader (minutes,
-            # quarter, down, distance untouched). Reader abstain -> null clock.
-            if "clock" in want and self._clock_seconds_reader is not None:
-                rc["clock"] = self._reader_clock_seconds(frame, rc["clock"])
-            if "distance" in want and self._distance_reader is not None:
-                rc["distance"] = self._reader_distance(frame, rc["distance"])
-            for f in cluster_fields:
-                if f in want:
-                    out[f] = rc[f]
+            # v0.2 — patch-NCC PER-FIELD reads REPLACE the EasyOCR wide right_cluster
+            # read (~694 ms/frame, the live throughput ceiling; ADR-0015 budget). Each
+            # field reads from its own hud_regions zone with the shared white-on-dark
+            # templates (quarter/down/minutes/seconds) or the distance templates.
+            # EasyOCR is no longer called on the cluster. Every field abstains -> None
+            # (never fabricate); the smoother/adapter carries the last good value.
+            if "quarter" in want:
+                out["quarter"] = self._read_leading_digit("quarter_digit", frame, 1, 5)
+            if "clock" in want:
+                out["clock"] = self._read_clock(frame)
+            if "down" in want:
+                out["down"] = self._read_leading_digit("down_digit", frame, 1, 4)
+            if "distance" in want:
+                out["distance"] = self._read_distance(frame)
+            if "play_clock" in want:
+                out["play_clock"] = None  # dark-on-white; its own reader deferred
         # field_position: parked for the live path (no analog on the broadcast bar).
         out["_confidence"] = round(sum(confs) / len(confs), 3) if confs else 0.0
         return out
 
-    def _reader_clock_seconds(self, frame: np.ndarray, easyocr_clock: str | None) -> str | None:
-        """Replace the clock SECONDS with the patch-NCC reader; keep minutes from
-        the EasyOCR clock read. Contract: crop the clock_seconds zone here (via the
-        pipeline's own _crop) and hand the reader the patch — it never sees the full
-        frame. Reader abstains -> None (null clock; the string_clock smoother carries
-        the last good value; never a guessed :11)."""
-        sub = self.regions["scoreboard"]["subregions"].get("clock_seconds")
+    def _read_leading_digit(
+        self, zone_name: str, frame: np.ndarray, lo: int, hi: int
+    ) -> int | None:
+        """Read one white-on-dark leading digit (quarter/down ordinal) with the
+        shared clock-seconds templates. Returns int in [lo, hi] or None (abstain or
+        out-of-range -> null; never fabricate)."""
+        reader = self._clock_seconds_reader
+        if reader is None:
+            return None
+        sb = self.regions["scoreboard"]["subregions"]
+        dd = self.regions["down_distance"]["subregions"]
+        sub = sb.get(zone_name) or dd.get(zone_name)
         if sub is None:
-            return easyocr_clock  # zone not calibrated -> leave EasyOCR clock as-is
-        secs, _ = self._clock_seconds_reader.read_patch(_crop(frame, sub))
-        if secs is None:
-            return None  # abstain: never fabricate seconds
-        if easyocr_clock and ":" in easyocr_clock:
-            return f"{easyocr_clock.split(':')[0]}:{secs}"
-        return None  # no trustworthy minutes -> null (carry last)
+            return None
+        s, _ = reader.read_patch(_crop(frame, sub), n_slots=1)
+        if s is None:
+            return None
+        v = int(s)
+        return v if lo <= v <= hi else None
 
-    def _reader_distance(self, frame: np.ndarray, easyocr_distance: int | None) -> int | None:
-        """Fix single-digit distance `1<->7` with the patch-NCC reader, gated so it
-        never fabricates. The reader covers digits 1-9 but the 3/5/6/8 cluster has
-        modest headroom, so we override ONLY when the reader corroborates or corrects
-        in a trusted way:
-          * multi-digit (>=10) or no EasyOCR value -> keep EasyOCR (reader is single-digit).
-          * reader abstains -> keep EasyOCR.
-          * reader AGREES with EasyOCR -> use it (clean single-digit read).
-          * reader & EasyOCR form the {1,7} pair -> reader wins (the ADR-0019 fix).
-          * else (disagree, not 1<->7, e.g. a marginal-frame misread) -> keep EasyOCR.
-        """
-        if easyocr_distance is None or easyocr_distance >= 10:
-            return easyocr_distance
-        sub = self.regions["down_distance"]["subregions"].get("distance_digit")
+    def _read_clock(self, frame: np.ndarray) -> str | None:
+        """Read M:SS entirely from patch-NCC — minutes (1 digit) + seconds (2
+        digits), both the shared white-on-dark templates. Either half abstaining ->
+        None (null clock; the smoother carries the last good value)."""
+        reader = self._clock_seconds_reader
+        if reader is None:
+            return None
+        sb = self.regions["scoreboard"]["subregions"]
+        if "clock_minutes" not in sb or "clock_seconds" not in sb:
+            return None
+        mins, _ = reader.read_patch(_crop(frame, sb["clock_minutes"]), n_slots=1)
+        secs, _ = reader.read_patch(_crop(frame, sb["clock_seconds"]), n_slots=2)
+        if mins is None or secs is None:
+            return None
+        m = int(mins)
+        if not 0 <= m <= 15:
+            return None
+        return f"{m}:{secs}"
+
+    def _read_distance(self, frame: np.ndarray) -> int | None:
+        """Read the 1-2 digit distance (1-25) with the distance templates. With the
+        EasyOCR cross-check gone, safety rests on abstain + the 1-25 validity rule;
+        the `1<->7` fix is intrinsic (the reader reads the real glyph). Marginal or
+        out-of-range -> None."""
+        reader = self._distance_reader
+        if reader is None:
+            return None
+        sub = self.regions["down_distance"]["subregions"].get("distance_field")
         if sub is None:
-            return easyocr_distance
-        digit, _ = self._distance_reader.read_patch(_crop(frame, sub))
-        if digit is None:
-            return easyocr_distance  # abstain -> keep EasyOCR
-        reader_val = int(digit)
-        if reader_val == easyocr_distance:
-            return reader_val
-        if {reader_val, easyocr_distance} == {1, 7}:
-            return reader_val  # the 1<->7 symptom -> trust the reader
-        return easyocr_distance  # disagree, non-1<->7 -> never fabricate; keep EasyOCR
+            return None
+        v = self._read_1or2_digits(reader, _crop(frame, sub))
+        return v if v is not None and 1 <= v <= 25 else None
+
+    def _read_1or2_digits(self, reader, patch: np.ndarray) -> int | None:
+        """Read a 1- or 2-digit white-on-dark field. Isolate each digit as its own
+        connected component (left-to-right) — component crops keep the narrow `1`
+        undistorted, where an equal-column split would stretch it. Digits are the
+        tallest blobs (chrome/noise is short). Read each with `reader`; any slot
+        below tau/margin, or not 1-2 digit-sized blobs -> None (abstain)."""
+        from .digit_reader import GH, GW, field_present_patch, is_corrupt_patch, vec
+
+        if patch is None or patch.size == 0:
+            return None
+        if is_corrupt_patch(patch) or not field_present_patch(patch):
+            return None
+        g = cv2.cvtColor(patch, cv2.COLOR_BGR2GRAY)
+        g = cv2.resize(g, None, fx=8, fy=8, interpolation=cv2.INTER_CUBIC)
+        _, bw = cv2.threshold(g, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        bw = cv2.morphologyEx(bw, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+        H, W = bw.shape
+        bw[(bw > 0).sum(1) / W > 0.85, :] = 0
+        num, lab, stats, _ = cv2.connectedComponentsWithStats((bw > 0).astype(np.uint8), 8)
+        if num <= 1:
+            return None
+        max_h = max(int(stats[i, cv2.CC_STAT_HEIGHT]) for i in range(1, num))
+        comps = sorted(
+            (int(stats[i, cv2.CC_STAT_LEFT]), i)
+            for i in range(1, num)
+            if stats[i, cv2.CC_STAT_HEIGHT] > 0.5 * max_h
+            and stats[i, cv2.CC_STAT_AREA] > 40
+        )
+        if not 1 <= len(comps) <= 2:
+            return None
+        digits = ""
+        for _, i in comps:
+            xs = np.where((lab == i).any(0))[0]
+            ys = np.where((lab == i).any(1))[0]
+            glyph = cv2.resize(
+                g[ys[0] : ys[-1] + 1, xs[0] : xs[-1] + 1], (GW, GH),
+                interpolation=cv2.INTER_CUBIC,
+            )
+            r = reader.classify(vec(glyph))
+            if r.best < reader.tau or r.margin < reader.delta:
+                return None
+            digits += r.digit
+        try:
+            return int(digits)
+        except ValueError:
+            return None
 
     # --- Play-call overlay (formation name) — v2.3.0-live play_call context ---
 

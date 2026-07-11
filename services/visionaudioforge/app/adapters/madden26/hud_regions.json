@@ -32,7 +32,9 @@
             "team_away_abbr": [922, 1005, 78, 34],
             "team_away_logo": [1040, 975, 200, 82],
             "quarter":        [1282, 1004, 66, 40],
+            "quarter_digit":  [1289, 1010, 24, 42],
             "clock":          [1352, 1002, 92, 42],
+            "clock_minutes":  [1350, 1012, 26, 42],
             "clock_seconds":  [1383, 1013, 68, 40]
           }
         },
@@ -42,7 +44,9 @@
             "right_cluster":  [1265, 995, 530, 62],
             "play_clock":     [1450, 1002, 96, 44],
             "down_distance":  [1600, 1006, 176, 40],
-            "distance_digit": [1693, 1010, 33, 44]
+            "down_digit":     [1602, 1008, 38, 46],
+            "distance_digit": [1693, 1010, 33, 44],
+            "distance_field": [1693, 1010, 62, 44]
           }
         }
       }
