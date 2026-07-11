@@ -267,25 +267,6 @@ def _parse_right_cluster(text: str) -> dict:
     return out
 
 
-def _parse_down_distance(text: str) -> tuple[int | None, int | None]:
-    """Parse the MERGED down+distance panel, e.g. '2ND & 6' -> (2, 6).
-
-    The live PS5 broadcast bar renders down and distance as one contiguous
-    string (v2.3.0-live, E3), unlike the v2.2.0 split boxes. Down comes from the
-    leading ordinal (1-4); distance from the number after '&'/'AND' (reusing
-    _parse_distance's ampersand + trailing-digit logic). Special downs render
-    'KICKOFF'/'PUNT'/'GOAL' with no numeric distance -> distance None."""
-    if not text:
-        return (None, None)
-    up = text.upper()
-    if any(w in up for w in ("KICK", "PUNT", "GOAL")):
-        return (_parse_ordinal_to_int(up, 1, 4), None)
-    head = re.split(r"&|\bAND\b", up, maxsplit=1)[0]
-    down = _parse_ordinal_to_int(head, 1, 4)
-    distance = _parse_distance(up)
-    return (down, distance)
-
-
 def _parse_clock(text: str) -> str | None:
     """Parse 'M:SS' or 'MM:SS' clock. Tolerates 1↔7 and missing colon.
 
@@ -624,25 +605,26 @@ class OCRPipeline:
         # _parse_score map the stylised glyphs back to digits.
         s_home_text, s_home_conf = _read_text(_crop(frame, scoreboard["score_home"]))
         s_away_text, s_away_conf = _read_text(_crop(frame, scoreboard["score_away"]))
-        clock_text, clock_conf = _read_text(_crop(frame, scoreboard["clock"]), "0123456789:")
 
-        # Quarter — ordinal text. No allowlist (EasyOCR drops results when the
-        # allowlist excludes letters in "1ST"/"2ND" etc.).
-        q_text, q_conf = _read_text(_crop(frame, scoreboard["quarter"]))
+        # Quarter / clock / down / distance — patch-NCC per-field reads, the SAME
+        # readers the live read_fields path uses (v0.2 migration). This drops EasyOCR
+        # from the digit cluster on the non-live path too, so both paths share the
+        # ADR-0019 `1<->7` fix and neither re-introduces the ~694 ms wide-cluster
+        # EasyOCR read. Each abstains -> None (never fabricate); if a template set is
+        # absent the reader returns None (graceful, same as read_fields).
+        quarter_v = self._read_leading_digit("quarter_digit", frame, 1, 5)
+        clock_v = self._read_clock(frame)
+        down_v = self._read_leading_digit("down_digit", frame, 1, 4)
+        distance_v = self._read_distance(frame)
 
-        # Down + distance — single merged panel on the v2.3.0-live bar
-        # ("2ND & 6"), regex-split into both.
-        dd_text, dd_conf = _read_text(_crop(frame, dnd["down_distance"]))
-
-        # Play clock — digit-only; can be "--" → null.
+        # Play clock — digit-only; can be "--" → null. Kept on EasyOCR: the
+        # dark-on-white patch-NCC play-clock reader is deferred (see
+        # docs/phase-completions/digit-ocr-perf-migration.md).
         pc_text, pc_conf = _read_text(_crop(frame, dnd["play_clock"]), "0123456789")
 
         score_home_v = _parse_score(s_home_text)
         score_away_v = _parse_score(s_away_text)
-        quarter_v = _parse_ordinal_to_int(q_text, 1, 5)
-        down_v, distance_v = _parse_down_distance(dd_text)
         play_clock_v = _parse_play_clock(pc_text)
-        clock_v = _parse_clock(clock_text)
         fp_v = None  # field_position parked for the live path (no analog on the bar)
 
         # Team abbreviations.
@@ -657,10 +639,12 @@ class OCRPipeline:
         home_abbr = ha_text.upper().strip() or None
         away_abbr = aa_text.upper().strip() or None
 
-        # Aggregate confidence — average of the per-region confidences.
+        # Aggregate confidence — average of the per-region EasyOCR confidences
+        # still on that path (scores / play_clock / abbrs). The patch-NCC cluster
+        # fields (quarter/clock/down/distance) carry their own NCC margins, not an
+        # EasyOCR confidence, so they don't contribute here.
         confs = [
-            c for c in [s_home_conf, s_away_conf, q_conf, clock_conf,
-                        dd_conf, pc_conf, ha_conf, aa_conf]
+            c for c in [s_home_conf, s_away_conf, pc_conf, ha_conf, aa_conf]
             if c > 0
         ]
         overall = sum(confs) / len(confs) if confs else 0.0
