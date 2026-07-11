@@ -48,5 +48,33 @@ frame (the confusable `3/5/6/8` cluster). A small regression from the gated vers
   0/10 `1<->7`).
 - Live-verified: clock runs correctly live; `& 10` reads on live pixels through the
   pipeline method.
-- **Follow-ups:** play-clock reader (dark-on-white); scores (Phase-2); the `read_frame`
+- **Cluster migration is COMPLETE** for the four payload fields — quarter, clock
+  (M:SS), down, distance are all patch-NCC. `play_clock` stays `None` in the payload
+  (see below); it is not a payload field today.
+
+## Play-clock — deferred (the hard "third polarity")
+
+The play-clock is the one cluster field that does **not** yield to reuse, exactly as
+ADR-0019 flagged. It renders **dark digits on a white box** (the inverse of every
+white-on-dark field), so it needs its own inversion + segmentation, and the existing
+Phase-1 data is thin. Two offline build attempts on the Phase-1 `:40→:10` capture
+(leave-one-frame-out):
+
+| approach | result |
+|---|---|
+| inverted connected-component segmentation | **13/64 correct** — inverting makes the white box's border/chrome bright (foreground); it dominates and the two digits merge into one blob |
+| Phase-1 `norm_field` (invert → Otsu → strip chrome → auto-crop → equal-split) | **29/64 correct, 6 wrong, 29 abstain** |
+
+Neither clears the never-fabricate accuracy bar the shipped readers hold, so **nothing
+was built into the code** — `play_clock` remains `None`.
+
+**A real build (its own focused session) needs:**
+- a **tight play-clock-digits zone** that excludes the colon and the white box border
+  (the current `[1450,1002,96,44]` includes both), + robust dark-on-white segmentation;
+- **more data** — a clean live `:40→:00` sweep (naturally gives multiple glyphs for
+  every digit 0–9; Phase-1 units `7/8/9` have only 2 glyphs each);
+- handling for the **red `:00`** delay-of-game state (must abstain, never emit `00`);
+- held-out eval to the same bar as gcsec/distance.
+
+- **Other follow-ups:** scores (Phase-2, blocked — no data); the `read_frame`
   (non-live) path still uses EasyOCR.
