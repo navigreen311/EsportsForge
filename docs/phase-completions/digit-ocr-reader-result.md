@@ -50,16 +50,26 @@ per-field template sets are required — a single shared reader must not be re-a
 Same failure mode as the original play-clock cross-style mismatch (ADR 0020): style, not
 technique, is the constraint.
 
-### DISTANCE `1↔7` — reader **BUILT**, verdict **PENDING**
+### DISTANCE `1↔7` — reader **BUILT**, verdict **CONFIRMED (held-out)**
 
-Templates built (glyphs/digit `{1:2, 2:25, 3:29, 5:20, 6:26, 7:4}`) and segmentation
-confirmed on the corrected distance zone **`[1693,1013]`** (refines the capture doc's
-~x=1686; x=1693 excludes the `&` ampersand — the `&` ends ~x=1690, the digit sits
-~1695–1720). **Cannot be honestly verified yet:** distance `1` and `7` are **one
-situation each (~one glyph view)**, so a held-out frame would be a near-duplicate of a
-template — testing on training data. **No LOOCV number is reported on N=1.** Needs a
-**second independent live `& 1` and `& 7`** from different field positions before a real
-eval. Thicken opportunistically in normal play.
+Templates built and segmentation confirmed on the corrected distance zone
+**`[1693,1013]`** (refines the capture doc's ~x=1686; x=1693 excludes the `&` ampersand —
+the `&` ends ~x=1690, the digit sits ~1695–1720).
+
+**Originally PENDING** because distance `1`/`7` were one situation each — a held-out frame
+would have been a near-duplicate of a template. That gap is now closed: a **second
+independent live view of each** was captured (2026-07-10) and read by templates that never
+saw it —
+
+| digit | template view | held-out view | held-out read |
+|---|---|---|---|
+| **7** | `2ND & 7` | `3RD & 7` (diff down + field position) | **`7` @ NCC 1.0** (11 frames) |
+| **1** | `2ND & 1` | new `2ND & 1` (diff game moment) | **`1` @ NCC 0.98–1.0** (8 frames) |
+
+Each held-out capture is a genuinely independent instance (not a near-dup), so this is a
+real held-out pass — the distance reader distinguishes `1` from `7` on live, unseen data,
+both directions. **Still standalone (not wired into `ocr_pipeline`)** — single-digit
+distance integration is a separate build+live-verify session.
 
 ### SCORES — still **BLOCKED**
 
