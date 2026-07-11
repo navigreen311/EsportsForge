@@ -11,7 +11,6 @@ lands in Phase 1.
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import logging
 
@@ -108,7 +107,7 @@ async def ingest(ws: WebSocket) -> None:
 
     except WebSocketDisconnect:
         logger.info("agent_disconnected", extra={"session_id": session_id})
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         logger.exception("ingest_error", extra={"session_id": session_id})
         try:
             await ws.close(code=status.WS_1011_INTERNAL_ERROR)

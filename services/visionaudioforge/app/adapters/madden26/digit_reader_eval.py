@@ -23,13 +23,11 @@ import glob
 import json
 import os
 import statistics
-from collections import Counter
 
 import cv2
 import numpy as np
 
 from .digit_reader import (
-    DIST,
     GCSEC,
     DigitReader,
     field_present,

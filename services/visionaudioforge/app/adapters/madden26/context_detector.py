@@ -47,7 +47,6 @@ region -> recalibrate. See ADR 0013 (HUD calibration is recurring maintenance).
 
 from __future__ import annotations
 
-import json
 from enum import Enum
 from pathlib import Path
 

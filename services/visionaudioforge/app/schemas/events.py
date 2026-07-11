@@ -39,7 +39,9 @@ class FootballPayload(BaseModel):
     offensive_formation: str | None = None  # full play-call name, e.g. "Trips TE Offset"
     offensive_formation_family: str | None = None  # canonical-8 tag, e.g. "shotgun_trips" (ADR 0014)
     defensive_formation: str | None = None  # v0.2 pre-snap defensive FRONT; None until v0.2 ships
-    defensive_coverage: str | None = None  # v0.3 post-snap coverage shell (COVERAGE_LOCKED carrier); None until v0.3; free-str, vocabulary documented in ADR 0017 (not enforced)
+    # v0.3 post-snap coverage shell (COVERAGE_LOCKED carrier); None until v0.3;
+    # free-str, vocabulary documented in ADR 0017 (not enforced).
+    defensive_coverage: str | None = None
 
 
 class Madden26Payload(FootballPayload):
