@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import statistics
 import sys
 import time
 from pathlib import Path
@@ -308,7 +307,7 @@ def c5_formation_locked():
         "pass": ok,
         "evidence": {
             "real_playcall_read": {"full_name": reading.full_name,
-                                    "confidence": round(reading.confidence, 3)},
+                                   "confidence": round(reading.confidence, 3)},
             "locks_emitted": len(locked),
             "locked_full_name": locked[0].payload.offensive_formation if locked else None,
             "locked_family": locked[0].payload.offensive_formation_family if locked else None,
@@ -363,6 +362,7 @@ def c7_webhook_retry():
     class _Boom:
         async def __aenter__(self): return self
         async def __aexit__(self, *a): return False
+
         async def post(self, *a, **k):
             attempts["n"] += 1
             raise ConnectionError("refused")

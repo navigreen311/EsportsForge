@@ -121,7 +121,7 @@ def main() -> int:
                               "name": r.full_name, "canonical": r.formation, "conf": r.confidence})
         cap.release()
 
-    report = {
+    report: dict = {
         "milestone": "M5c sub-task 5 (OCR-of-overlay acceptance evaluation)",
         "detector": "formation_detector.FormationDetector (hud_regions v2.2.0 play_call)",
         "acceptance": {
@@ -143,10 +143,10 @@ def main() -> int:
     }
     REPORT.write_text(json.dumps(report, indent=2, default=str))
 
-    print(f"per-formation success: {practice_pct}%  (>=80 {'PASS' if practice_pct>=80 else 'FAIL'})")
+    print(f"per-formation success: {practice_pct}%  (>=80 {'PASS' if practice_pct >= 80 else 'FAIL'})")
     print(f"name->canonical mapping accuracy: {mapping_pct}%")
     print(f"state-detector TRUE-NEGATIVE on live gameplay: {tn}/{tn_total} = {tn_rate}%  "
-          f"({false_pos} false positives -> {'PASS' if false_pos==0 else 'FAIL'})")
+          f"({false_pos} false positives -> {'PASS' if false_pos == 0 else 'FAIL'})")
     print(f"exhibition play-call screens read: {len(exhib)}")
     print(f"overall conf mean {report['confidence_overall']['mean']} min {report['confidence_overall']['min']}")
     print(f"report -> {REPORT}")

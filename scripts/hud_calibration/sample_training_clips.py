@@ -84,10 +84,8 @@ Output:
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
-import sys
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass
 from pathlib import Path
 
 import cv2
@@ -235,7 +233,7 @@ def _download(url: str, output: Path) -> bool:
                 break
             if time.monotonic() - start > 720:
                 proc.kill()
-                print(f"  TIMEOUT after 12 min — killing", flush=True)
+                print("  TIMEOUT after 12 min — killing", flush=True)
                 return False
         rc = proc.wait()
     except Exception as exc:

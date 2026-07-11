@@ -195,7 +195,6 @@ def main() -> int:
 
     banner_thr, scorebar_thr = BANNER_THR, SCOREBAR_THR
     recommended = "recommended_banner_darkfrac"
-    rr = rule_results[recommended]["overall"]
     escalation = (
         "primary single-feature not clean; escalated to 2-feature (banner + dark_frac). "
         "scorebar rejected (game-mode-dependent). 0 FN achieved; residual FP are "

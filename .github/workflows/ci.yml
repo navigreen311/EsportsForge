@@ -121,6 +121,35 @@ jobs:
         run: mypy capture_agent/ --ignore-missing-imports --warn-unused-ignores --warn-redundant-casts --strict-equality
 
   # ---------------------------------------------------------------------------
+  # Scripts Linting — flake8 (relaxed) + strict mypy
+  # scripts/ are one-off calibration/tooling scripts, not a service. flake8 uses a
+  # RELAXED config (scripts/.flake8: compact one-liner style allowed — E501/E701/E702/
+  # E731 off — but the real-bug pyflakes F-codes stay on). mypy runs the same
+  # strict-optional + warn flags as the services (full type-checking, no relaxation).
+  # ---------------------------------------------------------------------------
+  lint-scripts:
+    name: Lint Scripts
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scripts
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install linters
+        run: pip install flake8 mypy
+
+      - name: Run flake8
+        run: flake8 .
+
+      - name: Run mypy
+        run: mypy . --ignore-missing-imports --warn-unused-ignores --warn-redundant-casts --strict-equality
+
+  # ---------------------------------------------------------------------------
   # Frontend Linting — ESLint + TypeScript check
   # ---------------------------------------------------------------------------
   lint-frontend:

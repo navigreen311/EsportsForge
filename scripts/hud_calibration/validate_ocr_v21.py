@@ -40,7 +40,7 @@ FRAMES_DIR = REPO_ROOT / "scripts" / "hud_calibration" / "frames_v21"
 REPORT_PATH = REPO_ROOT / "agents" / "capture" / "fixtures" / "real" / "m5c_1b_ocr_validation.json"
 
 # Sentinel: element omitted from GT for a frame (could not read confidently).
-_ = None
+_: None = None
 
 # Hand-labeled ground truth per frame. Keys omitted where uncertain.
 # down/distance: None means special-teams panel (KICKOFF) or GOAL — the
@@ -76,7 +76,7 @@ GT: dict[str, dict] = {
     "madden26_wash_vs_pits_q4_f000645.png": dict(home="WAS", away="PIT", q=4, clock="4:42", down=2, dist=5, pc="26", fp="11"),
     "madden26_wash_vs_pits_q4_f001994.png": dict(home="WAS", away="PIT", q=4, clock="3:50", down=2, dist=4, pc="34", fp="40"),
     "madden26_wash_vs_pits_q4_f005141.png": dict(home="WAS", away="PIT", q=4, clock="2:44", down=2, dist=10, pc="26", fp="46"),
-    "madden26_wash_vs_pits_q4_sc009247.png":dict(home="WAS", away="PIT", sh=7, sa=13, q=4, clock="0:41", down=1, dist=10, pc="6", fp="16"),
+    "madden26_wash_vs_pits_q4_sc009247.png": dict(home="WAS", away="PIT", sh=7, sa=13, q=4, clock="0:41", down=1, dist=10, pc="6", fp="16"),
 }
 
 ELEMENTS = ["team_home_abbr", "team_away_abbr", "score_home", "score_away",
@@ -145,7 +145,7 @@ def main() -> int:
             "distance": snap.distance, "play_clock": snap.play_clock,
             "field_position": snap.field_position,
         }
-        row = {"frame": fn, "fields": {}}
+        row: dict = {"frame": fn, "fields": {}}
         for e in ELEMENTS:
             res = check(e, gt, snap)
             if res is None:
@@ -162,7 +162,7 @@ def main() -> int:
                                    "actual": actual[e]})
         frame_rows.append(row)
 
-    summary = {}
+    summary: dict[str, dict] = {}
     for e in ELEMENTS:
         t = per_elem[e]["trials"]; h = per_elem[e]["hits"]
         summary[e] = {"pct": round(100.0 * h / t, 1) if t else None, "hits": h, "trials": t}
