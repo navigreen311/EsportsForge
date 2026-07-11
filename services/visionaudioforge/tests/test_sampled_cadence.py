@@ -71,7 +71,6 @@ def test_play_epoch_reset_prevents_cross_play_smoothing():
 def test_adapter_null_read_does_not_clobber_cache():
     ad = Madden26Adapter()                       # cheap: EasyOCR is lazy
     ad.context.detect = lambda frame: HudContext.LIVE_GAMEPLAY
-    ad.snap.update = lambda frame, prior: prior
     ad.ocr_cadence_schema = {                     # make `down` due every frame
         "dd": {"cadence": "every_n", "n": 1, "context": "live_gameplay",
                "fields": ["down"]},

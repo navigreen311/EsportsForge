@@ -121,7 +121,6 @@ class Madden26Adapter:
         # Lazy-loaded once per worker. EasyOCR cold-load happens on first read.
         self.ocr = OCRPipeline()
         self.formations = FormationDetector()
-        self.snap = SnapDetector()
         self.context = ContextDetector()      # stateless — shared across sessions
         logger.info("madden26_adapter_loaded", extra={"version": self.version})
 
@@ -142,6 +141,16 @@ class Madden26Adapter:
             b = PlayBoundaryTrigger()
             session.adapter_state["_boundary"] = b
         return b
+
+    @staticmethod
+    def _snap(session: SessionContext) -> SnapDetector:
+        # SnapDetector holds per-session state (play-clock tick history), so it
+        # lives per session in adapter_state, not as a shared adapter field.
+        s = session.adapter_state.get("_snap")
+        if s is None:
+            s = SnapDetector()
+            session.adapter_state["_snap"] = s
+        return s
 
     @staticmethod
     def _snapshot_from_cache(session: SessionContext) -> OCRSnapshot:
@@ -196,8 +205,12 @@ class Madden26Adapter:
             st.setdefault("_ocr_cache", {}).update(fresh)
             updated = set(fresh.keys())
 
-        # 5. snap detector (cheap stub for now).
-        st["snap_state"] = self.snap.update(frame, st.get("snap_state"))
+        # 5. snap detector (play-clock-freeze; cheap, no OCR). Reuses the context
+        #    read from step 1. snap.snapped is True on the frame a snap confirms.
+        snap = self._snap(session)
+        st["snap_state"] = snap.update(frame, context == HudContext.LIVE_GAMEPLAY)
+        if snap.snapped:
+            st["_last_snap_frame"] = session.frame_count
 
         # 6. assemble from the carried-forward snapshot; smooth only fresh fields.
         return assemble(
