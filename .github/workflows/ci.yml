@@ -91,6 +91,36 @@ jobs:
         run: mypy app/ --ignore-missing-imports --warn-unused-ignores --warn-redundant-casts --strict-equality
 
   # ---------------------------------------------------------------------------
+  # Capture Agent Linting — flake8 + mypy
+  # The capture-agent (HDMI capture -> WS -> VAF core) is a standalone Python
+  # service that was previously unlinted. Same treatment as the VAF job: flake8/mypy
+  # work on the AST, so its runtime deps (opencv, websockets) are NOT installed. flake8
+  # config in agents/capture/.flake8; mypy runs with strict-optional (default) + the
+  # same warn flags as backend/VAF (unused-ignores / redundant-casts / strict-equality).
+  # ---------------------------------------------------------------------------
+  lint-capture-agent:
+    name: Lint Capture Agent
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agents/capture
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install linters
+        run: pip install flake8 mypy
+
+      - name: Run flake8
+        run: flake8 capture_agent/
+
+      - name: Run mypy
+        run: mypy capture_agent/ --ignore-missing-imports --warn-unused-ignores --warn-redundant-casts --strict-equality
+
+  # ---------------------------------------------------------------------------
   # Frontend Linting — ESLint + TypeScript check
   # ---------------------------------------------------------------------------
   lint-frontend:
