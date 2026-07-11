@@ -76,5 +76,11 @@ was built into the code** — `play_clock` remains `None`.
 - handling for the **red `:00`** delay-of-game state (must abstain, never emit `00`);
 - held-out eval to the same bar as gcsec/distance.
 
-- **Other follow-ups:** scores (Phase-2, blocked — no data); the `read_frame`
-  (non-live) path still uses EasyOCR.
+- **`read_frame` (non-live full-snapshot path) migrated too.** Its quarter / clock /
+  down / distance reads now use the same patch-NCC helpers as `read_fields`, so the
+  calibration/validation tools (`scripts/hud_calibration/*`, `real_footage_harness.py`)
+  share the `1<->7` fix and no path runs EasyOCR on the digit cluster. Verified
+  **0 cluster mismatches across 74 labeled frames** between `read_frame` and
+  `read_fields`. Scores / team abbrs / play-clock stay on EasyOCR there (unchanged);
+  the now-orphaned `_parse_down_distance` parser was removed.
+- **Other follow-ups:** scores (Phase-2, blocked — no data).
