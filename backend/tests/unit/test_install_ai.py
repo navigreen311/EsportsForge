@@ -252,6 +252,7 @@ class TestAntiBlitz:
     def test_anti_blitz_audible_tree_layers(self, engine: InstallAI, sample_gameplan: dict):
         scripts = engine.generate_anti_blitz_package(sample_gameplan)
         tree = scripts[0].audible_tree
+        assert tree is not None
         assert tree.base_call.condition != ""
         assert tree.if_bagged.condition != ""
         assert tree.if_they_adjust.condition != ""

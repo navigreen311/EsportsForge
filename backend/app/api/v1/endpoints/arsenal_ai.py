@@ -54,7 +54,7 @@ async def discover(
     cache_key = f"{body.title_id}::{body.query.lower().strip()}"
     cached = _discover_cache.get(cache_key)
     if cached and time.time() - cached[0] < 60 * 60 * 24:  # 24h
-        weapon_ids: list[str] = cached[1]  # type: ignore[assignment]
+        weapon_ids: list[str] = cached[1]
         rows = (
             await db.execute(
                 select(SecretWeapon).where(SecretWeapon.id.in_(weapon_ids))

@@ -556,8 +556,8 @@ class ResponsibleGamblingGuard:
 
         # Cooling-off
         if self.check_cooling_off(cooling_off, now):
+            assert cooling_off is not None
             blocks.append(
-                # type: ignore[union-attr]
                 f"Cooling-off period active until {cooling_off.end_time.strftime('%Y-%m-%d %H:%M UTC')}."
             )
 

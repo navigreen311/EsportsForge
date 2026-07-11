@@ -58,7 +58,7 @@ class MetricsClient:
         if self._client is not None:
             return self._client
         try:
-            import boto3  # type: ignore
+            import boto3
         except ImportError:
             logger.info("metrics_disabled_no_boto3")
             self._client_init_failed = True

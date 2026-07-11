@@ -36,7 +36,7 @@ async def _request_share_render(
 ) -> None:
     """Fire-and-forget single render request for one trigger."""
     try:
-        from app.services.animaforge.client import (  # type: ignore
+        from app.services.animaforge.client import (
             AnimaForgeService,
         )
     except Exception:  # noqa: BLE001

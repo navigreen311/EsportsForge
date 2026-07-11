@@ -191,6 +191,7 @@ class ImpactRank:
             return None
 
         top = active[0]
+        assert top.weakness.impact_score is not None
         fix_detail = ""
         if top.best_fix:
             fix_detail = f" Fix: {top.best_fix.label} — {top.best_fix.drill}"

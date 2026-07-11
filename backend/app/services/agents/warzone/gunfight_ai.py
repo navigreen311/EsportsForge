@@ -242,7 +242,7 @@ class GunfightAI:
 
         # Determine optimal range for your weapon
         if your_ttk_table:
-            optimal_range = min(your_ttk_table, key=your_ttk_table.get)
+            optimal_range = min(your_ttk_table, key=lambda r: your_ttk_table[r])
         else:
             optimal_range = EngagementRange.MEDIUM
 

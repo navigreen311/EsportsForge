@@ -133,7 +133,7 @@ def get_behavioral_fingerprint(opponent_data: dict[str, Any]) -> BehavioralFinge
         fp.adaptability = min(changes / max(len(schemes) - 1, 1), 1.0)
 
     # --- Tendency entropy (Shannon) ---
-    play_types = [p.get("type") for p in plays if "type" in p]
+    play_types = [p["type"] for p in plays if "type" in p]
     if play_types:
         fp.tendency_entropy = _shannon_entropy(play_types)
 

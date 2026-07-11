@@ -115,6 +115,7 @@ async def disable_2fa(
             detail="2FA is not enabled.",
         )
 
+    assert current_user.two_factor_secret is not None
     totp = pyotp.TOTP(current_user.two_factor_secret)
     if not totp.verify(body.code):
         raise HTTPException(

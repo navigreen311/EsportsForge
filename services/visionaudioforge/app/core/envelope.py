@@ -29,7 +29,7 @@ def make_envelope(
         event_id=str(ULID()),
         session_id=session.session_id,
         user_id_hash=session.user_id_hash,
-        title=session.title,  # type: ignore[arg-type]
+        title=session.title,
         timestamp=now,
         captured_at=captured_at,
         confidence=confidence,

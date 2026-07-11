@@ -59,7 +59,7 @@ DEFAULT_AGENT_PRIORITIES: dict[str, int] = {
 def _get_confidence_threshold(ctx: DecisionContext) -> float:
     """Return the minimum confidence for this mode + pressure combo."""
     key = (ctx.mode, ctx.pressure_state)
-    return CONFIDENCE_THRESHOLDS.get(key, CONFIDENCE_THRESHOLDS["default"])  # type: ignore[arg-type]
+    return CONFIDENCE_THRESHOLDS.get(key, CONFIDENCE_THRESHOLDS["default"])
 
 
 def _get_mode_weight(ctx: DecisionContext) -> float:

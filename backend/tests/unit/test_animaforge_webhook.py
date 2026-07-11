@@ -117,7 +117,7 @@ def push_calls(monkeypatch: pytest.MonkeyPatch) -> list[dict]:
     """Capture every ``send_animaforge_push`` invocation."""
     calls: list[dict] = []
 
-    async def fake_send(**kwargs):  # type: ignore[no-untyped-def]
+    async def fake_send(**kwargs):
         calls.append(kwargs)
 
     monkeypatch.setattr(webhook_module, "send_animaforge_push", fake_send)

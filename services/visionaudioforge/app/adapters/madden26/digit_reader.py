@@ -234,7 +234,10 @@ class DigitReader:
         results = [self.classify(vec(g)) for g in glyphs]
         if any(r.best < self.tau or r.margin < self.delta for r in results):
             return None, results
-        return "".join(r.digit for r in results), results
+        digits = [r.digit for r in results if r.digit is not None]
+        if len(digits) != len(results):
+            return None, results
+        return "".join(digits), results
 
     def read(self, frame: np.ndarray) -> tuple[str | None, list[SlotResult]]:
         """Frame entry (standalone eval/gate): crop the reader's zone, then read."""

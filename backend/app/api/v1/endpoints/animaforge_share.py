@@ -48,7 +48,7 @@ router = APIRouter(tags=["AnimaForge"])
 # ---------------------------------------------------------------------------
 
 try:
-    from app.models.animaforge import (  # type: ignore
+    from app.models.animaforge import (
         JOB_TYPE_SHARE,
         STATUS_COMPLETE,
         STATUS_PENDING,
@@ -63,7 +63,7 @@ except Exception:  # noqa: BLE001
     STATUS_COMPLETE = "complete"
 
 try:
-    from app.services.animaforge.client import (  # type: ignore
+    from app.services.animaforge.client import (
         AnimaForgeService,
         AnimaForgeUnavailable,
     )

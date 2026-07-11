@@ -72,6 +72,7 @@ async def get_current_user(
     from app.core.security import get_current_user as _get_user, oauth2_scheme
 
     token = await oauth2_scheme(_request)
+    assert token is not None
     return await _get_user(token=token, db=_db)
 
 

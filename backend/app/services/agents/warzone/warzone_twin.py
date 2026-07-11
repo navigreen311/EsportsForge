@@ -287,7 +287,7 @@ class WarzoneTwin:
         for match in request.match_history:
             for w in match.get("weapons_used", []):
                 weapon_counts[w] = weapon_counts.get(w, 0) + 1
-        preferred_weapons = sorted(weapon_counts, key=weapon_counts.get, reverse=True)[:3]
+        preferred_weapons = sorted(weapon_counts, key=lambda w: weapon_counts[w], reverse=True)[:3]
 
         strengths, weaknesses = _identify_strengths_weaknesses(stats)
         coaching = _generate_coaching_tips(stats, movement, engagement)
