@@ -85,7 +85,7 @@ class Dispatcher:
 
     def latency_percentiles(self) -> dict[str, float | int | dict]:
         """p50/p95/p99 over all frames, plus a per-tier breakdown (ADR 0015)."""
-        out = self._pctiles(self.latency_ms)
+        out: dict[str, float | int | dict] = {**self._pctiles(self.latency_ms)}
         out["by_tier"] = {t: self._pctiles(v) for t, v in self.latency_by_tier.items()}
         return out
 

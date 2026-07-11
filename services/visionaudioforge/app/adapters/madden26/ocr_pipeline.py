@@ -206,8 +206,8 @@ def _parse_right_cluster(text: str) -> dict:
     last is the down; the clock sits between them, the distance after the down.
     Returns {quarter, clock, play_clock, down, distance} (any may be None).
     """
-    out = {"quarter": None, "clock": None, "play_clock": None,
-           "down": None, "distance": None}
+    out: dict[str, Any] = {"quarter": None, "clock": None, "play_clock": None,
+                           "down": None, "distance": None}
     if not text:
         return out
     up = text.upper()

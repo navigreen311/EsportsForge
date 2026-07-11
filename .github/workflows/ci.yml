@@ -55,12 +55,14 @@ jobs:
         run: mypy app/ --ignore-missing-imports --no-strict-optional
 
   # ---------------------------------------------------------------------------
-  # VisionAudioForge Linting — flake8
-  # flake8 parses the AST (no imports), so the heavy VAF deps (torch/cv2/easyocr)
-  # are NOT installed here — the job is fast. Config lives in
-  # services/visionaudioforge/.flake8 (max-line-length=120, E203/W503 ignored for
-  # black compatibility). mypy is intentionally not run yet: it would require the
-  # heavy runtime deps and a typing pass over the existing code — tracked separately.
+  # VisionAudioForge Linting — flake8 + mypy
+  # Both tools work on the AST without executing the code, so the heavy VAF deps
+  # (torch/cv2/easyocr) are NOT installed here — the job stays fast. flake8 config
+  # lives in services/visionaudioforge/.flake8 (max-line-length=120, E203/W503
+  # ignored for black compatibility). mypy runs with --ignore-missing-imports, so
+  # the uninstalled third-party libs (cv2/numpy/torch/easyocr) resolve to Any;
+  # this enforces our own code's typing without the heavy-dep cost (numpy/cv2
+  # call-level checking is out of scope by design, same trade-off as the backend job).
   # ---------------------------------------------------------------------------
   lint-vaf:
     name: Lint VisionAudioForge
@@ -75,11 +77,14 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install flake8
-        run: pip install flake8
+      - name: Install linters
+        run: pip install flake8 mypy
 
       - name: Run flake8
         run: flake8 app/
+
+      - name: Run mypy
+        run: mypy app/ --ignore-missing-imports --no-strict-optional
 
   # ---------------------------------------------------------------------------
   # Frontend Linting — ESLint + TypeScript check
