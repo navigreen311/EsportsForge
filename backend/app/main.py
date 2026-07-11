@@ -94,6 +94,14 @@ async def health_check():
     api_key = settings.anthropic_api_key
     ai_configured = bool(api_key and api_key != "YOUR_ANTHROPIC_API_KEY_HERE")
 
+    animaforge_status = "offline"
+    try:
+        from app.services.animaforge.client import AnimaForgeService
+        if await AnimaForgeService.is_available():
+            animaforge_status = "online"
+    except Exception:
+        animaforge_status = "offline"
+
     uptime_seconds = round(time.time() - _start_time, 2) if _start_time else 0.0
 
     overall = "healthy" if db_status == "connected" else "degraded"
@@ -107,6 +115,7 @@ async def health_check():
         "services": {
             "database": db_status,
             "ai": "configured" if ai_configured else "not_configured",
+            "animaforge": animaforge_status,
         },
     }
 
