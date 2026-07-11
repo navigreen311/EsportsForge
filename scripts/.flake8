@@ -1,0 +1,9 @@
+[flake8]
+# These are one-off calibration / tooling scripts, not a service, so the compact
+# one-liner style is allowed: line length (E501), multi-statement lines (E701/E702),
+# and lambda assignments (E731) are relaxed. The real-bug checks (pyflakes F-codes:
+# unused imports/vars, undefined names, bad f-strings) and basic whitespace hygiene
+# stay on. E203/W503 are relaxed for black compatibility, as in the services.
+max-line-length = 120
+extend-ignore = E203, W503, E501, E701, E702, E731
+exclude = __pycache__, .venv

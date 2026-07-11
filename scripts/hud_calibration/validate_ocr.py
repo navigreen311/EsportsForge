@@ -142,7 +142,7 @@ def main() -> int:
     frame_results: list[dict] = []
     per_element_success: dict[str, dict[str, int]] = {}
 
-    print(f"Loading OCR pipeline (lazy EasyOCR — first read will be slow)…")
+    print("Loading OCR pipeline (lazy EasyOCR — first read will be slow)…")
     t_start_total = time.monotonic()
 
     for idx, gt in GROUND_TRUTH.items():
@@ -204,7 +204,7 @@ def main() -> int:
     elapsed_total = round(time.monotonic() - t_start_total, 1)
 
     # Summary per element.
-    summary_per_element = {}
+    summary_per_element: dict[str, dict] = {}
     for field, bucket in per_element_success.items():
         all_pct = round(100.0 * bucket["hits"] / bucket["trials"], 1) if bucket["trials"] else 0.0
         play_pct = round(100.0 * bucket["play_hits"] / bucket["play_trials"], 1) if bucket["play_trials"] else 0.0
@@ -247,7 +247,7 @@ def main() -> int:
     REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
     REPORT_PATH.write_text(json.dumps(report, indent=2, default=str))
     print(f"\nreport -> {REPORT_PATH}")
-    print(f"\nPer-element success (play state only):")
+    print("\nPer-element success (play state only):")
     for f, s in summary_per_element.items():
         marker = "OK" if s["play_state_pct"] >= 80.0 else "FAIL"
         print(f"  [{marker}] {f}: {s['play_state_pct']}% (across {s['raw']['play_trials']} play frames)")

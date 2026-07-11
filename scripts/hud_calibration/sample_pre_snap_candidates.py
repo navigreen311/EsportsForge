@@ -73,6 +73,7 @@ GREEN_MIN = 0.55      # was 0.45 — reject coach close-ups / replay graphics / 
 DND_REGION = [742, 1033, 128, 28]
 _SPECIAL_TEAMS_RE = re.compile(r"KICK|PUNT|PVNT|P0NT|XTRA|XHA|XPA|EXTRA", re.IGNORECASE)
 
+
 # Practice-clip filename token -> canonical formation. shotgun_tight is the
 # bonus clip (not in TOP_8) and is excluded from the training candidate set.
 def _practice_formation(stem: str) -> str | None:

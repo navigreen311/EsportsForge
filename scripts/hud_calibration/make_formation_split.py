@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import csv
 import json
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -46,7 +46,6 @@ def main() -> int:
     rows = [r for r in csv.DictReader(LABELS.open(newline=""))
             if r["formation_class"] != "skip"]
     clips = sorted({r["clip"] for r in rows})
-    practice = [c for c in clips if "practice" in c]
     matchup = [c for c in clips if "practice" not in c]
     held = set(VAL_CLIPS) | set(TEST_CLIPS)
     assert held <= set(matchup), f"held-out clips not all matchup: {held - set(matchup)}"
@@ -56,12 +55,12 @@ def main() -> int:
     split_of.update({c: "val" for c in VAL_CLIPS})
     split_of.update({c: "test" for c in TEST_CLIPS})
 
-    counts = {s: Counter() for s in ("train", "val", "test")}
+    counts: dict[str, Counter[str]] = {s: Counter() for s in ("train", "val", "test")}
     for r in rows:
         counts[split_of[r["clip"]]][r["formation_class"]] += 1
 
     per_split = {s: {f: counts[s][f] for f in TOP8} for s in ("train", "val", "test")}
-    split = {
+    split: dict = {
         "version": "1.0.0",
         "milestone": "M5c sub-task 3",
         "method": "match-level disjoint, by clip (never by frame)",

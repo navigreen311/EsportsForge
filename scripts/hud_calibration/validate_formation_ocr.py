@@ -19,7 +19,6 @@ Output: agents/capture/fixtures/real/m5c_formation_ocr_validation.json
 from __future__ import annotations
 
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -73,7 +72,7 @@ def main() -> int:
     practice_rate = round(100.0 * passed / trials, 1) if trials else 0.0
 
     # Exhibition: production conditions + state-gating check.
-    exhib = {"play_call_screens": [], "gameplay_frames_sampled": 0, "gameplay_gated_correctly": 0}
+    exhib: dict = {"play_call_screens": [], "gameplay_frames_sampled": 0, "gameplay_gated_correctly": 0}
     ex_clip = FX / "madden26_playcall_human_exhibition.mp4"
     if ex_clip.exists():
         cap = cv2.VideoCapture(str(ex_clip))

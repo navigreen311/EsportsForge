@@ -36,7 +36,7 @@ CANDIDATES: dict[str, dict] = {
     "play_clock":       {"bbox": [1465, 1024, 80, 40],  "color": (220, 0, 255)},   # ":11"
     "down":             {"bbox": [1545, 1024, 95, 40],  "color": (220, 220, 0)},   # "1ST" (down)
     "distance":         {"bbox": [1640, 1024, 100, 40], "color": (220, 220, 0)},   # "& 10"
-    "field_position":   {"bbox": [1720, 1024, 195, 40], "color": (200, 200, 100)}, # "▲41"
+    "field_position":   {"bbox": [1720, 1024, 195, 40], "color": (200, 200, 100)},  # "▲41"
 }
 
 
