@@ -214,17 +214,21 @@ class DigitReader:
         r.means = {k[len("tmpl_"):]: z[k] for k in z.files if k.startswith("tmpl_")}
         return r
 
-    def read_patch(self, patch: np.ndarray) -> tuple[str | None, list[SlotResult]]:
+    def read_patch(
+        self, patch: np.ndarray, n_slots: int | None = None
+    ) -> tuple[str | None, list[SlotResult]]:
         """PIPELINE ENTRY: read an ALREADY-CROPPED field patch (the pipeline crops
-        the zone via hud_regions + _crop and hands it here). Returns (digit string,
-        per-slot detail) or (None, ...) on abstain. Abstains on: corruption, absent
-        field, failed segmentation, or any slot below tau / margin. A null beats a
-        wrong digit (never-fabricate)."""
+        the zone via hud_regions + _crop and hands it here). `n_slots` overrides the
+        spec's slot count — so the shared white-on-dark template set reads a
+        1-digit field (quarter/down/minutes) or a 2-digit one (seconds). Returns
+        (digit string, per-slot detail) or (None, ...) on abstain. Abstains on:
+        corruption, absent field, failed segmentation, or any slot below tau /
+        margin. A null beats a wrong digit (never-fabricate)."""
         if patch is None or patch.size == 0:
             return None, []
         if is_corrupt_patch(patch) or not field_present_patch(patch):
             return None, []
-        glyphs = segment_patch(patch, self.spec.n_slots)
+        glyphs = segment_patch(patch, n_slots if n_slots is not None else self.spec.n_slots)
         if glyphs is None:
             return None, []
         results = [self.classify(vec(g)) for g in glyphs]
