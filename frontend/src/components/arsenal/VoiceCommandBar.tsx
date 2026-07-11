@@ -83,7 +83,7 @@ export function VoiceCommandBar({ onOpenWeapon, onPracticeWeapon }: Props) {
         setFeedback('No weapons saved yet.');
         return;
       }
-      const top = weapons[0];
+      const top = weapons[0]!;
       speak(
         `You have ${weapons.length} ${weapons.length === 1 ? 'weapon' : 'weapons'} in your Arsenal for ${TITLE_DISPLAY_NAME[titleId]}. Your top weapon: ${top.name}. Best used when ${top.when_to_use}. Say the name of a weapon to hear its full brief.`
       );

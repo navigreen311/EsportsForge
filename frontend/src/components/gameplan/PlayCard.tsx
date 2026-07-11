@@ -77,7 +77,7 @@ export default function PlayCard({ play, index, isSelected, onSelect }: PlayCard
       {/* PlayerTwin + Meta badges */}
       <div className="flex flex-wrap items-center gap-1.5 mt-2">
         {PLAY_EXECUTION_PCT[play.id] !== undefined && (
-          <PlayerTwinBadge executionPct={PLAY_EXECUTION_PCT[play.id]} />
+          <PlayerTwinBadge executionPct={PLAY_EXECUTION_PCT[play.id]!} />
         )}
         <MetaExpiryWarning playId={play.id} />
       </div>

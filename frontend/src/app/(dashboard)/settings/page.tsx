@@ -102,7 +102,7 @@ function SettingsPageInner() {
     setHasChanges(false);
   };
 
-  const activeTabMeta = tabs.find((t) => t.id === activeTab) ?? tabs[0];
+  const activeTabMeta = tabs.find((t) => t.id === activeTab) ?? tabs[0]!;
   const saveLabel = isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : activeTabMeta.saveLabel;
 
   return (

@@ -87,7 +87,7 @@ function deriveTitle(job: AnimaJob): string {
   // Best-effort label until the backend returns a friendly title field.
   if (job.source_id) {
     const parts = job.source_id.split(':');
-    return parts[parts.length - 1].replace(/[-_]/g, ' ');
+    return parts[parts.length - 1]!.replace(/[-_]/g, ' ');
   }
   return TYPE_LABEL[job.type];
 }

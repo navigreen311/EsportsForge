@@ -37,7 +37,7 @@ export default function WinRateChart({ data }: WinRateChartProps) {
         {data.length > 0 && (
           <div className="text-right">
             <p className="text-2xl font-bold text-forge-400">
-              {data[data.length - 1].winRate}%
+              {data[data.length - 1]!.winRate}%
             </p>
             <p className="text-xs text-dark-500">Current</p>
           </div>

@@ -33,7 +33,7 @@ export default function FormationRecognitionTrainer() {
   const [correct, setCorrect] = useState(7);
   const [total, setTotal] = useState(10);
 
-  const formation = FORMATIONS[formationIdx];
+  const formation = FORMATIONS[formationIdx]!;
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
   const progressPct = total > 0 ? Math.round((correct / total) * 100) : 0;
 

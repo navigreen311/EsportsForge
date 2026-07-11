@@ -66,7 +66,7 @@ const OPTS = { sessionId: 'sess-1', token: 'browser-tok' };
 test('connects when enabled with sessionId + token; URL carries ?token=', () => {
   renderHook(() => useVisionEvents(OPTS));
   expect(FakeWebSocket.instances).toHaveLength(1);
-  expect(FakeWebSocket.instances[0].url).toBe(
+  expect(FakeWebSocket.instances[0]!.url).toBe(
     'ws://test-core:8100/ws/events/sess-1?token=browser-tok',
   );
 });
@@ -80,7 +80,7 @@ test('does not connect when disabled or missing sessionId/token', () => {
 
 test('filters: SNAPSHOT ignored, FORMATION_LOCKED surfaced (real shape)', () => {
   const { result } = renderHook(() => useVisionEvents(OPTS));
-  const ws = FakeWebSocket.instances[0];
+  const ws = FakeWebSocket.instances[0]!;
   act(() => ws.emitOpen());
 
   act(() => ws.emitMessage(SNAPSHOT_EVENT));
@@ -95,7 +95,7 @@ test('filters: SNAPSHOT ignored, FORMATION_LOCKED surfaced (real shape)', () => 
 
 test('lastEvent tracks the latest matching event', () => {
   const { result } = renderHook(() => useVisionEvents(OPTS));
-  const ws = FakeWebSocket.instances[0];
+  const ws = FakeWebSocket.instances[0]!;
   act(() => ws.emitOpen());
   act(() =>
     ws.emitMessage({
@@ -111,7 +111,7 @@ test('connected toggles on open/close', () => {
   jest.useFakeTimers();
   try {
     const { result } = renderHook(() => useVisionEvents(OPTS));
-    const ws = FakeWebSocket.instances[0];
+    const ws = FakeWebSocket.instances[0]!;
     act(() => ws.emitOpen());
     expect(result.current.connected).toBe(true);
     act(() => ws.emitServerClose());
@@ -125,7 +125,7 @@ test('reconnects with backoff on unexpected close', () => {
   jest.useFakeTimers();
   try {
     renderHook(() => useVisionEvents(OPTS));
-    const ws = FakeWebSocket.instances[0];
+    const ws = FakeWebSocket.instances[0]!;
     act(() => ws.emitOpen());
     act(() => ws.emitServerClose());
     expect(FakeWebSocket.instances).toHaveLength(1);
@@ -142,7 +142,7 @@ test('cleanup on unmount closes socket and does not reconnect', () => {
   jest.useFakeTimers();
   try {
     const { unmount } = renderHook(() => useVisionEvents(OPTS));
-    const ws = FakeWebSocket.instances[0];
+    const ws = FakeWebSocket.instances[0]!;
     act(() => ws.emitOpen());
     unmount();
     expect(ws.close).toHaveBeenCalled();

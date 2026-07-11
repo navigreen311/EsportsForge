@@ -241,7 +241,7 @@ export default function AdminAIPage() {
             </thead>
             <tbody>
               {AGENT_ACCURACY.map((row) => {
-                const t = TREND_ICON[row.trend];
+                const t = TREND_ICON[row.trend]!;
                 return (
                   <tr
                     key={row.agent}

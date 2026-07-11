@@ -13,7 +13,7 @@ export function useTitle() {
   const setTitle = useUIStore((s) => s.setTitle);
 
   const currentTitle: TitleOption =
-    TITLE_OPTIONS.find((t) => t.id === selectedTitle) ?? TITLE_OPTIONS[0];
+    TITLE_OPTIONS.find((t) => t.id === selectedTitle) ?? TITLE_OPTIONS[0]!;
 
   const otherTitles = TITLE_OPTIONS.filter((t) => t.id !== selectedTitle);
 

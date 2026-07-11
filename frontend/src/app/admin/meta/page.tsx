@@ -72,7 +72,7 @@ const STATUS_BADGE: Record<string, string> = {
 /* ------------------------------------------------------------------ */
 
 export default function AdminMetaPage() {
-  const [selectedWeek, setSelectedWeek] = useState(MOCK_WEEKS[0].weekId);
+  const [selectedWeek, setSelectedWeek] = useState(MOCK_WEEKS[0]!.weekId);
 
   const uniqueWeeks = [...new Map(MOCK_WEEKS.map((w) => [w.weekId, w.weekLabel])).entries()];
 

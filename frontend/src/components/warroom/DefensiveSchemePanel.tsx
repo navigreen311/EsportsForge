@@ -148,8 +148,8 @@ export default function DefensiveSchemePanel() {
                 Blitz Trigger
               </p>
               <p className="text-xs text-dark-200">
-                <span className="text-amber-300">If {plan.adjustment_triggers[0].trigger}</span>{' '}
-                — {plan.adjustment_triggers[0].adjustment}
+                <span className="text-amber-300">If {plan.adjustment_triggers[0]!.trigger}</span>{' '}
+                — {plan.adjustment_triggers[0]!.adjustment}
               </p>
             </div>
           )}

@@ -93,8 +93,8 @@ export default function ReplayUploader({
       // Update step statuses based on current progress
       setSteps((prev) =>
         prev.map((step, i) => {
-          const threshold = stepThresholds[i];
-          const prevThreshold = i > 0 ? stepThresholds[i - 1] : 0;
+          const threshold = stepThresholds[i]!;
+          const prevThreshold = i > 0 ? stepThresholds[i - 1]! : 0;
           if (current >= threshold) return { ...step, status: "done" };
           if (current >= prevThreshold) return { ...step, status: "active" };
           return { ...step, status: "pending" };

@@ -251,8 +251,8 @@ export default function ProfilePage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {profile.improvementVelocity.map((metric) => {
-            const firstVal = metric.data[0].value;
-            const lastVal = metric.data[metric.data.length - 1].value;
+            const firstVal = metric.data[0]!.value;
+            const lastVal = metric.data[metric.data.length - 1]!.value;
             const change = lastVal - firstVal;
 
             return (

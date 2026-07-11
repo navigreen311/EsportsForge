@@ -192,7 +192,7 @@ export default function NotificationPreferences(_props: NotificationPreferencesP
             description={nt.description}
             icon={nt.icon}
             iconColor={nt.iconColor}
-            checked={typeToggles[nt.key]}
+            checked={typeToggles[nt.key]!}
             onChange={(v) => handleToggleType(nt.key, v)}
           />
         ))}
