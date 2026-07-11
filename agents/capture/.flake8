@@ -1,0 +1,6 @@
+[flake8]
+max-line-length = 120
+# E203 (whitespace before ':') and W503 (line break before binary operator) are
+# not black-compatible; ignore them so flake8 and the formatter agree.
+extend-ignore = E203, W503
+exclude = __pycache__, .venv

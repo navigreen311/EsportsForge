@@ -13,7 +13,6 @@ import asyncio
 import base64
 import logging
 import time
-from datetime import datetime, timezone
 from typing import Awaitable, Callable
 
 import cv2

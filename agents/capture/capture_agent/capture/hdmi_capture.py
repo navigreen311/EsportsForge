@@ -94,8 +94,10 @@ class HdmiCaptureSource:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
         )
-        logger.info("hdmi_ffmpeg_spawned", extra={"device": self.device_name,
-                                                   "wh": (self.width, self.height)})
+        logger.info(
+            "hdmi_ffmpeg_spawned",
+            extra={"device": self.device_name, "wh": (self.width, self.height)},
+        )
 
     def open(self) -> None:
         if shutil.which(self.ffmpeg_bin) is None:
