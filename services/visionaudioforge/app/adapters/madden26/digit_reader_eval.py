@@ -51,7 +51,8 @@ def _fp(idx: int) -> str:
 def _views(frame_gt: dict[str, str]) -> list[list[int]]:
     """Group consecutive same-value frames into views (one clock reading each)."""
     idxs = sorted(int(k) for k in frame_gt)
-    views, cur = [], []
+    views: list[list[int]] = []
+    cur: list[int] = []
     for i in idxs:
         if cur and (i - cur[-1] > 2 or frame_gt[str(i)] != frame_gt[str(cur[-1])]):
             views.append(cur)
@@ -156,7 +157,7 @@ def main() -> None:
         print(f"  held-out 7s NCC: vs 7-tmpl={statistics.mean(t7):.2f} vs 1-tmpl={statistics.mean(t1):.2f}")
 
     # per-digit
-    per = {}
+    per: dict[str, list[int]] = {}
     for v, d, _ in evalset:
         r = reader.classify(v)
         ab = r.best < TAU or r.margin < DELTA
