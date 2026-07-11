@@ -78,6 +78,7 @@ class Dispatcher:
             return {"count": 0, "p50_ms": 0.0, "p95_ms": 0.0, "p99_ms": 0.0}
         ordered = sorted(values)
         n = len(ordered)
+
         def pct(p: float) -> float:
             return round(ordered[min(n - 1, int(p * n))], 3)
         return {"count": n, "p50_ms": pct(0.50), "p95_ms": pct(0.95), "p99_ms": pct(0.99)}
@@ -200,5 +201,3 @@ class Dispatcher:
                 "reason": reason,
             },
         )
-
-

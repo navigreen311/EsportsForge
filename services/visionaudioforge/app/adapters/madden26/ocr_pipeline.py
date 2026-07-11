@@ -35,8 +35,8 @@ def _get_reader():
     if _easyocr_reader is None:
         with _easyocr_lock:
             if _easyocr_reader is None:
-                import easyocr  # imported lazily so unit tests that don't
-                                # need OCR don't pay the cost
+                # imported lazily so unit tests that don't need OCR don't pay the cost
+                import easyocr
                 _easyocr_reader = easyocr.Reader(["en"], gpu=False, verbose=False)
                 logger.info("easyocr_loaded")
     return _easyocr_reader
@@ -678,7 +678,6 @@ class OCRPipeline:
         """
         want = set(fields)
         sb = self.regions["scoreboard"]["subregions"]
-        dd = self.regions["down_distance"]["subregions"]
         out: dict = {}
         confs: list[float] = []
 
