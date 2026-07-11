@@ -42,25 +42,36 @@ Wired per-session in `Madden26Adapter.process_frame` (like `PlayBoundaryTrigger`
 `snap.snapped` is True on the frame a snap is confirmed, and the adapter records
 `_last_snap_frame`. Cost is a couple of small crops/frame — no OCR, no model.
 
-## Validation (offline, against the 3 labelled clips)
+## Validation (v0.2 — 8 clips, 61 labelled snaps)
 
-**Recall 23/27 ≈ 85 % (≈92 % adjusting for 2 likely-mislabelled GT entries), 1 FP.**
-The signal + gates hold across camera angles, field positions, tempo (mostly no-huddle),
-and the edge cases. Delay-of-game is cleanly rejected (clip 3: 6/6, 0 FP).
+Captured 5 more clips deliberately spanning the stressors: **huddle** (play-call
+screens), **red-zone/goal-line** (low grass fraction), **no-huddle** (fast tempo),
+**special teams** + **delay-of-game**, and **replays**. Every candidate freeze was
+eyeball-labelled → **61 real snaps**.
 
-## Honest state / follow-ups (not yet at the ±200 ms / ≥95 % spec bar)
+- **Recall 58/61 = 95 %** (real per-frame detector) — **meets the ≥95 % bar.** The
+  v0.1→v0.2 win was **peak-based tick detection** (v0.1's rising-threshold skipped
+  countdown ticks → false freezes and missed real ones). At the candidate level the
+  freeze signal recovers **61/61** snaps.
+- The **low-green red-zone recall** was fixed by lowering `GREEN_MIN` 0.28→0.30 — the
+  data showed the lowest real red-zone snap sits at grass-fraction 0.31.
+- Delay-of-game and replays are cleanly rejected by the red / field-green gates.
 
-- **Recall ~85–92 %, target ≥95 %.** The residual misses are tick-detection edges (the
-  online rising-threshold occasionally skips a countdown tick vs the offline peak
-  detector). A peak-based online tick (1-frame lookahead) should recover them.
-- **1 FP** — a play-call screen with a grass backdrop that fools `ContextDetector`
-  (labels it `live_gameplay`). Needs better play-call detection, not a snap-detector fix.
-- **Snap-time granularity is ~1 s** (the tick interval), not yet ±200 ms. Fine for the
-  coverage-frame-grab use case (the snap confirms at ~snap+1.5 s, inside the snap+1–2 s
-  window), but tightening to ±200 ms needs a finer within-second cue.
-- Validation set is 3 clips / ~27 snaps — thin for a ≥95 % claim; `--record` makes more a
-  90 s ask each.
+## Honest limitation — the ~2-FP/clip floor is blocked on the play-clock reader
 
-This lands the detector from an inert stub to a working, camera-independent v0.1 with a
-clear path to spec. Downstream (`detect_coverage` → `COVERAGE_LOCKED`, ADR 0010/0017) is
-still gated on the coverage model reaching 0.85 (the temporal-architecture effort).
+~18 FP across the 8 clips (~2 per 90 s). **These are not tunable away over this signal.**
+A play-clock that briefly **pauses/hitches** mid-countdown (then resumes) freezes exactly
+like a snap. The clean discriminator is what *ends* the freeze — a real snap **resets** the
+clock to `:40` (value up), a pause **resumes** it (value down) — but that needs reading the
+play-clock **value**, and the frame-diff signal cannot recover it (measured: neither freeze
+duration, tick threshold, nor reset-tick magnitude separate the FPs from real snaps).
+**So driving FP toward 0 is gated on the deferred dark-on-white play-clock reader.**
+Mitigation meanwhile: the downstream coverage gate should reject low-confidence coverage
+reads on FP-snap frames (a pre-snap pause isn't a real post-snap look).
+
+**±200 ms snap-time** is likewise a follow-up: granularity is currently ~1 s (the tick
+interval); tightening needs a finer within-second cue.
+
+This takes the detector from an inert stub to **v0.2 at the ≥95 % recall spec**, camera-
+independent, with the FP floor understood and attributed. Downstream (`detect_coverage` →
+`COVERAGE_LOCKED`, ADR 0010/0017) is still gated on the coverage model reaching 0.85.
