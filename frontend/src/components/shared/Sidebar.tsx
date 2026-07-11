@@ -5,7 +5,6 @@
 
 "use client";
 
-import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { clsx } from 'clsx';
@@ -19,7 +18,6 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   Swords,
   X,
   Archive,
@@ -27,7 +25,7 @@ import {
   Zap,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useUIStore, TITLE_OPTIONS, TIER_CONFIG } from '@/lib/store';
+import { useUIStore, TIER_CONFIG } from '@/lib/store';
 import { Badge } from './Badge';
 import { TitleSwitcher } from './TitleSwitcher';
 
@@ -50,70 +48,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Tournament', href: '/tournament', icon: Trophy },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
-
-function TitleSelector({ collapsed }: { collapsed: boolean }) {
-  const [open, setOpen] = useState(false);
-  const selectedTitle = useUIStore((s) => s.selectedTitle);
-  const setTitle = useUIStore((s) => s.setTitle);
-
-  const current = TITLE_OPTIONS.find((t) => t.id === selectedTitle) ?? TITLE_OPTIONS[0];
-
-  if (collapsed) {
-    return (
-      <button
-        onClick={() => {
-          const next = TITLE_OPTIONS.find((t) => t.id !== selectedTitle);
-          if (next) setTitle(next.id);
-        }}
-        className="flex h-10 w-10 items-center justify-center rounded-lg bg-dark-800/50 text-lg transition-colors hover:bg-dark-700"
-        title={current.label}
-      >
-        {current.icon}
-      </button>
-    );
-  }
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 rounded-lg bg-dark-800/50 px-3 py-2 text-sm text-dark-200 transition-colors hover:bg-dark-700"
-      >
-        <span className="text-lg">{current.icon}</span>
-        <span className="flex-1 text-left font-medium">{current.label}</span>
-        <ChevronDown
-          className={clsx(
-            'h-4 w-4 text-dark-400 transition-transform',
-            open && 'rotate-180'
-          )}
-        />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 right-0 z-10 mt-1 overflow-hidden rounded-lg border border-dark-700/50 bg-dark-800 shadow-xl">
-          {TITLE_OPTIONS.map((title) => (
-            <button
-              key={title.id}
-              onClick={() => {
-                setTitle(title.id);
-                setOpen(false);
-              }}
-              className={clsx(
-                'flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors hover:bg-dark-700',
-                title.id === selectedTitle
-                  ? 'bg-forge-500/10 text-forge-400'
-                  : 'text-dark-300'
-              )}
-            >
-              <span className="text-lg">{title.icon}</span>
-              <span>{title.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function NavLink({
   item,

@@ -79,7 +79,7 @@ const defaultConfigs: Record<TitleKey, TitleConfig> = {
   },
 };
 
-export default function PerTitleConfig({ activeTitle }: PerTitleConfigProps) {
+export default function PerTitleConfig(_props: PerTitleConfigProps) {
   const [selectedTab, setSelectedTab] = useState<TitleKey>('madden-26');
   const [configs, setConfigs] = useState<Record<TitleKey, TitleConfig>>(defaultConfigs);
 

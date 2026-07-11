@@ -6,11 +6,7 @@ import {
   Swords,
   AlertTriangle,
   BarChart3,
-  Brain,
   Shield,
-  Zap,
-  Target,
-  Clock,
   Star,
   FileText,
   Crosshair,
@@ -37,20 +33,6 @@ const severityColors: Record<string, string> = {
   medium: 'bg-yellow-900/40 text-yellow-400',
   high: 'bg-orange-900/40 text-orange-400',
   critical: 'bg-red-900/40 text-red-400',
-};
-
-const frequencyDots: Record<string, number> = {
-  rare: 1,
-  occasional: 2,
-  frequent: 3,
-};
-
-const signalIcons: Record<string, React.ReactNode> = {
-  timeout: <Clock className="w-4 h-4" />,
-  'pace-change': <Zap className="w-4 h-4" />,
-  audible: <Brain className="w-4 h-4" />,
-  'hot-route': <Target className="w-4 h-4" />,
-  'formation-shift': <Shield className="w-4 h-4" />,
 };
 
 const tabs: { key: DossierTab; label: string; icon: React.ReactNode }[] = [

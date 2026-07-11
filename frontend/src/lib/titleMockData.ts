@@ -5,14 +5,6 @@
 
 import type {
   TitleDashboardData,
-  PriorityItem,
-  RecommendationItem,
-  WeeklyNarrativeData,
-  DashboardStats,
-  ExecutionGap,
-  LoopAIDebrief,
-  BenchmarkMetric,
-  ProgressionPackage,
 } from '@/types/dashboard';
 
 // ---- Helper: empty / no-data shell ----------------------------------------

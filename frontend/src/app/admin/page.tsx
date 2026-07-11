@@ -9,8 +9,6 @@ import {
   Activity,
   DollarSign,
   TrendingDown,
-  CheckCircle,
-  AlertCircle,
   Server,
 } from 'lucide-react';
 

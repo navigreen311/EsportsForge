@@ -267,7 +267,6 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
             : displayItems.map((item) => {
                 flatIdx++;
                 const idx = flatIdx;
-                const Icon = item.icon;
                 return (
                   <button
                     key={item.id}

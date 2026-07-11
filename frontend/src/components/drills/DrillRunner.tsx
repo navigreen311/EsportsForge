@@ -16,7 +16,7 @@ import {
 import PressureModeToggle, { PressureContext } from '@/components/drills/PressureModeToggle';
 import WhyThisDrill from '@/components/drills/WhyThisDrill';
 import SimLabLaunchButton from '@/components/drills/SimLabLaunchButton';
-import { DrillMasteryDot, DRILL_MASTERY } from '@/components/drills/DrillMasteryDot';
+import { DRILL_MASTERY } from '@/components/drills/DrillMasteryDot';
 import { useVoiceForge } from '@/hooks/useVoiceForge';
 import { AnimaPlayer } from '@/components/animaforge/AnimaPlayer';
 import { useAnimaForgeAvailable } from '@/hooks/useAnimaForge';
@@ -64,18 +64,14 @@ export default function DrillRunner({
   onCompleteRep,
   onSkip,
   onStart,
-  onEnd,
-  onNext,
   isActive,
-  successCount,
-  failCount,
 }: DrillRunnerProps) {
   const [pressureMode, setPressureMode] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const progress = drill.reps > 0 ? (drill.completedReps / drill.reps) * 100 : 0;
   const diffConfig = difficultyConfig[drill.difficulty];
   const mastery = DRILL_MASTERY[drill.id] ?? 'not-started';
-  const { speak, stop, isSpeaking, isAvailable: voiceAvailable } = useVoiceForge();
+  const { speak, stop, isAvailable: voiceAvailable } = useVoiceForge();
 
   // === AnimaForge: drill demonstration video =================================
   const { available: animaAvailable } = useAnimaForgeAvailable();

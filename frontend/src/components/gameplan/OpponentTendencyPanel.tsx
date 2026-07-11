@@ -56,7 +56,6 @@ function PercentageBar({ label, pct }: BreakdownRow) {
 }
 
 export default function OpponentTendencyPanel({
-  opponentName,
   onFilterByTendency,
 }: OpponentTendencyPanelProps) {
   const [expanded, setExpanded] = useState(false);

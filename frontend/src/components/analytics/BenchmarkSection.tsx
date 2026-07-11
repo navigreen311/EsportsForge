@@ -52,7 +52,7 @@ function DeltaIndicator({ delta }: { delta: number }) {
   );
 }
 
-function PercentileBar({ percentile, tierText }: { percentile: number; tierText: string }) {
+function PercentileBar({ percentile }: { percentile: number; tierText: string }) {
   const barColor =
     percentile >= 75
       ? 'bg-cyan-400'

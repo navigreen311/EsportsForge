@@ -24,13 +24,11 @@ import {
   Play,
   Pause,
   ChevronRight,
-  Flame,
   Eye,
   Volume2,
   X,
   Clock,
   FileText,
-  ArrowLeft,
   Smile,
   ChevronDown,
   Droplets,
@@ -849,6 +847,7 @@ function CountdownTimer() {
       const t = window.setTimeout(() => setShowHydration(false), 8000);
       return () => window.clearTimeout(t);
     }
+    return undefined;
   }, [remaining, totalSeconds, completedRef]);
 
   const minutes = Math.floor(remaining / 60);
