@@ -15,7 +15,7 @@ import pytest
 from app.adapters.madden26.play_clock_reader import PlayClockReader
 
 _MODEL = Path(__file__).resolve().parents[1] / (
-    "app/adapters/madden26/models/play_clock_v0_1.onnx"
+    "app/adapters/madden26/models/play_clock_v0_2.onnx"
 )
 
 

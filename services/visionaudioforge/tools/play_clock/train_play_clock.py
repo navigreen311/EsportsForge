@@ -1,4 +1,4 @@
-"""Train + export the play-clock 2-head CNN reader (models/play_clock_v0_1.onnx).
+"""Train + export the play-clock 2-head CNN reader (models/play_clock_v0_2.onnx).
 
 Dev/training-only (imports torch; the service runs the ONNX via onnxruntime). The
 training data is the 8 live snap-capture clips under ``--clips-dir`` (external,
@@ -6,9 +6,12 @@ training data is the 8 live snap-capture clips under ``--clips-dir`` (external,
 ``labels.json`` here: {clip: {second: value}}, auto-derived by reading each clip's
 1-fps play-clock contact sheet and cleaning with countdown monotonicity.
 
-Held-out-by-clip this reads 72% exact / 82% within-±1 per frame (2x the 40% NCC
+Held-out-by-clip this reads 77% exact / 82% within-±1 per frame (~2x the 40% NCC
 baseline that was ruled out), and 94% on the snap-detector reset-vs-resume
-decision. See docs/phase-completions/play-clock-reader-findings.md.
+decision. Training frames are bounded to each labelled second's play-clock plateau
+via tick detection (`_ticks`), so no patch straddles a mid-second countdown tick —
+this is what took exact from 72% to 77% on the same 8 clips. See
+docs/phase-completions/play-clock-reader-findings.md.
 
     python train_play_clock.py --clips-dir ~/madden-recal-refs/digit-campaign
 
@@ -36,34 +39,63 @@ CLIPS = ["snap_run", "snap_run2", "snap_run3", "snap_huddle",
          "snap_redzone", "snap_nohuddle", "snap_special", "snap_replays"]
 
 
-def patch(frame: np.ndarray) -> np.ndarray:
+WIN = 7             # half-window: consider frames 30·s+15 ± WIN
+TICK_TH = 6.0       # VALBOX frame-diff peak that marks a digit change (a countdown tick)
+
+
+def _vgray(frame: np.ndarray) -> np.ndarray:
     x, y, w, h = VALBOX
-    g = cv2.cvtColor(frame[y:y + h, x:x + w], cv2.COLOR_BGR2GRAY)
-    return cv2.resize(g, (IW, IH)).astype(np.float32) / 255.0
+    return cv2.cvtColor(frame[y:y + h, x:x + w], cv2.COLOR_BGR2GRAY).astype(np.float32)
+
+
+def patch(frame: np.ndarray) -> np.ndarray:
+    return cv2.resize(_vgray(frame), (IW, IH)) / 255.0
+
+
+def _ticks(grays: dict) -> list:
+    """Frames where the VALBOX changed (a digit flipped) — PEAKS in the frame-diff.
+    Used to bound each labelled second to its own play-clock plateau so no training
+    patch straddles a mid-second countdown tick (the dominant label-noise source)."""
+    idx = sorted(grays)
+    d = {idx[j]: float(np.abs(grays[idx[j]] - grays[idx[j - 1]]).mean()) for j in range(1, len(idx))}
+    ticks = []
+    for j in range(1, len(idx)):
+        i = idx[j]
+        nxt = d.get(idx[j + 1], 0.0) if j + 1 < len(idx) else 0.0
+        if d.get(i, 0.0) >= TICK_TH and d.get(i, 0.0) >= d.get(idx[j - 1], 0.0) and d.get(i, 0.0) >= nxt:
+            ticks.append(i)
+    return ticks
 
 
 def dataset(clips_dir: Path, labels: dict, clips: list[str]):
+    import bisect
     X, T, O = [], [], []
     for clip in clips:
         if clip not in labels:
             continue
-        want = {}                       # frame_idx -> value
-        for sec, val in labels[clip].items():
-            for fi in range(int(sec) * 30 + 11, int(sec) * 30 + 20):  # tight window on read frame 30s+15
-                want[fi] = int(val)
+        secs = {int(s): int(v) for s, v in labels[clip].items()}
+        lo, hi = min(secs) * 30, max(secs) * 30 + 30
         cap = cv2.VideoCapture(str(clips_dir / clip / f"{clip}.mp4"))
-        i = 0
+        grays, i = {}, 0
         while True:
             ok, f = cap.read()
-            if not ok:
+            if not ok or i > hi + 2:
                 break
-            if i in want:
-                v = want[i]
-                X.append(patch(f))
-                T.append(v // 10)
-                O.append(v % 10)
+            if lo - 2 <= i:
+                grays[i] = _vgray(f)
             i += 1
         cap.release()
+        ticks = _ticks(grays)
+        for s, v in secs.items():
+            a = s * 30 + 15
+            j = bisect.bisect_right(ticks, a)
+            prev = ticks[j - 1] if j > 0 else a - WIN            # last tick <= anchor
+            nxt = ticks[j] if j < len(ticks) else a + WIN + 1    # first tick > anchor
+            for fi in range(max(a - WIN, prev + 1), min(a + WIN, nxt - 1) + 1):  # plateau ∩ window; skip tick frames
+                if fi in grays:
+                    X.append(cv2.resize(grays[fi], (IW, IH)) / 255.0)
+                    T.append(v // 10)
+                    O.append(v % 10)
     return np.array(X), np.array(T), np.array(O)
 
 
@@ -119,8 +151,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--clips-dir", type=Path, required=True)
     ap.add_argument("--out", type=Path,
-                    default=Path(__file__).resolve().parents[1]
-                    / "app/adapters/madden26/models/play_clock_v0_1.onnx")
+                    default=Path(__file__).resolve().parents[2]
+                    / "app/adapters/madden26/models/play_clock_v0_2.onnx")
     args = ap.parse_args()
     labels = json.load(open(Path(__file__).parent / "labels.json"))
     Xtr, Ttr, Otr = dataset(args.clips_dir, labels, CLIPS)
