@@ -39,13 +39,35 @@ saturated.
 
 | Tier | Classes | Value | Current by-clip |
 |---|---|---|---|
-| T0 shell | 1-high vs 2-high | high | ~0.63 acc (near 0.58 baseline) |
+| T0 shell | 1-high vs 2-high | high | **0.83 F1** with deep-field crop (see "T0 started" below) |
 | T1 man/zone | man vs zone | high | untested |
 | T2 coverage | Cover 1/2/3/4 | ideal (ADR 0017) | ~0.58 (spatial) |
 | T3 variant | Sky/Cloud, Tampa, Palms | nice-to-have | very hard |
 
 Don't ship a tier until it clears the bar **held-out by game**. A reliable T0 beats an
 unreliable T2.
+
+#### T0 started — the shell is buildable (deep-field crop)
+
+Started T0 on the existing 120 clips (`agents/capture/coverage_t0_shell.py`). The shell IS the
+deep-safety count, so cropping the frame to the **deep field** (top ~40% in the All-22 view,
+where the safeties sit) jumps T0 from **0.67 → 0.83 macro-F1** (5-fold by-clip). Crops 35–50%
+all work; 30% is too tight (cuts safeties). **Cropping *away* the crowd/sideline *helped* —
+evidence the signal is the safeties, not a stadium confound.**
+
+| conf gate | coverage | accuracy |
+|---|---|---|
+| ≥0.5 (none) | 100% | 0.84 |
+| ≥0.8 | 76% | 0.90 |
+| ≥0.9 | 69% | 0.91 |
+
+Under the codebase's **abstain-over-guess** rule this is a shippable-shaped signal: call the
+shell when confident (~0.90), abstain otherwise. It clears the ~0.65 kill-criterion.
+**Gaps to actually ship:** (a) validate **held-out by game** (this is by-clip; no game labels in
+the corpus — needs a held-out capture); (b) more data (117 plays, still data-bound); (c) the
+top-40% crop is a mildly eval-selected hyperparameter. Path: a small known-coverage capture
+with game/session tags → by-game validation → wire `detect_coverage` to emit `1-high/2-high` +
+confidence + abstain (T0 first; keep `defensive_coverage` free-str per ADR 0017).
 
 ### 2. Held-out protocol (the lesson — bake it in)
 
