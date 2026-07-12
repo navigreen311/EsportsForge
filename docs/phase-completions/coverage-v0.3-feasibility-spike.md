@@ -4,10 +4,55 @@
   `COVERAGE_LOCKED`, ADR 0010/0017) **plumbing** (wire the existing ~0.86 classifier into
   the adapter) or a **research arc** (the classifier won't survive live production frames)?
 - **Date:** 2026-07-12
-- **Verdict:** **Research arc — NOT plumbing.** Do not open a v0.3 code session against the
-  current classifier. Three compounding, independently-blocking problems below. The snap
-  detector (M5b) and the play-clock reset-vs-resume de-FP (this session) are necessary
-  prerequisites that are now built, but they are **not sufficient**.
+- **Verdict (CORRECTED 2026-07-12 — see below):** The original verdict of "research arc"
+  rested on a **false premise** — that All-22 is replay-only and never appears in the live
+  feed. The operator confirmed **All-22 is a selectable LIVE gameplay camera** on this setup.
+  That reverses the core finding: with production able to run All-22, the domain gap and
+  detail-adequacy blockers **dissolve**, and v0.3 is **plausibly feasible / largely plumbing**,
+  pending (a) validating the ~0.86 classifier on *live* All-22 frames and (b) a playable-camera
+  fallback experiment. The original analysis is kept below as the honest record; the correction
+  section restates the current position.
+
+## CORRECTION (2026-07-12): All-22 is a live camera — verdict revised
+
+The spike's entire "research arc" conclusion hinged on the assumption *"the live PS5 feed
+never produces an All-22 frame."* **That assumption was wrong** (asserted from general Madden
+knowledge, not verified). The operator can select **All-22 as a live gameplay camera** (not
+just a replay angle), and end users could too. Re-evaluating each blocker under that fact:
+
+- **Blocker 1 (view-domain gap) — DISSOLVES if production runs All-22.** The ~0.86 classifier
+  trained on All-22; if the live camera is also All-22, train and serve match. No gap.
+- **Blocker 2 (detail adequacy) — DISSOLVES.** All-22 shows the full shell; DB depth/spacing
+  (the coverage signal) is visible. The ADR-0014 wall was a *broadcast*-view limitation.
+- **Blocker 3 (snap-timing / FP) — REMAINS, but is built** (snap detector + play-clock
+  reset-vs-resume de-FP). Still needed to sample clean snap+1–2 s frames.
+
+**Revised position: v0.3 is plausibly feasible / largely plumbing.** The remaining *technical*
+gap is the normal one — the ~0.86 was on ~150 *curated* All-22 fixture frames, so it must be
+validated on **live** All-22 gameplay (stadium/lighting/motion/HUD variation); a same-camera
+curated→live gap, tractable, not a research arc. The real open question is now a **product/UX
+decision** (is All-22 a camera players will actually run?), not vision feasibility.
+
+**The broadcast-frame evidence below is not wasted — it is repurposed.** It shows that the
+*standard/broadcast* cameras likely do NOT expose enough of the secondary, which is exactly
+the input to the **playable-camera fallback** question: since some players won't run All-22,
+we test (same-play, All-22 label as truth) whether coverage survives in a more playable camera
+(standard / broadcast / Madden Classic). See `agents/capture/COVERAGE_CAPTURE_PLAN.md`.
+
+## Revised plan (supersedes the "Recommendation" section below)
+
+1. **Primary — validate on live All-22.** Capture live All-22 with *known* coverage → run the
+   ~0.86 classifier on the live frames. If it holds, v0.3 is largely plumbing: retrain/adapt on
+   live All-22 if needed, then wire `detect_coverage`.
+2. **Playable-camera fallback.** Re-run the *same* practice reps in standard / broadcast /
+   Madden Classic (players get a camera choice). Label from the All-22 pass; test which cams
+   preserve the coverage signal. Broadcast is the least likely (see below); Madden Classic
+   (wider/higher) is the best fallback candidate.
+
+---
+
+*Everything below is the ORIGINAL spike (premise since corrected — read with the correction
+above in mind).*
 
 ## Method
 
