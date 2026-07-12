@@ -95,6 +95,7 @@ unreliable T2.
   `gameplan/coverageHighlight.ts` seam is documented-silent, degrades gracefully).
 - **Disguise** is inherent difficulty. **Playable-cam** support is a second, harder data problem.
 
-*Reproduce Phase B: `agents/capture/extract_coverage_frames.py` +
-`crossval_coverage.py`; the spatial/temporal probes are scratch experiments (frozen ResNet18
-`layer4` 3×3 features, 5-fold by-clip linear probe).*
+*Reproduce Phase B: build the dataset with `agents/capture/extract_coverage_frames.py`, then
+`python agents/capture/coverage_probes.py --data <coverage_dataset>` — it runs the leakage demo,
+the avgpool-vs-spatial / temporal comparison, the learning curve, and the T0 shell probe (frozen
+ResNet18, 5-fold by-clip). The by-clip 4-way baseline is also the repo's `crossval_coverage.py`.*
