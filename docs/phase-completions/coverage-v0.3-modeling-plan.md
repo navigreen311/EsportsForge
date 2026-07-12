@@ -41,7 +41,7 @@ saturated.
 |---|---|---|---|
 | T0 shell | 1-high vs 2-high | high | **0.83 F1** with deep-field crop (see "T0 started" below) |
 | T1 man/zone | man vs zone | high | signal PRESENT: **0.87 F1** on Cover1-vs-Cover3 (see "T1 probed") |
-| T2 coverage | Cover 1/2/3/4 | ideal (ADR 0017) | ~0.58 (spatial) |
+| T2 coverage | Cover 1/2/3/4 | ideal (ADR 0017) | **0.74** hierarchical + deep crop (was flat 0.45/0.58 — see "T2 reframed") |
 | T3 variant | Sky/Cloud, Tampa, Palms | nice-to-have | very hard |
 
 Don't ship a tier until it clears the bar **held-out by game**. A reliable T0 beats an
@@ -85,6 +85,26 @@ real T1 needs **diverse man coverages** (Cover 0 / 1-Robber / 2-Man / man-under)
 coverages, and must resolve **Cover 2** — this corpus has only Cover 1 as man. So T1's path is a
 **dedicated man/zone capture** (varied man + zone calls, game-tagged) → by-game validation. The
 encouraging part: the signal is clearly there, so the capture is worth it.
+
+#### T2 reframed — 4-way is not a wall (0.45 → 0.74 by-clip)
+
+The Phase-B flat classifier put 4-way at ~0.45/0.58 and framed T2 as a modeling wall. That was
+a *flat classifier on the whole frame*. Two fixes (`agents/capture/coverage_t2_hier.py`):
+
+1. **Crop to the deep field** (the dominant lever): flat 4-way **0.58 → 0.70** just from the
+   top-40% crop — same insight as T0/T1.
+2. **Hierarchical decomposition** with a tailored crop per branch (**0.70 → 0.74**):
+   - shell (1-high vs 2-high) — deep-40% crop — ~0.83 (T0)
+   - within 1-high: Cover 1 vs 3 — top-70% crop — ~0.87 (T1)
+   - within 2-high: Cover 2 vs 4 — deep-40% crop — **~0.94** (safety width, halves vs quarters,
+     is crisp deep — the easiest branch)
+
+Each branch uses the crop that best separates *its* distinction, can abstain independently, and
+falls back to the coarser T0 shell when a sub is unconfident. **Net: 4-way by-clip 0.45 → 0.74**,
+approaching the 0.85 target. So T2 is **not an approach wall — it's data-limited** (learning curve
+still rising at 117 plays) and needs **by-game** validation (this is by-clip). Same caveats: 117
+plays, per-branch crops mildly eval-selected, hierarchy errors compound (a shell miss routes to
+the wrong sub). This is the same game-tagged capture as T0/T1 — one campaign feeds all three tiers.
 
 ### 2. Held-out protocol (the lesson — bake it in)
 
