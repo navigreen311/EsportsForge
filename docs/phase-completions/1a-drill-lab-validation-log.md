@@ -3,7 +3,7 @@
 - **Scope:** in-process pipeline (file -> dispatcher -> OCR -> events), bounded per clip, OFFLINE_LAB.
 - **Fixture classes (corrected):** OVERLAY = `playcall_*` + `practice_*` (both show the play-call overlay -> extraction); BROADCAST = `yt_*` only (no overlay -> transport + zero false-positive).
 - **Deferred (recorded, not run):** ~~#2 live page display (browser->core connect)~~ **PROVEN 2026-07-09 — see "Stage D" below**; #7 rollback-alarm wire (P2 CloudWatch), #8 webhook audit (:8002).
-- **Tracked robustness finding (not fixed here):** broadcast/null-HUD frames trigger a caught `Madden26Payload` ValidationError (score/clock required non-null) -> event logged+dropped, non-fatal. Payload-schema fix is separate work.
+- **~~Tracked robustness finding~~ RESOLVED 2026-07-12:** the earlier `Madden26Payload` ValidationError on broadcast/null-HUD frames (score/clock then required non-null) is fixed — the `FootballPayload` schema is fully nullable (v2.3.0-live) and the `state_assembler` cadence path **skips** the SNAPSHOT on an all-null read instead of emitting/raising. Locked in by regression tests in `tests/test_sampled_cadence.py` (`test_null_hud_read_is_skipped_not_raised`). Same PR also completed the deferred `play_clock` payload field (was smoothed but never emitted).
 
 ## Overlay clips - FORMATION extraction
 

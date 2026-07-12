@@ -45,6 +45,19 @@ _LIVE_FIELDS = ("score_home", "score_away", "down", "distance",
                 "field_position", "play_clock", "clock")
 
 
+def _as_int(v: object) -> int | None:
+    """Coerce a smoothed play-clock value (a digit-string like "40", an int, or
+    None) to int for the payload. Never raises — a non-numeric/absent value emits
+    null (null-HUD philosophy: degrade, don't fabricate or crash)."""
+    if isinstance(v, bool):        # bool is an int subclass — exclude explicitly
+        return None
+    if isinstance(v, int):
+        return v
+    if isinstance(v, str) and v.isdigit():
+        return int(v)
+    return None
+
+
 def _get_smoother(session: SessionContext) -> TemporalSmoother:
     sm = session.adapter_state.get("_smoother")
     if sm is None:
@@ -103,6 +116,7 @@ def assemble(
                 score_away=last_live.get("score_away"),
                 quarter=last_live.get("quarter"),
                 clock=last_live.get("clock"),
+                play_clock=_as_int(last_live.get("play_clock")),
                 down=last_live.get("down"),
                 distance=last_live.get("distance"),
                 field_position=last_live.get("field_position"),
@@ -146,6 +160,7 @@ def assemble(
         score_away=sm["score_away"],
         quarter=quarter,                    # very stable; not smoothed
         clock=sm["clock"],                  # nullable — no fabricated "0:00"
+        play_clock=_as_int(sm["play_clock"]),  # smoothed CNN read; nullable
         down=sm["down"],
         distance=sm["distance"],
         field_position=sm["field_position"],
