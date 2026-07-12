@@ -42,7 +42,7 @@ saturated.
 | T0 shell | 1-high vs 2-high | high | **0.83 F1** with deep-field crop (see "T0 started" below) |
 | T1 man/zone | man vs zone | high | signal PRESENT: **0.87 F1** on Cover1-vs-Cover3 (see "T1 probed") |
 | T2 coverage | Cover 1/2/3/4 | ideal (ADR 0017) | **0.74** hierarchical + deep crop (was flat 0.45/0.58 — see "T2 reframed") |
-| T3 variant | Sky/Cloud, Tampa, Palms | nice-to-have | very hard |
+| T3 variant | Cover 2-Man, Cover 1-Robber, Cover 0/6 (ADR 0017) | nice-to-have | **data-blocked** — no variant labels (see "T3 assessed") |
 
 Don't ship a tier until it clears the bar **held-out by game**. A reliable T0 beats an
 unreliable T2.
@@ -105,6 +105,32 @@ approaching the 0.85 target. So T2 is **not an approach wall — it's data-limit
 still rising at 117 plays) and needs **by-game** validation (this is by-clip). Same caveats: 117
 plays, per-branch crops mildly eval-selected, hierarchy errors compound (a shell miss routes to
 the wrong sub). This is the same game-tagged capture as T0/T1 — one campaign feeds all three tiers.
+
+#### T3 assessed — data-blocked (no variant labels); defer
+
+T3 is categorically different from T0–T2 and **cannot be started on the existing corpus**: the
+120 clips are labeled `cover1/2/3/4` only — there are **no variant labels** and no variant
+examples, so there is nothing to train or evaluate. (T0–T2 all had labels *derivable* from
+cover1–4; T3 does not.) Running an unsupervised within-class clustering probe would only surface
+stadium/formation structure, un-attributable to variants — misleading, so not run.
+
+**The in-scope T3 vocabulary is narrow (ADR 0017), not "every variant":** `Cover 2-Man`,
+`Cover 1-Robber` (emit if distinguishable), plus `Cover 0` (pure man, 0-high) and `Cover 6`
+(quarter-quarter-half). ADR 0017 also treats **man vs zone as *derivable* from the coverage
+number** (0/1 = man, 2/3/4/6 = zone), so it is **not** a T3 visual-classification task — that
+axis is already covered by the number. The genuinely-visual T3 asks are the *man wrinkles*:
+Cover **2-Man** (a 2-high shell played man) and Cover **1-Robber** (Cover 1 + a robber).
+
+**Encouraging connection:** those are exactly the man-vs-zone *technique* signal T1 already found
+learnable (0.87 on the clean Cover1-vs-Cover3 slice) — so detecting "a 2-high shell being played
+man" (Cover 2 vs Cover 2-Man) is plausibly within reach *once labeled examples exist*. The schema
+is already ready: `defensive_coverage` is a free-str with the vocabulary ADR-pinned (0017), so no
+contract work is needed.
+
+**Recommendation: defer T3 until T0–T2 ship.** It's the finest, hardest, lowest-value tier, and
+it's blocked on data, not modeling. When pursued, it's a simple extension of the game-tagged
+capture: add `Cover 0 / Cover 2-Man / Cover 1-Robber / Cover 6` calls (labeled by construction in
+practice mode) to the same sessions — one campaign still feeds every tier.
 
 ### 2. Held-out protocol (the lesson — bake it in)
 
