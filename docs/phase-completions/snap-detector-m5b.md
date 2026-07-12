@@ -57,17 +57,25 @@ eyeball-labelled → **61 real snaps**.
   data showed the lowest real red-zone snap sits at grass-fraction 0.31.
 - Delay-of-game and replays are cleanly rejected by the red / field-green gates.
 
-## Honest limitation — the ~2-FP/clip floor is blocked on the play-clock reader
+## The ~2-FP/clip floor — now addressed by the play-clock reader (reset-vs-resume)
 
-~18 FP across the 8 clips (~2 per 90 s). **These are not tunable away over this signal.**
-A play-clock that briefly **pauses/hitches** mid-countdown (then resumes) freezes exactly
-like a snap. The clean discriminator is what *ends* the freeze — a real snap **resets** the
-clock to `:40` (value up), a pause **resumes** it (value down) — but that needs reading the
-play-clock **value**, and the frame-diff signal cannot recover it (measured: neither freeze
-duration, tick threshold, nor reset-tick magnitude separate the FPs from real snaps).
-**So driving FP toward 0 is gated on the deferred dark-on-white play-clock reader.**
-Mitigation meanwhile: the downstream coverage gate should reject low-confidence coverage
-reads on FP-snap frames (a pre-snap pause isn't a real post-snap look).
+~18 FP across the 8 clips (~2 per 90 s). **Not tunable away over the frame-diff signal
+alone.** A play-clock that briefly **pauses/hitches** mid-countdown (then resumes) freezes
+exactly like a snap. The clean discriminator is what *ends* the freeze — a real snap
+**resets** the clock to `:40` (value up), a pause **resumes** it (value down) — which needs
+the play-clock **value** (the frame-diff signal cannot recover it: neither freeze duration,
+tick threshold, nor reset-tick magnitude separate the FPs).
+
+**Now wired.** The dark-on-white play-clock **CNN reader** exists (72% exact but **94% on
+the reset-vs-resume decision** — the reset gap dwarfs per-read noise; see
+`play-clock-reader-findings.md`). The adapter feeds the cached value into
+`SnapDetector.update(frame, live, pc_value)`. On snap confirm the detector captures the
+plateau value; if the clock then **resumes DOWN** during the POST_SNAP freeze it sets
+`last_snap_pause = True`. This is **non-destructive** (the snap already fired — the flag is
+an FP annotation surfaced as `adapter_state["_last_snap_pause"]`, biased to protect the 95%
+recall: it only ever fires on an unambiguous resume-down). The downstream coverage gate reads
+it to discount coverage on suspected-pause frames. The detector still runs **OCR-free when
+`pc_value` is None** — the annotation is purely additive.
 
 **±200 ms snap-time** is likewise a follow-up: granularity is currently ~1 s (the tick
 interval); tightening needs a finer within-second cue.

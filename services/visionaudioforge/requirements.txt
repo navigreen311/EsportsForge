@@ -27,9 +27,11 @@ easyocr==1.7.2
 # pulled transitively by easyocr; pinned here explicitly for training
 # reproducibility. On the dev box these are the CPU builds (torch 2.11.0+cpu /
 # torchvision 0.26.0+cpu from the pytorch CPU index); a GPU box may install the
-# CUDA build instead. onnx/onnxruntime are for the formation_v0_1.onnx export +
-# parity check. This stack is dev/training-only — the core service does not
-# import torch.
+# CUDA build instead. torch/torchvision/onnx are dev/training-only — the core
+# service does not import torch. onnxruntime, however, IS a RUNTIME dep: the
+# play-clock reader (play_clock_reader.py) runs models/play_clock_v0_1.onnx via
+# onnxruntime in the service (it degrades to a null reader if absent, but ships
+# here so play_clock is read in prod).
 torch==2.11.0
 torchvision==0.26.0
 onnx==1.22.0

@@ -106,8 +106,11 @@ class Madden26Adapter:
         "score_quarter": {"cadence": "every_n", "n": 40, "phase": 25,
                           "context": LIVE_GAMEPLAY,
                           "fields": ["score_home", "score_away", "quarter"]},
-        # play_clock is not in the Phase-0 payload — it returns with the M5b snap
-        # detector. Omitted here to keep OCR load off the hot path.
+        # play_clock — dark-on-white 2-head CNN reader (cheap ONNX, ~ms). Read at a
+        # brisk cadence: it feeds the payload AND the snap-detector reset-vs-resume
+        # FP annotation, which needs the value to move soon after a snap freeze.
+        "play_clock": {"cadence": "every_n", "n": 6, "phase": 6,
+                       "context": LIVE_GAMEPLAY, "fields": ["play_clock"]},
         # Read the formation periodically across the WHOLE play-call screen (not a
         # capped burst): the old on_play_call cap of 5 was spent during
         # formation-select BROWSING and never reached the play-select subtitle
@@ -206,11 +209,17 @@ class Madden26Adapter:
             updated = set(fresh.keys())
 
         # 5. snap detector (play-clock-freeze; cheap, no OCR). Reuses the context
-        #    read from step 1. snap.snapped is True on the frame a snap confirms.
+        #    read from step 1. The cached play-clock value (from the CNN reader,
+        #    refreshed on cadence) drives the reset-vs-resume FP annotation.
+        #    snap.snapped is True on the frame a snap confirms.
+        pc_cached = st.get("_ocr_cache", {}).get("play_clock")
+        pc_value = int(pc_cached) if pc_cached is not None else None
         snap = self._snap(session)
-        st["snap_state"] = snap.update(frame, context == HudContext.LIVE_GAMEPLAY)
+        st["snap_state"] = snap.update(
+            frame, context == HudContext.LIVE_GAMEPLAY, pc_value)
         if snap.snapped:
             st["_last_snap_frame"] = session.frame_count
+        st["_last_snap_pause"] = snap.last_snap_pause
 
         # 6. assemble from the carried-forward snapshot; smooth only fresh fields.
         return assemble(

@@ -25,13 +25,24 @@ def _frame(pc_level: int, *, grass: bool) -> np.ndarray:
     return f
 
 
-def _run(det: SnapDetector, level: int, n: int, *, grass: bool) -> int:
+def _run(det: SnapDetector, level: int, n: int, *, grass: bool,
+         pc: int | None = None) -> int:
     """Feed n identical frames; return how many fired a snap."""
     fired = 0
     for _ in range(n):
-        det.update(_frame(level, grass=grass), grass)
+        det.update(_frame(level, grass=grass), grass, pc)
         fired += int(det.snapped)
     return fired
+
+
+def _drive_to_snap(det: SnapDetector, pc: int) -> None:
+    """Countdown ticks then a grass freeze -> one confirmed snap, capturing ``pc``
+    as the plateau play-clock value at confirmation."""
+    _run(det, 100, 20, grass=True, pc=pc)
+    _run(det, 150, 25, grass=True, pc=pc)                       # tick 1
+    _run(det, 100, 25, grass=True, pc=pc)                       # tick 2
+    _run(det, 100, det.FREEZE_FRAMES + 1, grass=True, pc=pc)    # hold -> freeze -> snap
+    assert det._state == SnapState.POST_SNAP
 
 
 def test_countdown_then_freeze_on_grass_fires_one_snap():
@@ -60,3 +71,34 @@ def test_static_feed_never_snaps():
     fired = _run(det, 100, 200, grass=True)  # no ticks at all
     assert fired == 0
     assert det._state == SnapState.BETWEEN_PLAYS
+
+
+def test_play_clock_resume_flags_snap_as_pause():
+    # A snap confirms with the play-clock plateaued at :25. If the clock then
+    # RESUMES counting DOWN (24, 23, ...) it was a pause, not a snap.
+    det = SnapDetector()
+    _drive_to_snap(det, pc=25)
+    assert det.last_snap_pause is None                     # undetermined at confirm
+    for v in (24, 23, 22):                                 # clock resumes DOWN
+        det.update(_frame(100, grass=True), True, v)
+    assert det.last_snap_pause is True
+
+
+def test_play_clock_frozen_then_reset_is_a_real_snap():
+    # A real snap holds the clock at the plateau for the whole play, then the next
+    # play resets it UP to :40 — never resumes down, so it is NOT flagged a pause.
+    det = SnapDetector()
+    _drive_to_snap(det, pc=25)
+    for v in (25, 25, 25, 40, 40):                         # frozen then reset up
+        det.update(_frame(100, grass=True), True, v)
+    assert det.last_snap_pause is None
+
+
+def test_reset_vs_resume_is_inert_without_pc_value():
+    # Without a play-clock value the detector runs exactly as before (OCR-free):
+    # no pause annotation is ever raised.
+    det = SnapDetector()
+    _drive_to_snap(det, pc=None)
+    for _ in range(10):
+        det.update(_frame(100, grass=True), True, None)
+    assert det.last_snap_pause is None
