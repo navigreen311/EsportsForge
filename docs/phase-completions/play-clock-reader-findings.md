@@ -64,7 +64,9 @@ sinks NCC.
 **Wiring.** `play_clock_reader.PlayClockReader` (ONNX via onnxruntime; graceful-None if the
 model/onnxruntime is absent, same contract as the patch-NCC template readers). Payload:
 `OCRPipeline._read_play_clock` on an `every_n:6` cadence, confidence-gated (τ=0.55), smoothed
-(`play_clock` window=3). Snap FP fix: the cached value feeds `SnapDetector.update(pc_value=…)`,
+(`play_clock` window=3), and emitted as `FootballPayload.play_clock: int | None` (the schema
+field + `state_assembler` emission were completed 2026-07-12 — the value had been smoothed but
+silently dropped at payload build before then). Snap FP fix: the cached value feeds `SnapDetector.update(pc_value=…)`,
 which sets `last_snap_pause=True` when a POST_SNAP freeze's clock RESUMES down — a
 non-destructive annotation for the downstream confidence gate (the snap already fired). See
 `snap-detector-m5b.md`.

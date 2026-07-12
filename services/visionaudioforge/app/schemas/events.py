@@ -32,6 +32,7 @@ class FootballPayload(BaseModel):
     score_away: int | None = None
     quarter: int | None = None
     clock: str | None = None  # "MM:SS" or None when unreadable
+    play_clock: int | None = None  # 0-40 countdown (dark-on-white CNN reader); null when unreadable/absent
     down: int | None = None
     distance: int | None = None
     field_position: str | None = None  # "OWN_35", "OPP_22", "MIDFIELD"

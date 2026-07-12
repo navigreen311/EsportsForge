@@ -57,6 +57,33 @@ def test_unread_fields_carry_forward():
     assert p.down == 2 and p.distance == 7 and p.clock == "4:58"
 
 
+def test_play_clock_read_reaches_payload_as_int():
+    # The CNN play-clock reader emits a digit-string ("40"); it is smoothed
+    # (numeric) and must surface in the payload as an int (was silently dropped —
+    # play_clock had no payload field before the reader landed).
+    s = _session()
+    evs = _live(s, _snap(play_clock="40"), {"play_clock"})
+    assert evs[0].payload.play_clock == 40
+
+
+def test_unreadable_play_clock_emits_null_not_fabricated():
+    s = _session()
+    evs = _live(s, _snap(clock="5:00", play_clock=None), {"clock"})
+    assert evs[0].payload.play_clock is None
+
+
+def test_null_hud_read_is_skipped_not_raised():
+    # A fully-unreadable frame (menu / replay / broadcast / null-HUD): the sampled
+    # path skips the SNAPSHOT rather than emitting an all-null payload or raising a
+    # Madden26Payload ValidationError. Regression for the drill-lab null-HUD finding
+    # (resolved by the v2.3.0-live nullable schema + this skip guard).
+    s = _session()
+    evs = _live(s, _snap(score_home=None, score_away=None, quarter=None, clock=None,
+                         down=None, distance=None, play_clock=None),
+                {"clock", "score_home"})
+    assert evs == []
+
+
 def test_play_epoch_reset_prevents_cross_play_smoothing():
     s = _session()
     for _ in range(3):
