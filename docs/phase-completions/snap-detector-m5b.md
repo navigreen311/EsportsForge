@@ -66,7 +66,7 @@ exactly like a snap. The clean discriminator is what *ends* the freeze — a rea
 the play-clock **value** (the frame-diff signal cannot recover it: neither freeze duration,
 tick threshold, nor reset-tick magnitude separate the FPs).
 
-**Now wired.** The dark-on-white play-clock **CNN reader** exists (72% exact but **94% on
+**Now wired.** The dark-on-white play-clock **CNN reader** exists (77% exact but **94% on
 the reset-vs-resume decision** — the reset gap dwarfs per-read noise; see
 `play-clock-reader-findings.md`). The adapter feeds the cached value into
 `SnapDetector.update(frame, live, pc_value)`. On snap confirm the detector captures the

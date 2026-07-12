@@ -9,9 +9,11 @@ attend to the digit region and ignore the constant box, which is exactly the
 failure mode that sinks NCC.
 
 The net is a 2-head classifier (tens 0-4, ones 0-9) on the whole-value patch,
-trained on ~5k auto-labelled patches from 8 live capture clips (countdown-
-monotonicity labelling). Held-out-by-clip it reads **72% exact / 82% within-±1**
-per frame — 2x the 40% NCC baseline. That is best-effort (the field is
+trained on ~7.4k auto-labelled patches from 8 live capture clips (countdown
+labelling; training frames are bounded to each labelled second's play-clock
+plateau via tick detection, so no patch straddles a mid-second countdown tick).
+Held-out-by-clip it reads **77% exact / 82% within-±1** per frame — ~2x the 40%
+NCC baseline. That is best-effort (the field is
 informational and smoothed downstream), NOT a precise reader. Its high-value use
 is the snap-detector reset-vs-resume discriminator, where only the DIRECTION of
 change matters (reset toward :40 vs resume counting down): held-out that decision

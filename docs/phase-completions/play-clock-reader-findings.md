@@ -3,9 +3,9 @@
 - **Status:** **RESOLVED via a small CNN** (patch-NCC ruled out first — kept below as the
   honest record). The play-clock (dark-on-white `:00`–`:40`, the "third polarity") does
   **not** yield to the patch-NCC technique (best held-out **40%**), but a small 2-head CNN
-  on the whole-value patch reads it **72% exact / 82% within-±1** held-out (2x NCC), and —
+  on the whole-value patch reads it **77% exact / 82% within-±1** held-out (~2x NCC), and —
   the high-value use — **94%** on the snap-detector reset-vs-resume decision. Shipped as
-  `models/play_clock_v0_1.onnx` (ONNX/onnxruntime), wired to the `play_clock` payload
+  `models/play_clock_v0_2.onnx` (ONNX/onnxruntime), wired to the `play_clock` payload
   (best-effort, confidence-gated) and the snap-detector `last_snap_pause` FP annotation.
   See the **CNN resolution** section at the bottom.
 - **Date:** 2026-07-11 (patch-NCC findings); CNN resolution 2026-07-11
@@ -48,12 +48,18 @@ sinks NCC.
   read each clip's 1-fps contact sheet, then monotonicity-clean (drop `?`/red, drop isolated
   misreads) → 575 white-clock labelled seconds → ~5.2k mid-second training patches. Trainer +
   labels committed at `services/visionaudioforge/tools/play_clock/`.
-- **Accuracy (held-out by clip).** exact **72%**, within-±1 **82%** (2x the 40% NCC baseline);
-  train-fit is 75% (label-noise/font-ambiguity bias ceiling, not overfit). More clips would
-  raise it — the current ceiling is 8-clip data, not the method.
+- **Accuracy (held-out by clip).** exact **77%**, within-±1 **82%** (~2x the 40% NCC baseline);
+  train-fit **81%**. **Tick-aware windowing (v0.2)** was the lever: training frames for each
+  labelled second are bounded to that second's play-clock **plateau** via tick detection
+  (VALBOX frame-diff peaks), so no patch straddles a mid-second countdown tick — this took
+  exact **72% → 77%** and train-fit **75% → 81%** on the *same* 8 clips (the mid-tick label
+  noise was real). A controlled same-seed A/B showed the alternative — *re-labelling* the
+  disputed frames — did NOT help (72% → 66%): those frames are inherently ambiguous
+  mid-transition reads, so cleaner *windowing* beats cleaner *labels*. Beyond this the
+  ceiling is 8-clip data volume, not the method — more clips is the remaining lever.
 - **Reset-vs-resume 94%.** The high-value use needs only the DIRECTION of change (reset toward
   :40 vs resume counting down); the reset gap dwarfs per-read noise, so held-out this decision
-  is 94% even though the exact read is 72%.
+  is 94% even though the exact read is 77%.
 
 **Wiring.** `play_clock_reader.PlayClockReader` (ONNX via onnxruntime; graceful-None if the
 model/onnxruntime is absent, same contract as the patch-NCC template readers). Payload:

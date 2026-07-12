@@ -590,7 +590,7 @@ class OCRPipeline:
         from .play_clock_reader import PlayClockReader
 
         self._play_clock_reader = PlayClockReader.load(
-            Path(__file__).parent / "models" / "play_clock_v0_1.onnx"
+            Path(__file__).parent / "models" / "play_clock_v0_2.onnx"
         )
 
     def read_frame(self, frame: np.ndarray) -> OCRSnapshot:
