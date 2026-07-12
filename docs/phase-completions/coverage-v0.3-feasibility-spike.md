@@ -4,14 +4,54 @@
   `COVERAGE_LOCKED`, ADR 0010/0017) **plumbing** (wire the existing ~0.86 classifier into
   the adapter) or a **research arc** (the classifier won't survive live production frames)?
 - **Date:** 2026-07-12
-- **Verdict (CORRECTED 2026-07-12 — see below):** The original verdict of "research arc"
-  rested on a **false premise** — that All-22 is replay-only and never appears in the live
-  feed. The operator confirmed **All-22 is a selectable LIVE gameplay camera** on this setup.
-  That reverses the core finding: with production able to run All-22, the domain gap and
-  detail-adequacy blockers **dissolve**, and v0.3 is **plausibly feasible / largely plumbing**,
-  pending (a) validating the ~0.86 classifier on *live* All-22 frames and (b) a playable-camera
-  fallback experiment. The original analysis is kept below as the honest record; the correction
-  section restates the current position.
+- **Verdict (current — see VALIDATION RESULT below):** Two corrections landed on the original
+  "research arc" call. **(1)** All-22 is a **live** camera (not replay-only, as originally
+  assumed), which removes the *deployment* blocker. **(2)** But validating the classifier on the
+  All-22 corpus (held-out **by clip**) gives macro-F1 **~0.42, not 0.86** — the 0.86 was a
+  frame-level **leakage** artifact (the repo's own code flags it). So v0.3 is a **MODELING
+  problem, not plumbing**: even on the ideal All-22 input, the current frozen-ResNet18 reader
+  doesn't generalize to unseen plays. Do not wire it. The original analysis + the All-22
+  correction are kept below as the honest evolving record.
+
+## VALIDATION RESULT (2026-07-12) — the classifier does NOT hold up; the 0.86 was leakage
+
+After the correction below (All-22 is live → "plausibly plumbing, pending validation on live
+All-22"), the validation was run — the All-22 corpus was on the dev box after all
+(`C:/Users/ivann/Videos/MaddenCaptures/madden26_coverage_cover{1..4}_*`, **120 clips**). Built
+the frame dataset (`extract_coverage_frames.py`, 1152 frames) and evaluated **held-out by
+clip**. The result overturns the headline number:
+
+| Split | macro-F1 | Note |
+|---|---|---|
+| repo `crossval_coverage.py` (by-clip), fold 1 | **0.42** | the repo's own honest CV |
+| feature-cache leave-one-clip-out (full corpus) | **0.41** | ResNet18 frozen features + linear head |
+| per-clip 80/20 | **0.39** | |
+| batch-1 only (24 clips), by-clip LOO | **0.40** | not a "small clean set is better" story |
+| **per-IMAGE 80/20 (leaky)** | **0.60** | frames from the same play in train AND test |
+| coarse **1-high vs 2-high shell**, by-clip | acc **0.63** | vs 0.58 majority baseline — barely above chance |
+
+**The honest held-out-by-clip macro-F1 is ~0.42, not 0.86** — far below the 0.85 target, and
+even the *binary* safety-shell is near chance. The **0.86 came from a frame-level split**, which
+`train_coverage.py`'s own code labels `"(LEAKS clips across split)"` and whose `clip_level_split`
+comment calls clip-level *"the ONLY honest split for this data: ~6 frames/clip are near-identical,
+so a frame-level split leaks a play's visual signature into val."* i.e. the 0.86 is a
+memorization artifact of ~10 near-duplicate frames per play landing on both sides of the split.
+
+**Revised verdict: v0.3 is a MODELING problem, not plumbing — and not blocked on the camera.**
+Even with All-22 live (the best-case input, where the shell is fully visible), a frozen-ResNet18
++ linear-head reader on single post-snap frames does not generalize to unseen plays at this data
+scale (120 clips). Do **not** wire the current classifier. Real paths forward (all unproven,
+research-scale): substantially more clips (100s–1000s), a **temporal/multi-frame** model over the
+whole post-snap rotation (not one frame), **pre-snap + post-snap fusion**, or backbone
+fine-tuning (the docstring warns it overfits at this scale). Caveat: this probe used *frozen*
+ImageNet features (no fine-tuning) — but that matches the classifier's own frozen-backbone
+design, and the repo's by-clip CV agrees (0.42).
+
+**Net across all three findings:** the camera-availability correction (All-22 is live) removed
+the *deployment* blocker, but the validation shows the *model* itself doesn't work held-out. So
+`COVERAGE_LOCKED` stays dormant (consumer seam already documented-silent), Gameplan-highlight
+(1b) + Phase 1c stay gated (ADR 0010), and v0.3 needs a genuine data+modeling effort before it
+is wireable. Reproduce: `agents/capture/{extract_coverage_frames,crossval_coverage}.py`.
 
 ## CORRECTION (2026-07-12): All-22 is a live camera — verdict revised
 
