@@ -86,6 +86,14 @@ class SnapDetector:
         self._live: deque[bool] = deque(maxlen=self.FREEZE_FRAMES)
         self._red: deque[float] = deque(maxlen=self.FREEZE_FRAMES)
         self.snapped = False  # True only on the frame a snap is confirmed
+        # Reset-vs-resume FP discriminator (needs the play-clock VALUE, supplied by
+        # the adapter via ``pc_value``). A real snap's clock FREEZES then resets UP
+        # to :40; a pause FP RESUMES counting DOWN. ``last_snap_pause`` is True once
+        # the clock is seen to resume down during a POST_SNAP freeze -> the last
+        # confirmed snap was a play-clock pause, not a snap. Non-destructive: the
+        # snap already fired; this annotates it for the downstream confidence gate.
+        self._snap_pc: int | None = None       # play-clock value captured at confirm
+        self.last_snap_pause: bool | None = None
 
     @staticmethod
     def _crop(frame: np.ndarray, box: tuple[int, int, int, int]) -> np.ndarray:
@@ -121,12 +129,27 @@ class SnapDetector:
         red = max(self._red) if self._red else 0.0
         return green > self.GREEN_MIN and live > self.LIVE_MIN and red < self.RED_MAX
 
-    def update(self, frame: np.ndarray, live_gameplay: bool) -> SnapState:
+    def update(
+        self, frame: np.ndarray, live_gameplay: bool, pc_value: int | None = None
+    ) -> SnapState:
         """Advance the state machine one frame. ``live_gameplay`` is the adapter's
         already-computed context read (so we don't re-run ContextDetector).
-        Returns the new state; ``self.snapped`` is True on the confirmation frame.
+        ``pc_value`` is the best current play-clock value (from the CNN reader) or
+        None; it drives the reset-vs-resume FP annotation only and is optional (the
+        detector runs OCR-free without it). Returns the new state; ``self.snapped``
+        is True on the confirmation frame.
         """
         self.snapped = False
+        # Reset-vs-resume: while we believe a snap is running (POST_SNAP, clock
+        # frozen), a play-clock that RESUMES counting DOWN means the freeze was a
+        # pause, not a snap -> flag the last confirmed snap as a suspected FP.
+        if (
+            self._state == SnapState.POST_SNAP
+            and pc_value is not None
+            and self._snap_pc is not None
+            and pc_value <= self._snap_pc - 2
+        ):
+            self.last_snap_pause = True
         self._green.append(self._field_green(frame))
         self._live.append(live_gameplay)
         self._red.append(self._red_play_clock(frame))
@@ -162,6 +185,8 @@ class SnapDetector:
             if self._freeze_is_a_snap():
                 self.snapped = True
                 self._state = SnapState.POST_SNAP
+                self._snap_pc = pc_value          # plateau value at confirm (may be None)
+                self.last_snap_pause = None        # undetermined until the clock moves
             else:
                 self._state = SnapState.BETWEEN_PLAYS
                 self._ticks_seen = 0

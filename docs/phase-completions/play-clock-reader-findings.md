@@ -1,11 +1,14 @@
 # Play-Clock Reader — Findings & Honest State
 
-- **Status:** **Attempted, patch-NCC RULED OUT.** The play-clock (dark-on-white `:00`–`:40`,
-  the "third polarity") does **not** yield to the patch-NCC technique that reads the other
-  digit fields (clock / distance / quarter / down). Best held-out accuracy **40%** — not
-  usable. The reader is **not built**; `play_clock` stays `None` in the payload and the
-  snap-detector reset-vs-resume FP fix stays blocked (see `snap-detector-m5b.md`).
-- **Date:** 2026-07-11
+- **Status:** **RESOLVED via a small CNN** (patch-NCC ruled out first — kept below as the
+  honest record). The play-clock (dark-on-white `:00`–`:40`, the "third polarity") does
+  **not** yield to the patch-NCC technique (best held-out **40%**), but a small 2-head CNN
+  on the whole-value patch reads it **72% exact / 82% within-±1** held-out (2x NCC), and —
+  the high-value use — **94%** on the snap-detector reset-vs-resume decision. Shipped as
+  `models/play_clock_v0_1.onnx` (ONNX/onnxruntime), wired to the `play_clock` payload
+  (best-effort, confidence-gated) and the snap-detector `last_snap_pause` FP annotation.
+  See the **CNN resolution** section at the bottom.
+- **Date:** 2026-07-11 (patch-NCC findings); CNN resolution 2026-07-11
 - **Data:** 8 live snap-capture clips (the ones from the snap-detector work) are full of
   play-clock countdowns 40→0 in varied field/lighting. A subagent read a 48-crop seed
   (34 clean values 14–40); expanding each anchor to its ±10-frame same-value window gave
@@ -33,14 +36,29 @@ invert-free `field_present` + largest-CC crop isolates each glyph cleanly. The p
 pipeline turns the box/chrome into competing bright foreground, and the digits don't isolate
 consistently. It is a genuinely harder segmentation problem, not a tuning gap.
 
-## Recommended next path (not attempted — bigger build, needs sign-off)
+## CNN resolution (built + shipped)
 
-**A small CNN classifier on the whole-value patch** (classify 0–40 from the fixed
-`[15,12,72,32]` crop). A CNN *learns* to attend to the discriminative digit region and
-ignore the constant box — exactly the failure mode that sinks NCC here. The infra exists
-(`agents/capture/train_coverage.py` pattern; GPU box available). It needs a denser labelled
-set than the 34-value seed — obtainable by **countdown propagation** (value is constant
-between ticks, −1 per tick, resets to 40; anchor from the seed) or more subagent reads.
+**A small 2-head CNN on the whole-value patch** — the recommended path, executed. Heads
+classify tens (0–4) and ones (0–9) from the tight white-box crop `[1448,1022,88,38]` (the
+`hud_regions` `play_clock` zone clips the digit bottoms; the box extends below it). The CNN
+*learns* to attend to the digits and ignore the constant box — the exact failure mode that
+sinks NCC.
 
-Until then: patch-NCC is banked as ruled out, the seed/labelling scripts are the head start,
-and `play_clock` remains `None`.
+- **Data.** The 8 live snap clips. Dense labels by **countdown propagation**: 8 subagents
+  read each clip's 1-fps contact sheet, then monotonicity-clean (drop `?`/red, drop isolated
+  misreads) → 575 white-clock labelled seconds → ~5.2k mid-second training patches. Trainer +
+  labels committed at `services/visionaudioforge/tools/play_clock/`.
+- **Accuracy (held-out by clip).** exact **72%**, within-±1 **82%** (2x the 40% NCC baseline);
+  train-fit is 75% (label-noise/font-ambiguity bias ceiling, not overfit). More clips would
+  raise it — the current ceiling is 8-clip data, not the method.
+- **Reset-vs-resume 94%.** The high-value use needs only the DIRECTION of change (reset toward
+  :40 vs resume counting down); the reset gap dwarfs per-read noise, so held-out this decision
+  is 94% even though the exact read is 72%.
+
+**Wiring.** `play_clock_reader.PlayClockReader` (ONNX via onnxruntime; graceful-None if the
+model/onnxruntime is absent, same contract as the patch-NCC template readers). Payload:
+`OCRPipeline._read_play_clock` on an `every_n:6` cadence, confidence-gated (τ=0.55), smoothed
+(`play_clock` window=3). Snap FP fix: the cached value feeds `SnapDetector.update(pc_value=…)`,
+which sets `last_snap_pause=True` when a POST_SNAP freeze's clock RESUMES down — a
+non-destructive annotation for the downstream confidence gate (the snap already fired). See
+`snap-detector-m5b.md`.

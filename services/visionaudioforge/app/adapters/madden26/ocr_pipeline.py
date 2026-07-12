@@ -583,6 +583,16 @@ class OCRPipeline:
             except Exception:
                 logger.exception("distance_reader_load_failed")
 
+        # Play-clock reader (dark-on-white 2-head CNN, ONNX). The patch-NCC
+        # technique is ruled out for this polarity (findings doc); a small CNN
+        # reads it best-effort. Loaded from the committed ONNX; if onnxruntime or
+        # the model is absent the reader is None and play_clock stays null.
+        from .play_clock_reader import PlayClockReader
+
+        self._play_clock_reader = PlayClockReader.load(
+            Path(__file__).parent / "models" / "play_clock_v0_1.onnx"
+        )
+
     def read_frame(self, frame: np.ndarray) -> OCRSnapshot:
         """Read every HUD region. Returns a snapshot.
 
@@ -597,7 +607,6 @@ class OCRPipeline:
             same way as score numbers.
         """
         scoreboard = self.regions["scoreboard"]["subregions"]
-        dnd = self.regions["down_distance"]["subregions"]
 
         # Scores — read WITHOUT a digit allowlist. The v2.1.0 centered
         # scorebug renders "0" as a ring that EasyOCR recognises as "U"/"O";
@@ -617,14 +626,14 @@ class OCRPipeline:
         down_v = self._read_leading_digit("down_digit", frame, 1, 4)
         distance_v = self._read_distance(frame)
 
-        # Play clock — digit-only; can be "--" → null. Kept on EasyOCR: the
-        # dark-on-white patch-NCC play-clock reader is deferred (see
-        # docs/phase-completions/digit-ocr-perf-migration.md).
-        pc_text, pc_conf = _read_text(_crop(frame, dnd["play_clock"]), "0123456789")
+        # Play clock — dark-on-white 2-head CNN (patch-NCC ruled out for this
+        # polarity; see docs/phase-completions/play-clock-reader-findings.md).
+        # Abstains (None) when the box is absent/red or the net is unsure.
+        play_clock_v = self._read_play_clock(frame)
+        pc_conf = 0.0
 
         score_home_v = _parse_score(s_home_text)
         score_away_v = _parse_score(s_away_text)
-        play_clock_v = _parse_play_clock(pc_text)
         fp_v = None  # field_position parked for the live path (no analog on the bar)
 
         # Team abbreviations.
@@ -723,7 +732,7 @@ class OCRPipeline:
             if "distance" in want:
                 out["distance"] = self._read_distance(frame)
             if "play_clock" in want:
-                out["play_clock"] = None  # dark-on-white; its own reader deferred
+                out["play_clock"] = self._read_play_clock(frame)  # dark-on-white 2-head CNN
         # field_position: parked for the live path (no analog on the broadcast bar).
         out["_confidence"] = round(sum(confs) / len(confs), 3) if confs else 0.0
         return out
@@ -780,6 +789,17 @@ class OCRPipeline:
             return None
         v = self._read_1or2_digits(reader, _crop(frame, sub))
         return v if v is not None and 1 <= v <= 25 else None
+
+    def _read_play_clock(self, frame: np.ndarray) -> str | None:
+        """Read the dark-on-white play-clock (0-40) with the 2-head CNN. Returns the
+        value as a string (OCRSnapshot stores play_clock as str) or None (reader
+        absent, box not white/red, or the net abstains). Best-effort — the field is
+        informational and smoothed downstream."""
+        reader = self._play_clock_reader
+        if reader is None:
+            return None
+        v, _conf = reader.read_value(frame)
+        return None if v is None else str(v)
 
     def _read_1or2_digits(self, reader, patch: np.ndarray) -> int | None:
         """Read a 1- or 2-digit white-on-dark field. Isolate each digit as its own
