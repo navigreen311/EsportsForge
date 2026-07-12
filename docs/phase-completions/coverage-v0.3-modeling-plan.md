@@ -40,7 +40,7 @@ saturated.
 | Tier | Classes | Value | Current by-clip |
 |---|---|---|---|
 | T0 shell | 1-high vs 2-high | high | **0.83 F1** with deep-field crop (see "T0 started" below) |
-| T1 man/zone | man vs zone | high | untested |
+| T1 man/zone | man vs zone | high | signal PRESENT: **0.87 F1** on Cover1-vs-Cover3 (see "T1 probed") |
 | T2 coverage | Cover 1/2/3/4 | ideal (ADR 0017) | ~0.58 (spatial) |
 | T3 variant | Sky/Cloud, Tampa, Palms | nice-to-have | very hard |
 
@@ -68,6 +68,23 @@ the corpus — needs a held-out capture); (b) more data (117 plays, still data-b
 top-40% crop is a mildly eval-selected hyperparameter. Path: a small known-coverage capture
 with game/session tags → by-game validation → wire `detect_coverage` to emit `1-high/2-high` +
 confidence + abstain (T0 first; keep `defensive_coverage` free-str per ADR 0017).
+
+#### T1 probed — the man/zone signal is present (needs diverse captures to build)
+
+Probed T1 for **signal presence** (`agents/capture/coverage_t1_manzone.py`). The corpus
+doesn't cleanly support man/zone (only Cover 1 is unambiguously man; Cover 2 is ambiguous;
+man/zone correlates with the shell), so the clean test that isolates man/zone from the shell is
+**Cover 1 (man) vs Cover 3 (zone) — both 1-high**. Result (5-fold by-clip, top-70% crop = the DB
+band): **F1 0.87, acc 0.88** (baseline 0.65); abstain conf≥0.6 → 0.89 on 94%. So DB technique
+(man = turn-and-run with receivers; zone = drop/settle, eyes to QB) is a **strong, learnable
+signal** — even more separable than the shell, and it lives in a wider crop (corners + safeties,
+top ~70%), not the deep strip T0 used.
+
+**But this is only a signal-presence probe on a Cover1-vs-Cover3 slice, NOT a T1 classifier.** A
+real T1 needs **diverse man coverages** (Cover 0 / 1-Robber / 2-Man / man-under) and zone
+coverages, and must resolve **Cover 2** — this corpus has only Cover 1 as man. So T1's path is a
+**dedicated man/zone capture** (varied man + zone calls, game-tagged) → by-game validation. The
+encouraging part: the signal is clearly there, so the capture is worth it.
 
 ### 2. Held-out protocol (the lesson — bake it in)
 
