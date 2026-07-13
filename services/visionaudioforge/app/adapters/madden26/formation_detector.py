@@ -27,6 +27,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # avoid importing EasyOCR-heavy pipeline at module load
     import numpy as np
+
+    from .coverage_classifier import CoverageReading
     from .ocr_pipeline import OCRPipeline
 
 
@@ -103,6 +105,19 @@ class FormationDetector:
             full_name=reading.full_name,      # raw card subtitle, e.g. "3-4 Under"
         )
 
-    def detect_coverage(self, frame: "np.ndarray", frames_since_snap: int) -> FormationReading:
-        """v0.3 hook — returns None until post-snap coverage ships (ADR 0010)."""
-        return FormationReading(formation=None, confidence=0.0)
+    def detect_coverage(
+        self, frame: "np.ndarray", frames_since_snap: int = 0
+    ) -> "CoverageReading | None":
+        """Read the committed defensive COVERAGE off the pre-snap coach-cam play-art (v0.3).
+
+        OCR-of-play-call pivot, coverage leg. Reads the on-field zone-assignment labels via
+        the shared OCRPipeline and classifies the constellation into a canonical coverage +
+        man/zone (see coverage_classifier). Returns None when the coach-cam play-art is not
+        on screen (self-gating: no zone labels -> not a coverage view), so the adapter emits
+        COVERAGE_LOCKED only on a real read.
+
+        Note: this is a PRE-snap read (the coach-cam is a pre-snap view), so frames_since_snap
+        is unused — kept for signature compatibility with the ADR-0010 hook. The failed
+        post-snap-vision arc is superseded by this approach.
+        """
+        return self.ocr.read_coverage(frame)
