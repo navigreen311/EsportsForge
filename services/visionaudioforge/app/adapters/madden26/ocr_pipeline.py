@@ -1017,10 +1017,15 @@ class OCRPipeline:
             cy = (y0 + cy_band * bh) / h            # map back to full-frame fraction
             tokens.append((float(cx), float(cy), str(text)))
 
+        # Require actual zone labels — the play-art must be up. A stray red jersey /
+        # pylon must NOT trigger the label-less Cover 0 path (a live accuracy pass showed
+        # _detect_blitz false-positiving on red pixels -> spurious Cover 0 that polluted
+        # the mode-vote). Real Cover 0 (0 labels + man LINES) is deferred to a man-line
+        # detector; abstaining on it is safer than a constant false Cover 0.
         has_zone = any(_clean(t[2]) in _ZONE_WORDS for t in tokens)
+        if not has_zone:
+            return None                            # play-art not up -> not a coverage view
         blitz = self._detect_blitz(band)
-        if not has_zone and not blitz:
-            return None                            # not a coach-cam coverage view
         return classify_coverage(tokens, is_coach_cam=True, blitz=blitz)
 
     def is_play_call_screen(self, frame: np.ndarray) -> bool:
