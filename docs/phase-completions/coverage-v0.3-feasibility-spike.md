@@ -4,7 +4,12 @@
   `COVERAGE_LOCKED`, ADR 0010/0017) **plumbing** (wire the existing ~0.86 classifier into
   the adapter) or a **research arc** (the classifier won't survive live production frames)?
 - **Date:** 2026-07-12
-- **Verdict (current — see VALIDATION RESULT below):** Two corrections landed on the original
+- **LATEST (2026-07-12) — superseded by BY-GAME validation:** the by-clip numbers below (and the
+  T0/T1/T2 tier ladder in `coverage-v0.3-modeling-plan.md`) were all on ONE visual context and do
+  **NOT** hold by game (near chance across every approach). Post-snap coverage-from-vision is a
+  research arc; **the effort pivoted to OCR-of-play-call** (`coverage-ocr-playcall-pivot.md`). Read
+  the below as the honest evolving record up to that point.
+- **Verdict (was current — see VALIDATION RESULT below):** Two corrections landed on the original
   "research arc" call. **(1)** All-22 is a **live** camera (not replay-only, as originally
   assumed), which removes the *deployment* blocker. **(2)** But validating the classifier on the
   All-22 corpus (held-out **by clip**) gives macro-F1 **~0.45, not 0.86** — the 0.86 was a
