@@ -7,8 +7,11 @@ Phase 1a Day 0 adds source="file" (FilePlaybackSource) — plays a recorded
 MP4 once through this same production path for playback validation. The
 legacy source="test-video" (infinite loop) is retained for the smoke fixture.
 
+The capture-card source (source="capture-card", HdmiCaptureSource via ffmpeg/dshow —
+OpenCV can't grab the on-hand card) is wired in _build_source; config.capture-card.toml
+is the runnable config (first live end-to-end run 2026-07-13).
+
 Out of scope for this Phase 0 skeleton:
-- Capture-card source (Phase 1 M1 final — needs cv2.CAP_DSHOW + Win32 device enumeration)
 - PC-monitor source (Phase 1.1 — needs mss)
 - System tray UI (Phase 1 M1 final — pystray on Windows)
 - Diagnostic window (Phase 1 M1 final — Tk)
