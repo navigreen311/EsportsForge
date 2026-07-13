@@ -71,6 +71,7 @@ def assemble(
     ocr: OCRSnapshot,
     offense: FormationReading,
     captured_at: datetime,
+    defense: FormationReading | None = None,
     smoothing_schema: dict | None = None,
     *,
     context: str | None = None,
@@ -86,13 +87,16 @@ def assemble(
     # Context: explicit (from the cheap ContextDetector on the hot path) or, in
     # the legacy path, inferred from whether a formation name was read.
     if context is None:
-        context = "play_call" if offense.full_name else "live_gameplay"
+        on_play_call = bool(offense.full_name or (defense and defense.full_name))
+        context = "play_call" if on_play_call else "live_gameplay"
     prev_context = st.get("_hud_context")
     st["_hud_context"] = context
     if prev_context == "play_call" and context != "play_call":
         # left the play-call screen — reset so the next screen starts fresh.
         smoother.reset("offensive_formation")
         st["_last_locked_formation"] = None
+        smoother.reset("defensive_formation")
+        st["_last_locked_def_front"] = None
 
     # ---- play_call: mode-vote formation, emit FORMATION_LOCKED once per screen.
     if context == "play_call":
@@ -127,6 +131,39 @@ def assemble(
             return [make_envelope(session=session, event_type=EventType.FORMATION_LOCKED,
                                   payload=payload, confidence=offense.confidence,
                                   adapter_version=ADAPTER_VERSION, captured_at=captured_at)]
+
+        # ---- defensive front (v0.2): the DEFENSIVE play-call screen carries the
+        # committed front on the same card-subtitle line (disjoint vocab). Mode-vote
+        # it across the screen and emit FORMATION_LOCKED once per screen, mirroring
+        # the offensive path. Offense XOR defense reads on any one screen, so at most
+        # one of these two blocks emits.
+        if defense is not None and defense.formation:
+            dcfg = schema.get("defensive_formation",
+                              {"kind": "categorical", "window": 5, "min_window": 3})
+            dmin_w = dcfg.get("min_window", 1)
+            dlocked = smoother.smooth("defensive_formation", defense.formation,
+                                      kind=dcfg["kind"], window=dcfg["window"],
+                                      min_window=dmin_w, context="play_call")
+            dwarm = smoother.samples("defensive_formation") >= dmin_w
+            dlast = st.get("_last_locked_def_front")
+            if dwarm and dlocked and dlocked != dlast:
+                st["_last_locked_def_front"] = dlocked
+                last_live = st.get("_last_live_state", {})
+                payload = Madden26Payload(
+                    score_home=last_live.get("score_home"),
+                    score_away=last_live.get("score_away"),
+                    quarter=last_live.get("quarter"),
+                    clock=last_live.get("clock"),
+                    play_clock=_as_int(last_live.get("play_clock")),
+                    down=last_live.get("down"),
+                    distance=last_live.get("distance"),
+                    field_position=last_live.get("field_position"),
+                    possession="home",
+                    defensive_formation=dlocked,                   # canonical front, e.g. "3-4"
+                )
+                return [make_envelope(session=session, event_type=EventType.FORMATION_LOCKED,
+                                      payload=payload, confidence=defense.confidence,
+                                      adapter_version=ADAPTER_VERSION, captured_at=captured_at)]
         return []  # play-call screen up but formation not yet locked / unchanged.
 
     # ---- live_gameplay: smooth the FRESHLY-READ fields, carry the rest forward.

@@ -74,6 +74,9 @@ class Madden26Adapter:
     smoothing_schema: dict = {
         # play_call context — the formation read off the play-call overlay.
         "offensive_formation": {"kind": "categorical", "window": 5, "min_window": 3},
+        # play_call context — the committed defensive FRONT read off the defensive
+        # play-call screen's coverage-card subtitle (v0.2; OCR-of-play-call pivot).
+        "defensive_formation": {"kind": "categorical", "window": 5, "min_window": 3},
         # live_gameplay context — sampled HUD OCR fields.
         "field_position":      {"kind": "numeric",      "window": 3, "min_window": 1},
         "down":                {"kind": "categorical", "window": 3, "min_window": 1},
@@ -195,9 +198,13 @@ class Madden26Adapter:
         # 4. read ONLY the due fields.
         updated: set[str] = set()
         offense = FormationReading(formation=None, confidence=0.0, full_name=None)
+        defense = FormationReading(formation=None, confidence=0.0, full_name=None)
         if context == HudContext.PLAY_CALL:
             if "offensive_formation" in fields_due:
-                offense = self.formations.detect_offensive(frame)   # 1 OCR pass
+                # The play-call screen is offensive XOR defensive; read both and let
+                # the (disjoint) vocabulary decide which one has a real reading.
+                offense = self.formations.detect_offensive(frame)      # 1 OCR pass
+                defense = self.formations.detect_defensive_front(frame)  # 1 OCR pass
         elif fields_due:                                            # live + something due
             reads = self.ocr.read_fields(frame, fields_due)
             st["_ocr_conf"] = reads.pop("_confidence", 0.0)
@@ -226,6 +233,7 @@ class Madden26Adapter:
             session=session,
             ocr=self._snapshot_from_cache(session),
             offense=offense,
+            defense=defense,
             captured_at=captured_at,
             smoothing_schema=self.smoothing_schema,
             context=ctx,

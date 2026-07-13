@@ -86,8 +86,22 @@ class FormationDetector:
         )
 
     def detect_defensive_front(self, frame: "np.ndarray") -> FormationReading:
-        """v0.2 hook — returns None until the defensive-front signal ships."""
-        return FormationReading(formation=None, confidence=0.0)
+        """Read the committed defensive FRONT off the defensive play-call screen (v0.2).
+
+        Reads the coverage-card subtitle ("3-4 Under", "Nickel Over") via the shared
+        OCRPipeline and maps it to a canonical front (OCR-of-play-call pivot, mirrors
+        detect_offensive). Returns a null reading (formation=None, confidence=0.0) when
+        the defensive play-call screen is not up, so the adapter emits
+        defensive_formation only on a real read.
+        """
+        reading = self.ocr.read_defensive_front(frame)
+        if not reading.is_defensive_play_call:
+            return FormationReading(formation=None, confidence=0.0, full_name=None)
+        return FormationReading(
+            formation=reading.front,          # canonical front, e.g. "3-4"
+            confidence=reading.confidence,
+            full_name=reading.full_name,      # raw card subtitle, e.g. "3-4 Under"
+        )
 
     def detect_coverage(self, frame: "np.ndarray", frames_since_snap: int) -> FormationReading:
         """v0.3 hook — returns None until post-snap coverage ships (ADR 0010)."""
