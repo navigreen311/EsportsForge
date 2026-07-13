@@ -5,6 +5,47 @@ frame-level leakage; honest held-out-by-clip is ~0.42–0.45). This records what
 coverage effort looks like, and the **Phase B prototype** run on the existing 120-clip All-22
 corpus that refined the plan.
 
+## ⛔ BY-GAME VALIDATION (2026-07-12) — the tier ladder does NOT hold; POST-SNAP VISION IS A RESEARCH ARC. Pivoting to OCR-of-play-call.
+
+**Everything below (the T0 0.83 / T1 0.87 / T2 0.74 tier numbers) was measured BY CLIP on a
+SINGLE visual context** (the 120-clip corpus is all one Raiders matchup). We captured **4 new
+game-tagged games** (Chargers/Rams/Packers/… — distinct stadiums, teams, lighting) precisely to
+test generalization **by game**. It does not generalize:
+
+| Approach (leave-one-GAME-out unless noted) | shell 1-high/2-high |
+|---|---|
+| fixed deep-crop (the "0.83" method), by-CLIP on new clips | **0.375** — broken on new stadiums |
+| whole-frame CNN | 0.44 |
+| player-bbox CNN | 0.06 (by-clip) |
+| deep-defender crop CNN | 0.18 (by-clip) |
+| **structured deep-defender COUNT** | **no separation** (6.96 vs 6.96) |
+
+**Near chance across every approach** — several can't even separate the 16 new clips by-clip. The
+0.83 was the model keying on **context** (stadium/uniforms/framing), not reading coverage. A
+robust player-detection **framing** was built (person detector → player-relative crop, which
+*does* solve the field-position problem and is reusable), but frozen ImageNet features simply
+don't carry the 1-vs-2-safety signal, and a direct geometric deep-count doesn't separate it
+either (too confounded: which players are the defense, safeties-vs-corners, camera/field-position
+depth).
+
+**Verdict: reading post-snap coverage from broadcast/All-22 frames is a genuine RESEARCH ARC** —
+it needs a purpose-trained model + player tracking + field registration + diverse labelled data
+at scale. **Do NOT wire the T0/T1/T2 classifiers** — they would emit context-overfit,
+near-chance predictions in production. The by-game captures did their job: they caught the
+mirage before it shipped. (Reproduce: `agents/capture/player_crop.py` + the scratch validation.)
+
+**PIVOT — OCR-of-defensive-play-call (the same move that saved the formation classifier, ADR
+0014).** The defensive **play-call screen shows the coverage by name** ("Cover 1 Hole", "Cover
+3", "Sam Mike 1") — read it with the proven overlay-OCR pattern (`read_formation_name` /
+`is_play_call_screen`). It sidesteps the vision problem for the cases it covers (the defensive
+call is on-screen: you're calling the D / analysing your own defense). It **cannot** read the
+*opponent's* coverage while you're on offense — that remains the hard vision case, deferred. It
+also shares the play-call screen with the **v0.2 defensive front** (same OCR pass reads Nickel/
+Dime *and* the coverage). See `coverage-ocr-playcall-pivot.md`.
+
+*The tier-ladder material below is retained as the honest record of what was tried and why it
+was abandoned — read it with this correction in mind.*
+
 ## Phase B prototype — what actually moves the needle (5-fold by-clip, frozen ResNet18)
 
 Tested cheaply on the existing corpus (117 usable clips, ~117 independent plays) — **no new
