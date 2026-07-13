@@ -17,7 +17,10 @@ import re
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .coverage_classifier import CoverageReading
 
 import cv2
 import numpy as np
@@ -950,6 +953,59 @@ class OCRPipeline:
             if front and conf > 0.5:
                 return DefensiveFrontReading(front, text.strip(), round(conf, 3), True)
         return DefensiveFrontReading(None, None, 0.0, False)
+
+    # --- Defensive coverage from the pre-snap coach-cam play-art (v0.3) ---
+    _COVERAGE_BAND = (0.12, 0.72)   # fractional y-range where the zone labels are drawn
+
+    def _detect_blitz(self, band: np.ndarray) -> bool:
+        """Red pressure lines in the play-art band => a blitz (orthogonal to coverage).
+        Cover 0 and pressure variants (e.g. Cover 3 Slim Pressure) draw red rush lines."""
+        if band.size == 0:
+            return False
+        b = band[:, :, 0].astype(np.int32)
+        g = band[:, :, 1].astype(np.int32)
+        r = band[:, :, 2].astype(np.int32)
+        red = (r > 140) & (r - g > 60) & (r - b > 60)
+        return bool(red.mean() > 0.004)
+
+    def read_coverage(self, frame: np.ndarray) -> "CoverageReading | None":
+        """Read the committed defensive COVERAGE off the pre-snap coach-cam play-art (v0.3).
+
+        With play-art ON (or the coach-cam open), Madden draws each defender's zone
+        assignment as an on-field text label — a coverage FINGERPRINT (validated on 10
+        captures). OCRs the play-art band, groups tokens into labels, and classifies via
+        coverage_classifier (#DEEP ZONE = shell; underneath density = man/zone; QUARTER-flat
+        side = Cover 6/9). Returns None when it is not a coach-cam coverage view (no zone
+        labels and no blitz lines) so the caller emits only on a real read. See
+        coverage_classifier for the decision tree and the documented resolution limit
+        (label-identical variants fold to the canonical family, e.g. Tampa 2 -> Cover 2).
+        """
+        from .coverage_classifier import _ZONE_WORDS, _clean, classify_coverage
+
+        h, w = frame.shape[:2]
+        y0, y1 = int(h * self._COVERAGE_BAND[0]), int(h * self._COVERAGE_BAND[1])
+        band = frame[y0:y1, :]
+        if band.size == 0:
+            return None
+        bh = band.shape[0]
+        # Upscale the band so the small, far-edge labels (SOFT SQUAT / VERT HOOK) read.
+        up = cv2.resize(band, None, fx=1.6, fy=1.6, interpolation=cv2.INTER_CUBIC)
+        reader = _get_reader()
+        results = reader.readtext(up, paragraph=False, detail=1)
+        tokens: list[tuple[float, float, str]] = []
+        for _box, text, conf in results:
+            if float(conf) < 0.3 or len(str(text).strip()) < 2:
+                continue
+            cx = (_box[0][0] + _box[2][0]) / 2 / up.shape[1]
+            cy_band = (_box[0][1] + _box[2][1]) / 2 / up.shape[0]
+            cy = (y0 + cy_band * bh) / h            # map back to full-frame fraction
+            tokens.append((float(cx), float(cy), str(text)))
+
+        has_zone = any(_clean(t[2]) in _ZONE_WORDS for t in tokens)
+        blitz = self._detect_blitz(band)
+        if not has_zone and not blitz:
+            return None                            # not a coach-cam coverage view
+        return classify_coverage(tokens, is_coach_cam=True, blitz=blitz)
 
     def is_play_call_screen(self, frame: np.ndarray) -> bool:
         """Cheap state check: is the pre-snap play-call overlay currently visible?"""
