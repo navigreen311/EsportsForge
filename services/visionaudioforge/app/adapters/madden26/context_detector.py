@@ -62,58 +62,68 @@ class HudContext(str, Enum):
 class ContextDetector:
     """Per-adapter cheap context detector. Stateless; safe to share."""
 
-    # v2.3.0-live recalibration (52 live PS5 frames across formation-select +
-    # play-select play-call, in-game gameplay, pause menu, replay, corrupted).
-    # The v2.2.0 banner-luma rule keyed on the '<Formation> - N Plays' bander and
-    # false-negatived the real feed (play-select has no banner; formation-select's
-    # banner blanks mid-scroll). Two robust, game-mode-independent features instead:
-    #   dark_frac — fraction of the frame dimmed (< DARK_LUMA). The play-call menu
-    #     DIMS the field: play_call 0.44-0.60, gameplay 0.03-0.16, replay 0.20-0.25,
-    #     corrupted 0.10. A floor of 0.30 cleanly separates play-call from those.
-    #   bar_mean  — luma of the persistent bottom broadcast bar. Present in BOTH
-    #     play-call and gameplay (~104-135) but HIDDEN by the full-screen pause /
-    #     menu dim (~25). So it rejects the pause menu, which dark_frac (0.89) can't.
-    # Rule: play_call  <=>  0.30 <= dark_frac <= 0.78  AND  bar_mean >= 60.
-    # The upper dark_frac bound rejects near-black transition/menu frames (~0.89)
-    # that still have the bar drawn; real play-call caps at ~0.60 (field dim only).
+    # v2.4.0-ps5 recalibration (2026-07-13; PS5 1080p PRACTICE feed — the source
+    # the live spine actually runs on; first live end-to-end run). The v2.3.0-live
+    # rule (dark_frac in [0.30,0.78] AND bar_mean>=60) was tuned on a real-GAME
+    # broadcast feed and false-negatived EVERY practice-mode play-call screen: on
+    # that source the play-call bottom band is a DARK button-hint bar (bar_mean ~28,
+    # not the bright broadcast bar), so bar_mean>=60 rejected it — and bar_mean is
+    # source-INVERTED (practice: play_call ~28 dark, live ~93 bright field), so no
+    # single threshold works across sources. Replaced bar_mean with a robust,
+    # game-mode-independent second feature:
+    #   dark_frac — fraction of the frame dimmed (< DARK_LUMA). play_call 0.50-0.61
+    #     (dark card/list UI + dimmed field), live 0.06-0.14, menu/pause/black
+    #     0.92-1.00. The [0.30,0.78] band isolates play_call from both (holds on the
+    #     broadcast source too: play_call 0.44-0.60, live 0.03-0.16, replay 0.20-0.25).
+    #   green_low — fraction of GREEN field pixels in the lower-middle "card band".
+    #     Play-call cards COVER the field (green_low ~0.00-0.02); a live field /
+    #     coach-cam / gameplay view shows grass (green_low 0.81-0.87). Semantic and
+    #     source-robust (green grass = live on any feed), and it defends against a
+    #     dark live frame that lands in the dark_frac band (its field still reads green).
+    # Rule: play_call  <=>  0.30 <= dark_frac <= 0.78  AND  green_low < GREEN_LOW_MAX.
+    # Verified 0 FP / 0 FN across 15 labelled PS5 frames (5 play-call: def-cards,
+    # formation-picker, off-select; 5 live: coach-cam, pre-snap field, gameplay;
+    # 5 menu/pause/black). NOTE: the coach-cam coverage view is correctly LIVE (green
+    # field) — v0.3 coverage reads on the live path, gated by the play_call->live
+    # _presnap transition, so play-call MUST be recognised first (this fix).
     DARK_FRAC_MIN = 0.30
     DARK_FRAC_MAX = 0.78
-    BAR_MEAN_MIN = 60.0
-    DARK_LUMA = 50            # pixel < this counts toward dark_frac
-    DARK_FRAC_STRIDE = 4      # subsample the frame for dark_frac (16x fewer pixels)
-    # Bottom broadcast-bar band (full-width), the "is the in-play/play-call HUD
-    # bar on screen?" signal. Matches the v2.3.0-live scoreboard band.
-    BAR_BBOX = (280, 985, 1500, 80)
+    GREEN_LOW_MAX = 0.30     # play_call ~0.02, live ~0.85 — wide margin
+    DARK_LUMA = 50           # pixel < this counts toward dark_frac
+    DARK_FRAC_STRIDE = 4     # subsample the frame for the features (16x fewer pixels)
+    # Lower-middle "card band" (fractional y) where play-call cards sit over — vs —
+    # where the field grass shows on a live/coach-cam view.
+    CARD_BAND = (0.55, 0.86)
 
     def __init__(self, hud_regions_path: str | Path | None = None) -> None:
         # hud_regions_path kept for signature compatibility; the detector's
-        # features are fixed bboxes (detector calibration, not HUD-region coords).
-        self._bar_bbox = self.BAR_BBOX
+        # features are fixed (detector calibration, not HUD-region coords).
+        pass
 
     def features(self, frame: np.ndarray) -> dict[str, float]:
         """The two cheap features — exposed for calibration / debugging."""
         gray = frame if frame.ndim == 2 else cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        # dark_frac on a strided subsample — statistically equivalent, ~16x cheaper.
         s = self.DARK_FRAC_STRIDE
-        return {"dark_frac": float((gray[::s, ::s] < self.DARK_LUMA).mean()),
-                "bar_mean": _region_mean(gray, self._bar_bbox)}
+        dark_frac = float((gray[::s, ::s] < self.DARK_LUMA).mean())
+        # green_low needs colour; a grayscale frame (tests) reports no field so it
+        # never false-positives play_call on green alone (dark_frac still gates).
+        if frame.ndim == 3:
+            h = frame.shape[0]
+            y0, y1 = int(h * self.CARD_BAND[0]), int(h * self.CARD_BAND[1])
+            band = frame[y0:y1:s, ::s]
+            b = band[:, :, 0].astype(np.int32)
+            g = band[:, :, 1].astype(np.int32)
+            r = band[:, :, 2].astype(np.int32)
+            green = (g > 60) & (g > b + 15) & (g > r + 10)
+            green_low = float(green.mean()) if green.size else 1.0
+        else:
+            green_low = 1.0
+        return {"dark_frac": dark_frac, "green_low": green_low}
 
     def detect(self, frame: np.ndarray) -> HudContext:
         """Classify a frame's HUD context in ~0.1ms (no OCR)."""
         f = self.features(frame)
         if (self.DARK_FRAC_MIN <= f["dark_frac"] <= self.DARK_FRAC_MAX
-                and f["bar_mean"] >= self.BAR_MEAN_MIN):
+                and f["green_low"] < self.GREEN_LOW_MAX):
             return HudContext.PLAY_CALL
         return HudContext.LIVE_GAMEPLAY
-
-
-def _region_mean(gray: np.ndarray, bbox) -> float:
-    if bbox is None:
-        return 0.0
-    x, y, w, h = bbox
-    H, W = gray.shape[:2]
-    x0, y0 = max(0, int(x)), max(0, int(y))
-    x1, y1 = min(W, int(x + w)), min(H, int(y + h))
-    if x1 <= x0 or y1 <= y0:
-        return 0.0
-    return float(gray[y0:y1, x0:x1].mean())

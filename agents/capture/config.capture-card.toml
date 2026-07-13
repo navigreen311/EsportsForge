@@ -1,0 +1,28 @@
+# Live capture-card config — the PS5 hop off the HDMI capture card.
+# Source = the ffmpeg/dshow "USB3.0 Video" card (HdmiCaptureSource; OpenCV can't grab it).
+# Run:
+#   cd agents/capture
+#   ESF_CAPTURE_AGENT_CONFIG=./config.capture-card.toml python -m capture_agent.main --session-id <id>
+
+[auth]
+api_key = "esf-cap-dev-placeholder"
+user_id = "5041bbe7-5d16-47c4-8f70-211935da55ea"
+
+[core]
+endpoint          = "ws://127.0.0.1:8100/ws/ingest"
+fallback_endpoint = "ws://127.0.0.1:8100/ws/ingest"
+
+[capture]
+source      = "capture-card"
+device_name = "USB3.0 Video"     # dshow addresses the card by NAME (not a cv2 index)
+
+[transport]
+target_fps          = 8
+adaptive            = false
+adaptive_max_fps    = 12
+jpeg_quality        = 75
+batch_size          = 4
+ring_buffer_seconds = 30
+
+[diagnostics]
+log_level = "INFO"
