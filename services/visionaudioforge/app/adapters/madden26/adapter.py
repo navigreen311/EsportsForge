@@ -77,6 +77,9 @@ class Madden26Adapter:
         # play_call context — the committed defensive FRONT read off the defensive
         # play-call screen's coverage-card subtitle (v0.2; OCR-of-play-call pivot).
         "defensive_formation": {"kind": "categorical", "window": 5, "min_window": 3},
+        # live (pre-snap) context — the committed defensive COVERAGE read off the
+        # coach-cam play-art (v0.3; OCR-of-play-call pivot).
+        "defensive_coverage": {"kind": "categorical", "window": 5, "min_window": 3},
         # live_gameplay context — sampled HUD OCR fields.
         "field_position":      {"kind": "numeric",      "window": 3, "min_window": 1},
         "down":                {"kind": "categorical", "window": 3, "min_window": 1},
@@ -121,6 +124,12 @@ class Madden26Adapter:
         # play-select; the smoother mode-votes the committed formation. (v2.3.0-live)
         "formation": {"cadence": "every_n", "n": 9, "phase": 4,
                       "context": PLAY_CALL, "fields": ["offensive_formation"]},
+        # Coverage — coach-cam play-art OCR (v0.3). Pre-snap LIVE context, cadenced
+        # because the band read is a full EasyOCR pass (costly); the adapter further
+        # gates it to the pre-snap window (post-play-call, pre-snap) and detect_coverage
+        # self-gates to None when the coach-cam play-art isn't up.
+        "coverage": {"cadence": "every_n", "n": 9, "phase": 7,
+                     "context": LIVE_GAMEPLAY, "fields": ["defensive_coverage"]},
     }
 
     def __init__(self) -> None:
@@ -188,6 +197,10 @@ class Madden26Adapter:
         boundary = self._boundary(session).update(
             frame, context=ctx, left_play_call=left_play_call)
         st["_prev_ctx"] = ctx
+        # Pre-snap window (post play-call, before the snap) — the only time the coach-cam
+        # play-art is up, so the only time it's worth paying for a coverage read.
+        if left_play_call:
+            st["_presnap"] = True
 
         # 3. cadence scheduler decides which field-groups are due this frame.
         plan = self._scheduler(session, self.ocr_cadence_schema).tick(
@@ -199,6 +212,7 @@ class Madden26Adapter:
         updated: set[str] = set()
         offense = FormationReading(formation=None, confidence=0.0, full_name=None)
         defense = FormationReading(formation=None, confidence=0.0, full_name=None)
+        coverage = None
         if context == HudContext.PLAY_CALL:
             if "offensive_formation" in fields_due:
                 # The play-call screen is offensive XOR defensive; read both and let
@@ -206,14 +220,22 @@ class Madden26Adapter:
                 offense = self.formations.detect_offensive(frame)      # 1 OCR pass
                 defense = self.formations.detect_defensive_front(frame)  # 1 OCR pass
         elif fields_due:                                            # live + something due
-            reads = self.ocr.read_fields(frame, fields_due)
-            st["_ocr_conf"] = reads.pop("_confidence", 0.0)
-            # A null read = "couldn't read this field this frame" (occluded / between
-            # plays) -> keep the last good cached value; don't clobber it with None.
-            # Only non-null reads are "fresh" (smoothed + trigger a SNAPSHOT).
-            fresh = {k: v for k, v in reads.items() if v is not None}
-            st.setdefault("_ocr_cache", {}).update(fresh)
-            updated = set(fresh.keys())
+            hud_fields = set(fields_due)
+            # v0.3 coverage — coach-cam play-art read, PRE-SNAP only (bounds the costly
+            # EasyOCR band pass); detect_coverage self-gates to None off the coach-cam.
+            if "defensive_coverage" in hud_fields:
+                hud_fields.discard("defensive_coverage")
+                if st.get("_presnap"):
+                    coverage = self.formations.detect_coverage(frame)
+            if hud_fields:                                          # HUD fields still due
+                reads = self.ocr.read_fields(frame, hud_fields)
+                st["_ocr_conf"] = reads.pop("_confidence", 0.0)
+                # A null read = "couldn't read this field this frame" (occluded / between
+                # plays) -> keep the last good cached value; don't clobber it with None.
+                # Only non-null reads are "fresh" (smoothed + trigger a SNAPSHOT).
+                fresh = {k: v for k, v in reads.items() if v is not None}
+                st.setdefault("_ocr_cache", {}).update(fresh)
+                updated = set(fresh.keys())
 
         # 5. snap detector (play-clock-freeze; cheap, no OCR). Reuses the context
         #    read from step 1. The cached play-clock value (from the CNN reader,
@@ -226,6 +248,7 @@ class Madden26Adapter:
             frame, context == HudContext.LIVE_GAMEPLAY, pc_value)
         if snap.snapped:
             st["_last_snap_frame"] = session.frame_count
+            st["_presnap"] = False       # snap fired — coach-cam window is over
         st["_last_snap_pause"] = snap.last_snap_pause
 
         # 6. assemble from the carried-forward snapshot; smooth only fresh fields.
@@ -234,6 +257,7 @@ class Madden26Adapter:
             ocr=self._snapshot_from_cache(session),
             offense=offense,
             defense=defense,
+            coverage=coverage,
             captured_at=captured_at,
             smoothing_schema=self.smoothing_schema,
             context=ctx,
