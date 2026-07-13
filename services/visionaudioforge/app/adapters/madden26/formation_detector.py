@@ -87,6 +87,22 @@ class FormationDetector:
             full_name=reading.full_name,
         )
 
+    def detect_play_call(
+        self, frame: "np.ndarray"
+    ) -> "tuple[FormationReading, FormationReading]":
+        """One OCR pass -> (offensive formation, defensive front). Unifies detect_offensive
+        + detect_defensive_front (which read the SAME card-subtitle regions) onto a single
+        read_play_call pass — the play-call hot path. Same per-side semantics as the
+        individual detectors (null reading when that side isn't on screen)."""
+        off, front = self.ocr.read_play_call(frame)
+        offense = (FormationReading(off.canonical, off.confidence, off.full_name)
+                   if off.is_play_call_screen
+                   else FormationReading(None, 0.0, None))
+        defense = (FormationReading(front.front, front.confidence, front.full_name)
+                   if front.is_defensive_play_call
+                   else FormationReading(None, 0.0, None))
+        return offense, defense
+
     def detect_defensive_front(self, frame: "np.ndarray") -> FormationReading:
         """Read the committed defensive FRONT off the defensive play-call screen (v0.2).
 

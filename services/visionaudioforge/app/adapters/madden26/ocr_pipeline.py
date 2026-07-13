@@ -938,6 +938,48 @@ class OCRPipeline:
             on_screen = bool(_PLAYS_RE.search(ptext)) and state_conf > 0.4
         return FormationNameReading(None, None, round(state_conf, 3), on_screen)
 
+    def read_play_call(
+        self, frame: np.ndarray
+    ) -> "tuple[FormationNameReading, DefensiveFrontReading]":
+        """ONE OCR pass over the shared play-call card-subtitle regions -> (offensive
+        formation, defensive front). The play-call screen is offensive XOR defensive, so
+        each subtitle is one or the other (disjoint vocabulary): a `canonical_front` match
+        is the defensive front, otherwise a parsed name is the offensive formation. This
+        unifies read_formation_name + read_defensive_front, which each read the SAME
+        regions — cutting the play-call hot path from ~984ms (up to 5 OCR passes) to ~1
+        pass. Returns on the first confident subtitle; falls back to the "N Plays" counter
+        for the is_play_call state when only browsing (mirrors read_formation_name)."""
+        from .defensive_playcall import canonical_front
+
+        off_null = FormationNameReading(None, None, 0.0, False)
+        def_null = DefensiveFrontReading(None, None, 0.0, False)
+        pc = self.play_call_regions
+        if not pc:
+            return off_null, def_null
+        for key in self._SUBTITLE_KEYS:
+            region = pc.get(key)
+            if region is None:
+                continue
+            text, conf = _read_text(_crop(frame, region["bbox"]))
+            if conf <= 0.5:
+                continue
+            front = canonical_front(text)
+            if front is not None:                         # defensive front (v0.2)
+                return (FormationNameReading(None, None, round(conf, 3), True),
+                        DefensiveFrontReading(front, text.strip(), round(conf, 3), True))
+            name = _parse_formation_name(text)
+            if name:                                      # offensive formation (v0.1)
+                return (FormationNameReading(
+                    name, _formation_to_canonical(name), round(conf, 3), True), def_null)
+        # No committed subtitle -> browsing/transition; use "N Plays" for is_play_call.
+        state_conf = 0.0
+        on_screen = False
+        plays_region = pc.get("plays_count")
+        if plays_region is not None:
+            ptext, state_conf = _read_text(_crop(frame, plays_region["bbox"]))
+            on_screen = bool(_PLAYS_RE.search(ptext)) and state_conf > 0.4
+        return FormationNameReading(None, None, round(state_conf, 3), on_screen), def_null
+
     def read_defensive_front(self, frame: np.ndarray) -> DefensiveFrontReading:
         """Read the committed defensive FRONT off the defensive play-call screen (v0.2).
 
