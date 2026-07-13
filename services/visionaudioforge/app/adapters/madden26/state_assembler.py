@@ -28,6 +28,7 @@ play_epoch), it infers the context and smooths+emits every frame as before.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from app.core.envelope import make_envelope
 from app.core.session import SessionContext
@@ -37,6 +38,9 @@ from app.schemas.events import EventEnvelope, Madden26Payload
 
 from .formation_detector import FormationReading
 from .ocr_pipeline import OCRSnapshot, _formation_to_canonical
+
+if TYPE_CHECKING:
+    from .coverage_classifier import CoverageReading
 
 ADAPTER_VERSION = "madden26@0.0.1-phase-0"
 
@@ -66,12 +70,53 @@ def _get_smoother(session: SessionContext) -> TemporalSmoother:
     return sm
 
 
+def _coverage_lock(
+    session: SessionContext, smoother: TemporalSmoother, schema: dict,
+    coverage: "CoverageReading | None", play_epoch: int, captured_at: datetime,
+    st: dict,
+) -> list[EventEnvelope]:
+    """Mode-vote the pre-snap coach-cam coverage read and emit COVERAGE_LOCKED once per
+    play when it locks (v0.3, OCR-of-play-call). Per-play reset: the smoother clears its
+    window on the `cov:play<epoch>` context switch, and _last_locked_coverage is cleared
+    when the play epoch advances so the same call re-locks on the next play. Carries the
+    last-live game state (like FORMATION_LOCKED) so the event is coherent while the
+    scorebug is hidden pre-snap."""
+    if st.get("_cov_epoch") != play_epoch:            # new play -> allow a fresh lock
+        st["_cov_epoch"] = play_epoch
+        st["_last_locked_coverage"] = None
+    if coverage is None or coverage.coverage is None:
+        return []
+    cfg = schema.get("defensive_coverage",
+                     {"kind": "categorical", "window": 5, "min_window": 3})
+    min_w = cfg.get("min_window", 1)
+    locked = smoother.smooth("defensive_coverage", coverage.coverage, kind=cfg["kind"],
+                             window=cfg["window"], min_window=min_w,
+                             context=f"cov:play{play_epoch}")
+    warm = smoother.samples("defensive_coverage") >= min_w
+    if not (warm and locked and locked != st.get("_last_locked_coverage")):
+        return []
+    st["_last_locked_coverage"] = locked
+    last_live = st.get("_last_live_state", {})
+    payload = Madden26Payload(
+        score_home=last_live.get("score_home"), score_away=last_live.get("score_away"),
+        quarter=last_live.get("quarter"), clock=last_live.get("clock"),
+        play_clock=_as_int(last_live.get("play_clock")), down=last_live.get("down"),
+        distance=last_live.get("distance"), field_position=last_live.get("field_position"),
+        possession="home",
+        defensive_coverage=locked,                    # canonical, e.g. "Cover 3" / "Cover 2-Man"
+    )
+    return [make_envelope(session=session, event_type=EventType.COVERAGE_LOCKED,
+                          payload=payload, confidence=coverage.confidence,
+                          adapter_version=ADAPTER_VERSION, captured_at=captured_at)]
+
+
 def assemble(
     session: SessionContext,
     ocr: OCRSnapshot,
     offense: FormationReading,
     captured_at: datetime,
     defense: FormationReading | None = None,
+    coverage: "CoverageReading | None" = None,
     smoothing_schema: dict | None = None,
     *,
     context: str | None = None,
@@ -167,6 +212,10 @@ def assemble(
         return []  # play-call screen up but formation not yet locked / unchanged.
 
     # ---- live_gameplay: smooth the FRESHLY-READ fields, carry the rest forward.
+    # v0.3 coverage: the pre-snap coach-cam read (self-gated, cadenced) mode-votes into a
+    # COVERAGE_LOCKED, emitted alongside whatever SNAPSHOT this frame produces.
+    cov_events = _coverage_lock(session, smoother, schema, coverage, play_epoch,
+                                captured_at, st)
     epoch_ctx = f"live:play{play_epoch}"
     last_state = st.get("_last_live_state", {})
     sm: dict = {}
@@ -191,7 +240,7 @@ def assemble(
     if updated_fields is not None and not any(v is not None for v in core):
         st["_last_live_state"] = {f: sm[f] for f in _LIVE_FIELDS}
         st["_last_live_state"]["quarter"] = quarter
-        return []
+        return cov_events
     payload = Madden26Payload(
         score_home=sm["score_home"],        # nullable — no fabricated 0 on unreadable
         score_away=sm["score_away"],
@@ -213,7 +262,7 @@ def assemble(
     # Emit gating: on the sampled-cadence path, a hot-path frame reads nothing —
     # don't emit an unchanged SNAPSHOT. (Legacy path: updated_fields is None -> emit.)
     if updated_fields is not None and not updated_fields:
-        return []
-    return [make_envelope(session=session, event_type=EventType.SNAPSHOT,
-                          payload=payload, confidence=ocr.confidence_overall,
-                          adapter_version=ADAPTER_VERSION, captured_at=captured_at)]
+        return cov_events
+    return cov_events + [make_envelope(session=session, event_type=EventType.SNAPSHOT,
+                         payload=payload, confidence=ocr.confidence_overall,
+                         adapter_version=ADAPTER_VERSION, captured_at=captured_at)]

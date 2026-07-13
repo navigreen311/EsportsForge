@@ -67,11 +67,15 @@ Cover 6) + `OCRPipeline.read_coverage` (OCR the play-art band y∈[0.12,0.72] up
 2-D labels, classify; self-gates to None off the coach-cam) + `FormationDetector.detect_coverage`.
 **End-to-end 10/10** on the captured clips (raw frame → OCR → correct canonical coverage + man/zone).
 
-**Remaining to emit `COVERAGE_LOCKED`:** adapter wiring on the LIVE (pre-snap) path — a cadenced
-`detect_coverage` read (EasyOCR band-read is ~costly, so cadence it; read_coverage already self-gates to
-None when the coach-cam isn't up) + mode-vote `defensive_coverage` + emit once per pre-snap, mirroring the
-v0.2 front emit but on the live path. Scoped as a focused follow-up (hot-path change). Optional refinements:
-robuster edge-label OCR (per-label upscale) and man-line detection for the label-less Cover 0.
+**`COVERAGE_LOCKED` emit — SHIPPED.** The adapter reads `detect_coverage` on a cadence
+(`coverage` group, every_n:9) on the LIVE context, gated to the PRE-SNAP window (`_presnap`: set
+when leaving the play-call screen, cleared on the snap) so the costly EasyOCR band pass only runs
+while the coach-cam play-art can be up; `read_coverage` further self-gates to None off the coach-cam.
+The assembler mode-votes `defensive_coverage` (`_coverage_lock`, categorical smoother, per-play reset
+via the `cov:play<epoch>` context switch) and emits `COVERAGE_LOCKED` once per play alongside any
+SNAPSHOT. Tests: `test_coverage_events.py` (once-per-play, mode-vote, per-epoch re-emit, null-no-lock).
+Optional future refinements: robuster edge-label OCR (per-label upscale) and man-line detection for
+the label-less Cover 0.
 
 ## v0.2 defensive FRONT — SHIPPED (reads the committed front off the coverage-card screen)
 
