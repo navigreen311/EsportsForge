@@ -5,7 +5,18 @@
   `coverage-v0.3-modeling-plan.md` "BY-GAME VALIDATION"). Rather than a multi-year vision effort,
   pivot to reading the defensive call off the **play-call screen** — the same OCR-of-overlay move
   that saved the offensive formation classifier (ADR 0014, 100%).
-- **Status:** feasibility CONFIRMED on the captured clips; not yet built.
+- **Status:** feasibility CONFIRMED **and OCR verified** — EasyOCR read a captured Rams
+  defensive play-call screen at high confidence: coverage names `Cover 1 Hole` / `OLB Fire Man` /
+  `Tampa 2`, front `4-3 Over`, and badges `MAN` / `BLITZ` / `ZONE`. The **canonical parser is
+  built + CI-tested** (`app/adapters/madden26/defensive_playcall.py` +
+  `tests/test_defensive_playcall.py`, 4 tests on the real OCR strings) — it maps a card's
+  (name, front, badge) → canonical `front` + `coverage` (ADR-0017 vocab) + man/zone. **Remaining
+  to ship:** per-card **region OCR** (reading the whole band splits "Cover 1 Hole" into loose
+  tokens, so OCR each card's name region separately — needs `hud_regions.json` bboxes), a
+  **defensive-play-call-screen detector**, **selected-card** resolution (the browse screen shows
+  3 options — determine which the user commits), and **adapter wiring** (`detect_defensive_front`
+  / `detect_coverage`). A small set of **dedicated defensive-play-call captures** makes the
+  region calibration + selected-card work clean.
 
 ## What the defensive play-call screen exposes (all cleanly readable)
 
