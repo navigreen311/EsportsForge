@@ -49,14 +49,13 @@ class Madden26Adapter:
     title: TitleEnum = TitleEnum.MADDEN26
     version: str = ADAPTER_VERSION
     max_processing_ms: int = 80          # ADR 0006 hot-path tier (ADR 0015)
-    # ADR 0015 sampled-OCR tier. Raised 500->3000 (2026-07-13): EasyOCR-on-CPU warm
-    # read costs measured on the live box are formation ~765ms, formation+front ~984ms,
-    # and the coach-cam coverage BAND read ~2200ms — all pre-snap reads with seconds of
-    # headroom before the snap. At 500ms the dispatcher dropped every one, so no
-    # FORMATION_LOCKED/COVERAGE_LOCKED emitted live (the hot-path SNAPSHOT patch-NCC reads
-    # are ~15ms and unaffected). Follow-up to lower this: tighten the coverage band /
-    # reduce upscale, unify the play-call double region-read, or run OCR on GPU.
-    max_ocr_tier_ms: int = 3000
+    # ADR 0015 sampled-OCR tier. EasyOCR-on-CPU warm read costs (live box): play-call
+    # formation+front ~984ms, coach-cam coverage BAND read ~1050ms (was ~2200ms before the
+    # perf pass tightened the band to y[0.30,0.62] @1.2x upscale). All are pre-snap reads
+    # with seconds of headroom before the snap; the hot-path SNAPSHOT patch-NCC reads are
+    # ~15ms and unaffected. 1500ms covers both with margin. Further lowering needs unifying
+    # the play-call double region-read or a GPU.
+    max_ocr_tier_ms: int = 1500
 
     cadence: CadenceProfile = CadenceProfile(
         name="football",

@@ -971,7 +971,11 @@ class OCRPipeline:
         return DefensiveFrontReading(None, None, 0.0, False)
 
     # --- Defensive coverage from the pre-snap coach-cam play-art (v0.3) ---
-    _COVERAGE_BAND = (0.12, 0.72)   # fractional y-range where the zone labels are drawn
+    # Fractional y-range where the coach-cam zone labels are drawn (deep-zone row ~0.36,
+    # underneath row ~0.50). Tightened from (0.12,0.72) — the perf pass showed the wider
+    # band + 1.6x upscale cost ~2200ms/read; (0.30,0.62) at 1.2x reads all 10 coverages
+    # correctly at ~1050ms.
+    _COVERAGE_BAND = (0.30, 0.62)
 
     def _detect_blitz(self, band: np.ndarray) -> bool:
         """Red pressure lines in the play-art band => a blitz (orthogonal to coverage).
@@ -1033,8 +1037,10 @@ class OCRPipeline:
         if band.size == 0:
             return None
         bh = band.shape[0]
-        # Upscale the band so the small, far-edge labels (SOFT SQUAT / VERT HOOK) read.
-        up = cv2.resize(band, None, fx=1.6, fy=1.6, interpolation=cv2.INTER_CUBIC)
+        # Light upscale so the small far-edge labels (SOFT SQUAT / VERT HOOK) still read;
+        # 1.2x (down from 1.6x) with the tighter band keeps all 10 coverages correct at ~half
+        # the cost (perf pass).
+        up = cv2.resize(band, None, fx=1.2, fy=1.2, interpolation=cv2.INTER_CUBIC)
         reader = _get_reader()
         results = reader.readtext(up, paragraph=False, detail=1)
         tokens: list[tuple[float, float, str]] = []
