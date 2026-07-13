@@ -984,6 +984,35 @@ class OCRPipeline:
         red = (r > 140) & (r - g > 60) & (r - b > 60)
         return bool(red.mean() > 0.004)
 
+    _MANLINE_BAND = (0.35, 0.72)   # LOS->receivers band where the man/blitz lines run
+    # diagonal play-art segments: man/blitz coach-cam 16-22, plain field/gameplay <=12
+    # (measured over 25 real frames)
+    _MANLINE_MIN_DIAG = 14
+
+    def _detect_man_lines(self, frame: np.ndarray) -> bool:
+        """Detect a coach-cam MAN look via its diagonal play-art line segments (the
+        defender->receiver man lines + blitz rushes). Used ONLY for the label-less case
+        (Cover 0 draws 0 zone labels) to confirm a real coach-cam view vs a plain field —
+        which lacks the overlaid diagonal lines (its edges are ~horizontal yard-lines +
+        short player edges). Robust: man/blitz 16-22 diagonal segments, plain <=12."""
+        h = frame.shape[0]
+        band = frame[int(h * self._MANLINE_BAND[0]):int(h * self._MANLINE_BAND[1])]
+        if band.size == 0:
+            return False
+        gray = cv2.cvtColor(band, cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(gray, 60, 160)
+        lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=40,
+                                minLineLength=45, maxLineGap=8)
+        if lines is None:
+            return False
+        diag = 0
+        for x1, y1, x2, y2 in lines[:, 0]:
+            ang = abs(np.degrees(np.arctan2(float(y2 - y1), float(x2 - x1))))
+            ang = min(ang, 180 - ang)
+            if 18 < ang < 72:               # diagonal (not axis-aligned field yard-lines)
+                diag += 1
+        return diag >= self._MANLINE_MIN_DIAG
+
     def read_coverage(self, frame: np.ndarray) -> "CoverageReading | None":
         """Read the committed defensive COVERAGE off the pre-snap coach-cam play-art (v0.3).
 
@@ -1017,14 +1046,14 @@ class OCRPipeline:
             cy = (y0 + cy_band * bh) / h            # map back to full-frame fraction
             tokens.append((float(cx), float(cy), str(text)))
 
-        # Require actual zone labels — the play-art must be up. A stray red jersey /
-        # pylon must NOT trigger the label-less Cover 0 path (a live accuracy pass showed
-        # _detect_blitz false-positiving on red pixels -> spurious Cover 0 that polluted
-        # the mode-vote). Real Cover 0 (0 labels + man LINES) is deferred to a man-line
-        # detector; abstaining on it is safer than a constant false Cover 0.
         has_zone = any(_clean(t[2]) in _ZONE_WORDS for t in tokens)
         if not has_zone:
-            return None                            # play-art not up -> not a coverage view
+            # Label-less frame. Recover a real Cover 0 (all-man: 0 zone labels + man
+            # LINES) via the diagonal play-art lines; a plain field (no play-art) has
+            # none -> None. This gates against the earlier false Cover 0, where
+            # _detect_blitz alone false-fired on a red jersey.
+            if not self._detect_man_lines(frame):
+                return None
         blitz = self._detect_blitz(band)
         return classify_coverage(tokens, is_coach_cam=True, blitz=blitz)
 
