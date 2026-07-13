@@ -604,6 +604,22 @@ class OCRPipeline:
             Path(__file__).parent / "models" / "play_clock_v0_2.onnx"
         )
 
+    def warmup(self) -> None:
+        """Force the EasyOCR model load + first-inference JIT now, so the ~2.8s cold
+        start doesn't land on the first LIVE OCR frame (where it breaches the OCR-tier
+        budget and drops that frame). Called at adapter construction, which runs before
+        the dispatcher's per-frame budget window — so the cost is paid off the hot path.
+        Guarded: a headless/CI env without easyocr just skips (OCR then warms lazily).
+        Warms the EasyOCR model load + detector JIT (the ~2s one-time cost that would
+        otherwise land on the first frame). NOTE: the per-read cost itself is large on CPU
+        (formation ~765ms, coverage ~2200ms warm) and is bounded by max_ocr_tier_ms, not by
+        this warmup — see the adapter budget."""
+        try:
+            _read_text(np.zeros((40, 120, 3), dtype=np.uint8))
+            logger.info("ocr_warmed")
+        except Exception:  # never let warmup break construction (e.g. easyocr absent)
+            logger.debug("ocr_warmup_skipped", exc_info=True)
+
     def read_frame(self, frame: np.ndarray) -> OCRSnapshot:
         """Read every HUD region. Returns a snapshot.
 

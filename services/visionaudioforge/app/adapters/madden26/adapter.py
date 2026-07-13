@@ -49,7 +49,14 @@ class Madden26Adapter:
     title: TitleEnum = TitleEnum.MADDEN26
     version: str = ADAPTER_VERSION
     max_processing_ms: int = 80          # ADR 0006 hot-path tier (ADR 0015)
-    max_ocr_tier_ms: int = 500           # ADR 0015 sampled-OCR tier
+    # ADR 0015 sampled-OCR tier. Raised 500->3000 (2026-07-13): EasyOCR-on-CPU warm
+    # read costs measured on the live box are formation ~765ms, formation+front ~984ms,
+    # and the coach-cam coverage BAND read ~2200ms — all pre-snap reads with seconds of
+    # headroom before the snap. At 500ms the dispatcher dropped every one, so no
+    # FORMATION_LOCKED/COVERAGE_LOCKED emitted live (the hot-path SNAPSHOT patch-NCC reads
+    # are ~15ms and unaffected). Follow-up to lower this: tighten the coverage band /
+    # reduce upscale, unify the play-call double region-read, or run OCR on GPU.
+    max_ocr_tier_ms: int = 3000
 
     cadence: CadenceProfile = CadenceProfile(
         name="football",
@@ -133,9 +140,13 @@ class Madden26Adapter:
     }
 
     def __init__(self) -> None:
-        # Lazy-loaded once per worker. EasyOCR cold-load happens on first read.
+        # Lazy-loaded once per worker. The adapter is constructed by get_adapter()
+        # BEFORE the dispatcher's per-frame budget window, so warming EasyOCR here
+        # pays the ~2.8s cold start off the hot path — the first LIVE OCR frame is
+        # then already warm and doesn't breach/drop on the cold start.
         self.ocr = OCRPipeline()
-        self.formations = FormationDetector()
+        self.ocr.warmup()
+        self.formations = FormationDetector(self.ocr)   # share the (warmed) pipeline
         self.context = ContextDetector()      # stateless — shared across sessions
         logger.info("madden26_adapter_loaded", extra={"version": self.version})
 
