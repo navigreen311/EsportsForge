@@ -49,6 +49,7 @@ _FRONT_RULES: list[tuple[str, str]] = [
     ("quarter", "Quarter"),
     ("3-4", "3-4"),
     ("4-3", "4-3"),
+    ("4-4", "4-4"),
     ("46", "46"),
     ("bear", "Bear"),
     ("prevent", "Prevent"),

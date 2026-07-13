@@ -43,7 +43,8 @@ def test_canonical_coverage_vocabulary():
 def test_canonical_front_vocabulary():
     assert canonical_front("4-3 Over") == "4-3"
     assert canonical_front("3-4 Odd") == "3-4"
-    assert canonical_front("Nickel") == "Nickel"
+    assert canonical_front("4-4 Split") == "4-4"       # real capture read; front was missing pre-v0.2
+    assert canonical_front("Nickel Over") == "Nickel"  # personnel + alignment
     assert canonical_front("Big Dime") == "Big Dime"   # more specific than "Dime"
     assert canonical_front("Prevent") == "Prevent"
     assert canonical_front("something else") is None

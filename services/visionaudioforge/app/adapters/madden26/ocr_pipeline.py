@@ -536,6 +536,14 @@ class FormationNameReading:
     is_play_call_screen: bool
 
 
+@dataclass(frozen=True)
+class DefensiveFrontReading:
+    front: str | None          # canonical front, e.g. "3-4" / "Nickel" (v0.2)
+    full_name: str | None      # raw card-subtitle text, e.g. "3-4 Under"
+    confidence: float
+    is_defensive_play_call: bool
+
+
 class OCRPipeline:
     """Loads HUD region map at construction; reads frames by-region."""
 
@@ -886,6 +894,14 @@ class OCRPipeline:
             text, conf = _read_text(_crop(frame, region["bbox"]))
             name = _parse_formation_name(text)
             if name and conf > 0.5:
+                # Guard: this card-subtitle line is shared with the DEFENSIVE
+                # play-call screen, where it reads a defensive front ("3-4 Under",
+                # "Nickel Over") — a disjoint vocabulary from offensive formations.
+                # Don't lock a defensive front as an offensive formation;
+                # read_defensive_front (v0.2) owns that read.
+                from .defensive_playcall import canonical_front
+                if canonical_front(name) is not None:
+                    continue
                 return FormationNameReading(
                     name, _formation_to_canonical(name), round(conf, 3), True)
 
@@ -902,6 +918,38 @@ class OCRPipeline:
             ptext, state_conf = _read_text(_crop(frame, plays_region["bbox"]))
             on_screen = bool(_PLAYS_RE.search(ptext)) and state_conf > 0.4
         return FormationNameReading(None, None, round(state_conf, 3), on_screen)
+
+    def read_defensive_front(self, frame: np.ndarray) -> DefensiveFrontReading:
+        """Read the committed defensive FRONT off the defensive play-call screen (v0.2).
+
+        The defensive play-call screen shows, under each coverage card, the COMMITTED
+        front + alignment ("3-4 Under", "Nickel Over", "4-4 Split") on the SAME
+        card-subtitle line the offensive reader uses — but a defensive front, a
+        vocabulary disjoint from offensive formations. Mirrors read_formation_name's
+        subtitle-first logic (the play-CARD front is the front the user drilled into,
+        i.e. committed — NOT the formation-picker list highlight, which is only the
+        hovered/browsed front). Returns the canonical front when a card reads one;
+        is_defensive_play_call=False (null) otherwise.
+
+        Disambiguation is by vocabulary: canonical_front matches 3-4/4-3/4-4/Nickel/
+        Dime/... which no offensive formation name contains. KNOWN v0.2 edge: an
+        offensive "Goal Line" formation collides with the "Goal Line" front — deferred
+        (needs a possession/badge confirm) since it's rare and both screens are mutually
+        exclusive per snap.
+        """
+        pc = self.play_call_regions
+        if not pc:
+            return DefensiveFrontReading(None, None, 0.0, False)
+        from .defensive_playcall import canonical_front
+        for key in self._SUBTITLE_KEYS:
+            region = pc.get(key)
+            if region is None:
+                continue
+            text, conf = _read_text(_crop(frame, region["bbox"]))
+            front = canonical_front(text)
+            if front and conf > 0.5:
+                return DefensiveFrontReading(front, text.strip(), round(conf, 3), True)
+        return DefensiveFrontReading(None, None, 0.0, False)
 
     def is_play_call_screen(self, frame: np.ndarray) -> bool:
         """Cheap state check: is the pre-snap play-call overlay currently visible?"""

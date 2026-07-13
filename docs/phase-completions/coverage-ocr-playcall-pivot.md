@@ -40,6 +40,35 @@ on-screen (you're on defense, or analysing your own defensive tendencies). It **
 opponent-coverage case is the genuine post-snap-vision research arc, and stays deferred. Many
 product uses (own-defense analytics, defensive tendency tracking, drill feedback) are covered.
 
+## v0.2 defensive FRONT — SHIPPED (reads the committed front off the coverage-card screen)
+
+The **defensive front** (`defensive_formation`) is now wired end-to-end. The committed
+front + alignment ("3-4 Under", "Nickel Over", "4-4 Split") is printed on the **same
+coverage-card subtitle line** the offensive reader uses (`formation_name`/`_2`/`_3`
+regions) — but it's a defensive front, a vocabulary **disjoint** from offensive
+formations, so `canonical_front()` disambiguates the two on the shared regions. This
+mirrors the offensive reader's hard-won lesson: the **committed** front is the one on the
+coverage-CARD screen (the formation the user drilled into to pick a coverage), NOT the
+formation-picker list highlight (which is only the *hovered/browsed* front — the direct
+analog of the offensive formation-select banner that produced the live wrong-lock).
+
+- `OCRPipeline.read_defensive_front` → `DefensiveFrontReading(front, full_name, conf,
+  is_defensive_play_call)`; `FormationDetector.detect_defensive_front` maps it to a
+  `FormationReading`; the adapter reads it on every `PLAY_CALL` frame (offense XOR defense
+  by vocabulary) and the assembler mode-votes it and emits `FORMATION_LOCKED` with
+  `defensive_formation` once per screen. Guarded so a defensive front never leaks into
+  `offensive_formation`.
+- **Validated on the dedicated capture** (`defcall_1.mp4`): reads 3-4 / 4-4 / Nickel off
+  the coverage-card screens and correctly abstains on the formation-picker browse screens.
+- **KNOWN v0.2 edge:** an offensive "Goal Line" formation collides with the "Goal Line"
+  front (the only overlapping token) — deferred (needs a possession/badge confirm); rare,
+  and the two screens are mutually exclusive per snap.
+
+Remaining for the OCR pivot: **v0.3 coverage** — the SELECTED-card resolution (the
+coverage-card browse screen shows 3 equal options; the call = which button the user
+presses) + wire `detect_coverage`. The front is committed once the user is on a
+formation's cards, so v0.2 didn't need selected-card; v0.3 coverage does.
+
 ## Approach (mirror `formation_detector.detect_offensive`)
 
 1. **Detect the defensive play-call screen** — extend `is_play_call_screen` / a context check
