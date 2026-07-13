@@ -225,10 +225,9 @@ class Madden26Adapter:
         coverage = None
         if context == HudContext.PLAY_CALL:
             if "offensive_formation" in fields_due:
-                # The play-call screen is offensive XOR defensive; read both and let
-                # the (disjoint) vocabulary decide which one has a real reading.
-                offense = self.formations.detect_offensive(frame)      # 1 OCR pass
-                defense = self.formations.detect_defensive_front(frame)  # 1 OCR pass
+                # The play-call screen is offensive XOR defensive; ONE OCR pass over the
+                # shared card-subtitle regions reads both, classified by (disjoint) vocab.
+                offense, defense = self.formations.detect_play_call(frame)
         elif fields_due:                                            # live + something due
             hud_fields = set(fields_due)
             # v0.3 coverage — coach-cam play-art read, PRE-SNAP only (bounds the costly
