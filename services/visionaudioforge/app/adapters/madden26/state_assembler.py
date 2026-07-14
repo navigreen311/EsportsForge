@@ -110,6 +110,54 @@ def _coverage_lock(
                           adapter_version=ADAPTER_VERSION, captured_at=captured_at)]
 
 
+# Snap-boundary event confidence. The play-clock-freeze detector scores ~95% recall
+# with ~2 FP / 90s clip (docs/phase-completions/snap-detector-m5b.md); PLAY_STARTED
+# fires at the freeze-confirm frame. A fixed sub-1.0 confidence reflects that FP floor
+# (the reset-vs-resume annotation that could refine it isn't known at snap time).
+_SNAP_CONFIDENCE = 0.9
+
+
+def _play_boundary_events(
+    session: SessionContext, st: dict, snap_started: bool, snap_ended: bool,
+    captured_at: datetime,
+) -> list[EventEnvelope]:
+    """Emit PLAY_STARTED / PLAY_ENDED from the snap-detector edges (M5b).
+
+    PLAY_STARTED = the snap confirm (PRE_SNAP -> POST_SNAP); PLAY_ENDED = the prior
+    play's post-snap freeze ending on the next play's reset tick (POST_SNAP -> PRE_SNAP).
+    Both carry the last-live game state (like FORMATION_LOCKED / COVERAGE_LOCKED) so the
+    down/distance/clock of the play travel with the event; the scorebug may be mid-
+    transition on the boundary frame. Emitted UNGATED by the SNAPSHOT OCR-cadence gate
+    (a snap on a hot, no-OCR frame must still fire). The two never co-occur on one frame
+    (a reset tick and a freeze-confirm are distinct frames), but order deterministically:
+    PLAY_ENDED (prior play) before PLAY_STARTED (new play)."""
+    if not (snap_started or snap_ended):
+        return []
+    last_live = st.get("_last_live_state", {})
+
+    def _payload() -> Madden26Payload:
+        return Madden26Payload(
+            score_home=last_live.get("score_home"), score_away=last_live.get("score_away"),
+            quarter=last_live.get("quarter"), clock=last_live.get("clock"),
+            play_clock=_as_int(last_live.get("play_clock")), down=last_live.get("down"),
+            distance=last_live.get("distance"), field_position=last_live.get("field_position"),
+            possession="home",
+        )
+
+    events: list[EventEnvelope] = []
+    if snap_ended:
+        events.append(make_envelope(
+            session=session, event_type=EventType.PLAY_ENDED, payload=_payload(),
+            confidence=_SNAP_CONFIDENCE, adapter_version=ADAPTER_VERSION,
+            captured_at=captured_at))
+    if snap_started:
+        events.append(make_envelope(
+            session=session, event_type=EventType.PLAY_STARTED, payload=_payload(),
+            confidence=_SNAP_CONFIDENCE, adapter_version=ADAPTER_VERSION,
+            captured_at=captured_at))
+    return events
+
+
 def assemble(
     session: SessionContext,
     ocr: OCRSnapshot,
@@ -122,6 +170,8 @@ def assemble(
     context: str | None = None,
     updated_fields: set[str] | None = None,
     play_epoch: int = 0,
+    snap_started: bool = False,
+    snap_ended: bool = False,
 ) -> list[EventEnvelope]:
     if session.title is None:
         return []
@@ -216,6 +266,11 @@ def assemble(
     # COVERAGE_LOCKED, emitted alongside whatever SNAPSHOT this frame produces.
     cov_events = _coverage_lock(session, smoother, schema, coverage, play_epoch,
                                 captured_at, st)
+    # Snap-boundary events (M5b): read the last-live state BEFORE this frame updates it,
+    # so PLAY_STARTED carries the snapped play's pre-snap down/distance. These lead the
+    # frame's events and are exempt from the SNAPSHOT OCR-cadence gate below.
+    lead = _play_boundary_events(session, st, snap_started, snap_ended, captured_at) \
+        + cov_events
     epoch_ctx = f"live:play{play_epoch}"
     last_state = st.get("_last_live_state", {})
     sm: dict = {}
@@ -240,7 +295,7 @@ def assemble(
     if updated_fields is not None and not any(v is not None for v in core):
         st["_last_live_state"] = {f: sm[f] for f in _LIVE_FIELDS}
         st["_last_live_state"]["quarter"] = quarter
-        return cov_events
+        return lead
     payload = Madden26Payload(
         score_home=sm["score_home"],        # nullable — no fabricated 0 on unreadable
         score_away=sm["score_away"],
@@ -262,7 +317,7 @@ def assemble(
     # Emit gating: on the sampled-cadence path, a hot-path frame reads nothing —
     # don't emit an unchanged SNAPSHOT. (Legacy path: updated_fields is None -> emit.)
     if updated_fields is not None and not updated_fields:
-        return cov_events
-    return cov_events + [make_envelope(session=session, event_type=EventType.SNAPSHOT,
-                         payload=payload, confidence=ocr.confidence_overall,
-                         adapter_version=ADAPTER_VERSION, captured_at=captured_at)]
+        return lead
+    return lead + [make_envelope(session=session, event_type=EventType.SNAPSHOT,
+                   payload=payload, confidence=ocr.confidence_overall,
+                   adapter_version=ADAPTER_VERSION, captured_at=captured_at)]
