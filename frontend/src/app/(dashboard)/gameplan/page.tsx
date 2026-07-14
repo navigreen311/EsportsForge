@@ -37,7 +37,7 @@ import { WatchingPageHint } from '@/components/global/WatchingPageHint';
 import api from '@/lib/api';
 import { gameplanVisionEnabled } from '@/lib/vafFlags';
 import { useVisionEvents } from '@/hooks/useVisionEvents';
-import { deriveCoverageHighlight } from '@/lib/gameplan/coverageHighlight';
+import { deriveCoverageHighlight, type CoverageHighlight } from '@/lib/gameplan/coverageHighlight';
 
 type ViewTab = PackageTab | 'script' | 'arsenal';
 
@@ -135,14 +135,36 @@ function GameplanPageBody() {
     eventType: 'COVERAGE_LOCKED',
     enabled: gameplanVafFlagOn && !!vafSession,
   });
-  // v0.1: always null (soft-launch silence). v0.3: non-null → highlight + banner.
-  const coverageHighlight = deriveCoverageHighlight(coverageEvent);
+  // v0.3 (spec #03 §117): a COVERAGE_LOCKED highlights the kill-sheet plays that
+  // beat the detected coverage + a banner, auto-dismissed after 30s. Matching is
+  // pure (deriveCoverageHighlight); the page owns the transient banner state and
+  // its timer. A non-matching event (or a coverage with no counter-play) leaves
+  // any active banner + its running timer untouched.
+  const [coverageHighlight, setCoverageHighlight] = useState<CoverageHighlight | null>(null);
+  const coverageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    // v0.3 seam: when coverageHighlight is non-null, highlight kill-sheet plays
-    // whose beats match coverageHighlight.coverage, surface the "Cover 3
-    // detected — try …" banner, and time it out after 30s (spec #03 §117).
-    // Inert in v0.1 — no coverage events fire (ADR 0010 §45).
-  }, [coverageHighlight]);
+    const h = deriveCoverageHighlight(coverageEvent, gameplan.plays);
+    if (!h) return;
+    setCoverageHighlight(h);
+    if (coverageTimerRef.current) clearTimeout(coverageTimerRef.current);
+    coverageTimerRef.current = setTimeout(() => setCoverageHighlight(null), 30_000);
+  }, [coverageEvent, gameplan.plays]);
+  useEffect(
+    () => () => {
+      if (coverageTimerRef.current) clearTimeout(coverageTimerRef.current);
+    },
+    [],
+  );
+  const dismissCoverageHighlight = () => {
+    if (coverageTimerRef.current) clearTimeout(coverageTimerRef.current);
+    setCoverageHighlight(null);
+  };
+  const highlightedPlayIds = coverageHighlight ? new Set(coverageHighlight.playIds) : null;
+  const highlightedPlayNames = coverageHighlight
+    ? gameplan.plays
+        .filter((p) => coverageHighlight.playIds.includes(p.id))
+        .map((p) => p.name)
+    : [];
 
   const handleTabChange = (key: ViewTab) => {
     setViewTab(key);
@@ -401,6 +423,35 @@ function GameplanPageBody() {
             </div>
           )}
 
+          {/* v0.3 live coverage-highlight banner (spec #03 §117) — a detected
+              defensive coverage + the kill-sheet plays that beat it, auto-dismissed
+              after 30s. Silent until a COVERAGE_LOCKED surfaces. */}
+          {coverageHighlight && (
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-forge-500/40 bg-forge-500/10 px-4 py-2.5">
+              <p className="text-sm text-forge-200">
+                <span className="font-semibold text-forge-300">
+                  {coverageHighlight.coverage} detected
+                </span>
+                {highlightedPlayNames.length > 0 && (
+                  <>
+                    {' — try: '}
+                    <span className="font-medium text-dark-100">
+                      {highlightedPlayNames.join(', ')}
+                    </span>
+                  </>
+                )}
+              </p>
+              <button
+                type="button"
+                onClick={dismissCoverageHighlight}
+                className="flex-shrink-0 text-lg leading-none text-forge-400 hover:text-forge-200"
+                aria-label="Dismiss coverage highlight"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
           {/* Two-Column Layout */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
             {/* Left: Play List */}
@@ -409,6 +460,7 @@ function GameplanPageBody() {
                 plays={tendencyFilteredPlays}
                 selectedPlayId={selectedPlay?.id ?? null}
                 onSelectPlay={selectPlay}
+                highlightedPlayIds={highlightedPlayIds}
               />
             </div>
 

@@ -25,6 +25,11 @@ import { useEffect, useRef, useState } from 'react';
 export interface FootballPayload {
   offensive_formation: string | null;
   offensive_formation_family: string | null;
+  // v0.3 COVERAGE_LOCKED — the committed defensive coverage, canonical name
+  // (e.g. "Cover 3", "Cover 2-Man"). Null on non-coverage events; optional so
+  // existing partial payload literals (tests) don't need updating — the matcher
+  // treats absent as no-coverage.
+  defensive_coverage?: string | null;
   [key: string]: unknown;
 }
 

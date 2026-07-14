@@ -1,25 +1,21 @@
 /**
- * Gameplan coverage-highlight seam — Phase 1b (Gameplan cutover).
+ * Gameplan coverage-highlight seam (v0.3 — OCR-of-play-call coverage leg).
  *
- * SOFT-LAUNCH (ADR 0010 §45): Gameplan subscribes to COVERAGE_LOCKED, but the
- * Madden adapter emits NO coverage events until v0.3. So in v0.1 `lastEvent` is
- * always null here and this always returns null (graceful empty) — the
- * kill-sheet renders unchanged. The subscription is genuinely wired and will
- * light up automatically when v0.3 ships; this function is the single seam
- * where the kill-sheet auto-highlight lands.
+ * When the Madden adapter emits a COVERAGE_LOCKED (the committed defensive
+ * coverage, read off the pre-snap coach-cam play-art), derive the kill-sheet
+ * plays that beat it — spec #03 §117 (highlight plays whose `beats` match the
+ * detected coverage + a "Cover 3 detected — try …" banner + 30s timeout; the
+ * banner/timeout live in the Gameplan page, this module is the pure matcher).
  *
- * v0.3: derive the detected coverage from the COVERAGE_LOCKED payload and return
- * the kill-sheet plays that beat it — spec #03 §117 (highlight plays whose
- * `beats` match the coverage + a "Cover 3 detected — try …" banner + 30s
- * timeout). Deferred now because FULL is unbuildable in v0.1:
- *   - the coverage payload contract is unpinned (`defensive_formation` is
- *     null-until-v0.3; there is no finalized coverage-value field),
- *   - the coverage-name vocabulary the classifier emits does not exist yet
- *     (a v0.3 macro-F1 deliverable), and
- *   - `Play.beats` is free-text (`string`, not the `beats[]` array spec §117
- *     assumes) with no coverage vocabulary — see the v0.3 beats-vocabulary note.
- * Matching two undefined vocabularies against an invented fixture would prove
- * nothing real and guarantee rework, so v0.1 stays silent by design.
+ * v0.1 was inert-by-design: the adapter emitted no coverage and the two
+ * vocabularies (the coverage-value field, the classifier's coverage names)
+ * didn't exist, so matching would have been against invented data. Both now
+ * exist on `main`: the payload carries `defensive_coverage` (canonical, e.g.
+ * "Cover 3" / "Cover 2-Man") and the classifier emits Cover 0/1/2/2-Man/3/4/6/9.
+ * `Play.beats` remains free-text ("Cover 3", "Cover 2 Zone", "Man Coverage",
+ * "Cover 3 / Cover 4"), so the match is a normalized "Cover N" shell match plus
+ * a man/zone rule (see playBeatsCoverage). Coverages with no counter-play in the
+ * sheet (e.g. Cover 6/9) return null — no highlight rather than an empty one.
  */
 import type { EventEnvelope } from '@/hooks/useVisionEvents';
 
@@ -30,14 +26,43 @@ export interface CoverageHighlight {
   playIds: string[];
 }
 
+/** A play's minimal shape for matching — just its id and free-text `beats`. */
+export interface HighlightablePlay {
+  id: string;
+  beats?: string | null;
+}
+
+/**
+ * Does a play's free-text `beats` counter the detected coverage?
+ *
+ *  - Shell match: the "Cover N" number in the coverage matches a "cover N" token
+ *    in `beats` (word-bounded, so "cover 2" ≠ "cover 20"). "Cover 2-Man" keeps
+ *    shell 2, so it also lights Cover-2 beaters. Handles "Cover 3 / Cover 4".
+ *  - Man rule: a man coverage — any "-Man", or Cover 0/1 (man-based) — also lights
+ *    plays that beat a generic "Man" look ("Man Coverage", "Man Blitz").
+ */
+export function playBeatsCoverage(beats: string, coverage: string): boolean {
+  const b = beats.toLowerCase();
+  const cov = coverage.toLowerCase();
+  const num = cov.match(/cover\s*(\d+)/)?.[1];
+  const shellMatch = num != null && new RegExp(`cover\\s*${num}\\b`).test(b);
+  const isMan = /\bman\b/.test(cov) || /cover\s*[01]\b/.test(cov);
+  const manMatch = isMan && /\bman\b/.test(b);
+  return shellMatch || manMatch;
+}
+
 export function deriveCoverageHighlight(
   lastEvent: EventEnvelope | null,
+  plays: readonly HighlightablePlay[],
 ): CoverageHighlight | null {
-  // v0.1: no COVERAGE_LOCKED ever fires (soft-launch silence, ADR 0010 §45) —
-  // inert whether lastEvent is null or (defensively) a surfaced coverage event.
   if (!lastEvent) return null;
-  // v0.3: replace with real coverage -> beats matching once the payload
-  // contract + coverage vocabulary exist. Until then stay silent rather than
-  // match invented data.
-  return null;
+  const coverage = lastEvent.payload.defensive_coverage;
+  if (typeof coverage !== 'string' || coverage.length === 0) return null;
+  const playIds = plays
+    .filter((p): p is HighlightablePlay & { beats: string } =>
+      typeof p.beats === 'string' && playBeatsCoverage(p.beats, coverage),
+    )
+    .map((p) => p.id);
+  if (playIds.length === 0) return null; // detected, but nothing in the sheet beats it
+  return { coverage, playIds };
 }

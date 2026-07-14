@@ -27,9 +27,16 @@ interface GameplanListProps {
   plays: Play[];
   selectedPlayId: string | null;
   onSelectPlay: (play: Play) => void;
+  /** Play ids to ring-highlight (v0.3 live coverage-highlight, spec #03 §117). */
+  highlightedPlayIds?: Set<string> | null;
 }
 
-export default function GameplanList({ plays, selectedPlayId, onSelectPlay }: GameplanListProps) {
+export default function GameplanList({
+  plays,
+  selectedPlayId,
+  onSelectPlay,
+  highlightedPlayIds,
+}: GameplanListProps) {
   return (
     <div className="space-y-2 overflow-y-auto max-h-[calc(100vh-360px)] pr-1 scrollbar-thin scrollbar-track-dark-900 scrollbar-thumb-dark-700">
       {plays.length === 0 && (
@@ -40,6 +47,7 @@ export default function GameplanList({ plays, selectedPlayId, onSelectPlay }: Ga
 
       {plays.map((play) => {
         const isSelected = play.id === selectedPlayId;
+        const isHighlighted = !!highlightedPlayIds?.has(play.id);
         const execStatus = PLAY_EXECUTION_STATUS[play.id];
         const isNotReady = execStatus && execStatus !== 'competition-ready';
 
@@ -53,6 +61,10 @@ export default function GameplanList({ plays, selectedPlayId, onSelectPlay }: Ga
                 ? 'border-forge-500 bg-forge-950/30 shadow-lg shadow-forge-500/10'
                 : 'border-dark-700/50 bg-dark-900/80 hover:border-dark-500 hover:bg-dark-800/80',
               play.isKillSheetPlay && !isSelected && 'border-l-2 border-l-forge-500',
+              // v0.3 live coverage-highlight: ring the plays that beat the detected
+              // coverage (selection styling still wins when both apply).
+              isHighlighted && !isSelected &&
+                'ring-2 ring-forge-400/70 ring-offset-1 ring-offset-dark-950',
               isNotReady && !isSelected && 'opacity-75'
             )}
           >
