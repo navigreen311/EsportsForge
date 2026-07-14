@@ -23,7 +23,7 @@ import argparse
 import sys
 from pathlib import Path
 
-import cv2  # type: ignore[import-not-found]
+import cv2
 
 from app.adapters.madden26.ocr_pipeline import OCRPipeline
 
