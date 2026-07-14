@@ -21,6 +21,96 @@ Both must be `"true"` for the live path to run end-to-end (frontend attempts; ba
 2. **Frontend:** set `NEXT_PUBLIC_VAF_DRILL_LAB_ENABLED=true` at build; **rebuild + redeploy** the frontend (build-time inline — a running frontend will not pick it up without a rebuild).
 3. Verify: Settings → Game Settings shows **Drill Lab Live Vision: On**; the Drill Lab page provisions a session.
 
+## Run it live — full local recipe (verified end-to-end 2026-07-13, PS5 → browser)
+
+This is the concrete "how to run the whole thing off a real PS5 locally" recipe. Verified: driving a play-call rep on the PS5 auto-completed a Drill Lab rep in the browser (`FORMATION_LOCKED` → `useDrillLabAutoRep`), with `COVERAGE_LOCKED` + `SNAPSHOT` also flowing.
+
+**Dev-path caveat:** this uses `next dev` (unbundled), **not** a production build. `NEXT_PUBLIC_*` still inlines at dev-server start, so a running dev server must be **restarted** (not just HMR) to pick up an `.env.local` change. Dev mode exercises the exact browser event-flow (broker → core WS → hook → render); the dev-vs-prod distinction is about bundling/inlining, not whether events reach the UI. For a prod bundle, rebuild + redeploy per "Enable (engineer)" above.
+
+### Topology / ports (local)
+
+| Component | Port | Run dir | Runtime |
+|---|---|---|---|
+| VAF core | 8100 | `services/visionaudioforge` | `.venv` (Py 3.12, cv2+easyocr+torch) |
+| Backend (broker + webhook receiver) | **8002** | `backend` | `venv` |
+| Frontend (`next dev`) | 3002 | `frontend` | node (matches `NEXTAUTH_URL`) |
+| Capture agent (capture-card) | — | `agents/capture` | VAF `.venv` (has cv2 + websockets) |
+
+Backend is **8002**, not 8001 (ADR 0011 — a ghost PID holds 8001). The old `NEXT_PUBLIC_API_URL=http://127.0.0.1:8001` in `.env.local` was **stale and dead** and 502'd every `sessions/start`; it must be `:8002`.
+
+### Env — shell-export for services, `.env.local` for the frontend
+
+The backend/core do **not** `load_dotenv` these — they must be **shell-exported in the process that launches the service** (per [[feedback_esportsforge_dev_setup]]):
+
+- **Backend:** `VAF_DRILL_LAB_ENABLED=true` (master gate) **and** `VAF_CORE_URL=http://127.0.0.1:8100` (broker → core).
+- **Core:** `ESF_BACKEND_URL=http://127.0.0.1:8002` (webhook publisher → this backend; global, not per-session).
+
+Frontend `frontend/.env.local` (build/dev-server-time; restart the dev server after editing):
+```
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8002        # fixed from dead :8001 (ADR 0011)
+NEXT_PUBLIC_VAF_DRILL_LAB_ENABLED=true           # frontend opt-in
+NEXT_PUBLIC_VAF_WS_URL=ws://127.0.0.1:8100        # fallback only — the broker returns ws_url; a valid ws:// keeps new WebSocket() from throwing on empty
+```
+
+### 0. Backend DB (one-time, if schema-drifted)
+
+A checkout can carry a **schema-drifted `backend/esportsforge.db`** (pre-rebaseline: unstamped `alembic_version`, fewer tables than main's `ffa2cd90434a` "clean baseline") — the startup `alembic upgrade head` then dies on `CREATE TABLE` collisions (exit 3). Fix: move the drifted DB aside, build fresh, seed the dev user.
+```
+cd backend
+mv esportsforge.db esportsforge.db.drifted-bak      # preserve, don't delete
+venv/Scripts/python.exe -m alembic upgrade head       # builds 32 tables + head stamp
+venv/Scripts/python.exe scripts/seed_dev_user.py      # -> dev@example.com / devpass123
+```
+
+### 1. Boot the three services (each in its own shell/bg)
+```
+# core (:8100)
+cd services/visionaudioforge
+ESF_BACKEND_URL=http://127.0.0.1:8002 PYTHONPATH="$PWD" \
+  .venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8100
+
+# backend (:8002)
+cd backend
+VAF_DRILL_LAB_ENABLED=true VAF_CORE_URL=http://127.0.0.1:8100 PYTHONPATH="$PWD" \
+  venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8002
+
+# frontend (:3002 to match NEXTAUTH_URL)
+cd frontend && npm run dev -- -p 3002
+```
+Health: `curl :8100/docs`, `curl :8002/api/v1/status`, `curl :3002` → all 200.
+
+Optional backend-leg smoke (no browser): login → `sessions/start` should broker to core and return `{session_id, ws_url}`:
+```
+TOK=$(curl -s -XPOST :8002/api/v1/auth/login -H 'Content-Type: application/json' -d '{"email":"dev@example.com","password":"devpass123"}' | jq -r .access_token)
+curl -s -XPOST :8002/api/v1/visionaudio/sessions/start -H "Authorization: Bearer $TOK"
+```
+
+### 2. Browser: log in + open Drill Lab
+Open `http://localhost:3002`, log in (`dev@example.com` / `devpass123`), navigate to **Drill Lab**. With the flag on, the page POSTs `sessions/start`, gets `{session_id, token, ws_url}`, and opens a WS to core `/ws/events/{session_id}`.
+
+### 3. Pin the capture agent to the BROWSER's session (the one coordination point)
+
+Ingest (`/ws/ingest?session_id=X`) and events (`/ws/events/{session_id}`) are keyed by the **same** `session_id`, and the browser mints a **fresh** session each load. So the capture agent must ingest into *that* session. Scrape it from the core log (the WS accept line carries it in the path):
+```
+grep -aE "WebSocket /ws/events" core.log | tail -1
+#   ... "WebSocket /ws/events/ses_XXXX?token=esf-cap-dev-placeholder" [accepted]
+```
+Preflight the card (brightness ~16 = black/no-signal; 30–90 = live game), then launch the agent pinned to that session:
+```
+cd agents/capture
+ESF_CAPTURE_AGENT_CONFIG=./config.capture-card.toml \
+  <vaf-venv-python> -m capture_agent.main --config ./config.capture-card.toml --session-id ses_XXXX
+```
+Agent log should show `hdmi_ffmpeg_spawned` → `session_open` → `agent_connected`; core shows `agent_connected` → `title_locked`.
+
+### 4. Verify the render
+Drive a play to the **offensive/defensive play-call screen** → `FORMATION_LOCKED` fires → **a Drill Lab rep auto-completes**. Independent check: `curl :8002/api/v1/visionaudio/sessions/active` shows `recent_event_count` climbing; or subscribe a raw WS client to `/ws/events/{session_id}` to watch events directly. First events can lag ~60–90 s after connect (getting to a live play + EasyOCR warm).
+
+### Known gotchas found during the first live run
+- **Dead `:8001` in `.env.local`** — see above; must be `:8002`.
+- **Schema-drifted dev DB** — see step 0.
+- **File-source EOF heartbeat bug (latent):** `FilePlaybackSource` emits a heartbeat with `status="completed"` at clip EOF, which `HeartbeatMessage` (`ingest.py`) rejects (`literal_error`, only `ok|missing|degraded`) → an `ingest_error` at end-of-clip. Harmless for the live capture-card path (no EOF), but breaks clean shutdown of **file-mode** replays; fix the enum or map `completed`→`ok` before relying on file-mode tallying.
+
 ## Rollback via master flag (~30 s)
 
 **Fastest kill:** set backend `VAF_DRILL_LAB_ENABLED` to anything other than `"true"` (or unset) and **restart the backend** (~30 s). The broker immediately **403s** new `sessions/start` calls → no new vision sessions. Drill state is unaffected (rep counter is server-side; per state report §2.5, the mock/legacy path remains available).
