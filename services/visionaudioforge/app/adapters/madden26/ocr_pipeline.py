@@ -835,15 +835,29 @@ class OCRPipeline:
         return None
 
     def _read_play_clock(self, frame: np.ndarray) -> str | None:
-        """Read the dark-on-white play-clock (0-40) with the 2-head CNN. Returns the
-        value as a string (OCRSnapshot stores play_clock as str) or None (reader
-        absent, box not white/red, or the net abstains). Best-effort — the field is
-        informational and smoothed downstream."""
+        """Read the play-clock (0-40). PRIMARY: EasyOCR on the scorebug ':SS' box
+        (v2.5.0-ps5). The 2-head CNN was trained on the practice/standalone DARK-on-WHITE
+        play-clock; the PS5 game scorebug shows a small ':SS' in a GREY box (box mean ~79 <
+        the CNN's white gate, and the narrow digits defeat patch-NCC segmentation), so the
+        CNN reads 0% there. EasyOCR reads the same broadcast-font digits reliably (~56ms) on
+        the tiny crop. Falls back to the CNN when the play_clock bbox isn't calibrated (e.g.
+        a dark-on-white standalone play-clock). Best-effort — the field is informational and
+        smoothed downstream. Returns a str (OCRSnapshot stores play_clock as str) or None."""
+        sb = self.regions["scoreboard"]["subregions"]
+        bbox = sb.get("play_clock")
+        if bbox is not None:
+            text, _conf = _read_text(_crop(frame, bbox), "0123456789:")
+            m = re.search(r"(\d\d)\s*$", text.replace(" ", ""))
+            if m:
+                v = int(m.group(1))
+                if 0 <= v <= 40:
+                    return str(v)
+            return None
         reader = self._play_clock_reader
         if reader is None:
             return None
-        v, _conf = reader.read_value(frame)
-        return None if v is None else str(v)
+        v_cnn, _c = reader.read_value(frame)
+        return None if v_cnn is None else str(v_cnn)
 
     def _read_1or2_digits(self, reader, patch: np.ndarray) -> int | None:
         """Read a 1- or 2-digit white-on-dark field. Isolate each digit as its own
