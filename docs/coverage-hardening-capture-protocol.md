@@ -132,6 +132,12 @@ cd ~/madden-recal-refs/digit-campaign
 Aim for a spread across the **tens digit** — one clip in the 10–19 range, one in 20+ — so
 each 2-digit shape is exercised (not just, say, "10" over and over).
 
+These multi-game gameplay clips **also** serve the play-clock CNN: a game-box retrain is
+feasible but couldn't be shown to beat EasyOCR on one game (labels were EasyOCR's own — see
+`services/visionaudioforge/tools/play_clock/game-box-retrain-findings.md`). A second game's
+grey `:SS` play-clock, or ~50 hand-labeled crops, gives the independent ground truth to
+settle it. Low priority — EasyOCR ships and works.
+
 **Evaluate:** run `read_fields` (score fields) over the extracted frames and confirm
 `score_home`/`score_away` match each clip's label — the same offline check that confirmed
 single-digit. A correct read on **≥2 distinct 2-digit values with different tens digits**
