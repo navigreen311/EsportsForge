@@ -37,7 +37,7 @@ from .context_detector import ContextDetector, HudContext
 from .formation_detector import FormationDetector, FormationReading
 from .ocr_pipeline import OCRPipeline, OCRSnapshot
 from .play_boundary import PlayBoundaryTrigger
-from .snap_detector import SnapDetector
+from .snap_detector import SnapDetector, SnapState
 from .state_assembler import ADAPTER_VERSION, assemble
 
 logger = logging.getLogger("vaf.adapters.madden26")
@@ -253,12 +253,21 @@ class Madden26Adapter:
         pc_cached = st.get("_ocr_cache", {}).get("play_clock")
         pc_value = int(pc_cached) if pc_cached is not None else None
         snap = self._snap(session)
-        st["snap_state"] = snap.update(
+        prev_snap_state = st.get("snap_state")
+        snap_state = snap.update(
             frame, context == HudContext.LIVE_GAMEPLAY, pc_value)
+        st["snap_state"] = snap_state
         if snap.snapped:
             st["_last_snap_frame"] = session.frame_count
             st["_presnap"] = False       # snap fired — coach-cam window is over
         st["_last_snap_pause"] = snap.last_snap_pause
+        # Play-boundary edges -> PLAY_STARTED / PLAY_ENDED (M5b). PLAY_STARTED = the
+        # snap confirm frame; PLAY_ENDED = the prior play's post-snap freeze ending on
+        # the next play's reset tick (POST_SNAP -> PRE_SNAP). The assembler builds the
+        # envelopes (ungated by the SNAPSHOT OCR cadence).
+        snap_started = snap.snapped
+        snap_ended = (prev_snap_state == SnapState.POST_SNAP
+                      and snap_state == SnapState.PRE_SNAP)
 
         # 6. assemble from the carried-forward snapshot; smooth only fresh fields.
         return assemble(
@@ -272,4 +281,6 @@ class Madden26Adapter:
             context=ctx,
             updated_fields=updated,
             play_epoch=plan["epoch"],
+            snap_started=snap_started,
+            snap_ended=snap_ended,
         )
