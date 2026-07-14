@@ -1,7 +1,10 @@
 {
   "schema_version": "2.3.0-live",
   "title": "madden26",
-  "resolution": [1920, 1080],
+  "resolution": [
+    1920,
+    1080
+  ],
   "calibration": {
     "milestone": "Tier-1 live-feed recalibration (PS5 HDMI capture, broadcast HUD)",
     "calibration_date": "2026-07-08",
@@ -9,44 +12,145 @@
     "notes": [
       "v2.3.0-live recalibrates for the REAL PS5 feed, which renders a FULL-WIDTH broadcast bar along the bottom (EA/MADDEN | home-logo | ABBR score x score ABBR | away-logo | quarter clock | play_clock | down&distance | streak), NOT the center-clustered scorebug v2.1.0/v2.2.0 assumed. The same elements are redistributed across x~300..1770: scores sit near center, clock/quarter ~+420px right, down/distance ~+880px right. Every region was remeasured off saved live refs (~/madden-recal-refs) and confirmed by rendering each box back onto the raw frame.",
       "down & distance render as one contiguous string ('2ND & 6') -> merged into a single down_distance region, regex-split into down + distance (was two separate boxes).",
-      "field_position: no analog on this broadcast bar (the far-right glyph is a streak/momentum indicator, not ball-on). PARKED for the live path — dropped from the cadence read; revisit if a source is identified.",
+      "field_position: no analog on this broadcast bar (the far-right glyph is a streak/momentum indicator, not ball-on). PARKED for the live path \u2014 dropped from the cadence read; revisit if a source is identified.",
       "scores: a large italic numeral that EasyOCR's detector drops in isolation (known-weak, ADR 0013 -> total non-detection on this bar). scores_combined reads the '<n> x <n>' pair in one box and splits; individual boxes are the fallback. If both fail live, scores degrade to null (the payload is nullable) and a dedicated score-OCR pass (template/digit-classifier) is banked as follow-up.",
       "play_call: the human play-call screen has NO '<Formation> - N Plays' banner. The formation is read from the play-card SUBTITLE ('<Family> <Sub-formation>', e.g. 'Singleback Deuce Close'), which repeats under all visible cards -> read multiple cards and majority-vote. The play-call-screen STATE SIGNAL moved from the banner's 'N Plays' suffix to the standalone plays_count element (top-right '15 Plays'). See ADR 0014 + the live recal report.",
       "ContextDetector RETUNED (v2.3.0-live) against 54 live frames: rule is now 0.30<=dark_frac<=0.78 AND bar_mean>=60 (bottom-bar luma rejects the pause menu). 0 FP / 0 FN across both play-call sub-views + gameplay/pause/replay/corrupted. Formation read is banner-first (formation-select '<Formation> - N Plays') with play-card-subtitle fallback (play-select).",
       "clock_seconds [1383,1013,68,40]: the SECONDS-ONLY sub-crop of the clock box (the 'SS' of 'M:SS'), added for the style-aware digit reader (digit_reader.py). EasyOCR's blanket 7->1 clock sub collapses a real :17->:11 in the SECONDS; the patch-NCC reader reads the two seconds digits from this zone with abstain-over-guess and splices them into the clock, leaving minutes/colon on the existing EasyOCR path. Zone gate-verified live (clock 4:32->4:27, isolates cleanly, reads :37/:31/:27 correctly). See docs/phase-completions/digit-ocr-reader-result.md.",
       "distance_digit [1693,1010,33,44]: the single distance digit after the '&' (excludes the ampersand; '&' ends ~x=1690, digit sits ~1695-1720). Feeds the patch-NCC distance reader (digits 1-9) to fix the single-digit '1<->7' distance collision. Applied via an agreement-or-1<->7 gate in ocr_pipeline._reader_distance so it never fabricates on the confusable 3/5/6/8 cluster; multi-digit distances (>=10) stay on the EasyOCR right_cluster path. Held-out verified (2ND & 7->7, 2ND & 1->1 @ NCC ~1.0)."
-    ]
+    ],
+    "v2.5.0-ps5-game": "scorebug bboxes + gcsec/dist templates re-fit on game_hud_1 (KC vs LV, 2026-07-13)"
   },
   "hud_contexts": {
     "live_gameplay": {
       "description": "In-play full-width broadcast bar along the bottom (~y985..1060). Present during snaps in every mode on the live PS5 feed.",
       "regions": {
         "scoreboard": {
-          "bbox": [280, 985, 980, 80],
+          "bbox": [
+            280,
+            985,
+            980,
+            80
+          ],
           "subregions": {
-            "team_home_logo": [300, 985, 130, 62],
-            "team_home_abbr": [520, 1005, 78, 34],
-            "score_home":     [686, 1000, 52, 58],
-            "score_away":     [812, 1000, 52, 58],
-            "scores_combined":[682, 1000, 182, 58],
-            "team_away_abbr": [922, 1005, 78, 34],
-            "team_away_logo": [1040, 975, 200, 82],
-            "quarter":        [1282, 1004, 66, 40],
-            "quarter_digit":  [1289, 1010, 24, 42],
-            "clock":          [1352, 1002, 92, 42],
-            "clock_minutes":  [1350, 1012, 26, 42],
-            "clock_seconds":  [1383, 1013, 68, 40]
+            "team_home_logo": [
+              300,
+              985,
+              130,
+              62
+            ],
+            "team_home_abbr": [
+              520,
+              1028,
+              60,
+              40
+            ],
+            "score_home": [
+              640,
+              1031,
+              50,
+              38
+            ],
+            "score_away": [
+              818,
+              1031,
+              44,
+              38
+            ],
+            "scores_combined": [
+              636,
+              1031,
+              232,
+              38
+            ],
+            "team_away_abbr": [
+              920,
+              1028,
+              60,
+              40
+            ],
+            "team_away_logo": [
+              1040,
+              975,
+              200,
+              82
+            ],
+            "quarter": [
+              1268,
+              1031,
+              58,
+              38
+            ],
+            "quarter_digit": [
+              1270,
+              1031,
+              18,
+              38
+            ],
+            "clock": [
+              1327,
+              1030,
+              66,
+              37
+            ],
+            "clock_minutes": [
+              1327,
+              1030,
+              32,
+              37
+            ],
+            "clock_seconds": [
+              1360,
+              1030,
+              38,
+              37
+            ]
           }
         },
         "down_distance": {
-          "bbox": [1440, 1000, 350, 48],
+          "bbox": [
+            1440,
+            1000,
+            350,
+            48
+          ],
           "subregions": {
-            "right_cluster":  [1265, 995, 530, 62],
-            "play_clock":     [1450, 1002, 96, 44],
-            "down_distance":  [1600, 1006, 176, 40],
-            "down_digit":     [1602, 1008, 38, 46],
-            "distance_digit": [1693, 1010, 33, 44],
-            "distance_field": [1693, 1010, 62, 44]
+            "right_cluster": [
+              1265,
+              995,
+              530,
+              62
+            ],
+            "play_clock": [
+              1450,
+              1002,
+              96,
+              44
+            ],
+            "down_distance": [
+              1580,
+              1031,
+              120,
+              38
+            ],
+            "down_digit": [
+              1582,
+              1031,
+              30,
+              38
+            ],
+            "distance_digit": [
+              1693,
+              1010,
+              33,
+              44
+            ],
+            "distance_field": [
+              1648,
+              1031,
+              50,
+              38
+            ]
           }
         }
       }
@@ -55,27 +159,57 @@
       "description": "Pre-snap play-call overlay. Formation NAME is read from the play-card subtitles (repeated per card, voted); play-call-screen state signalled by the standalone plays_count element. Present in human-played gameplay; absent in CPU-vs-CPU.",
       "regions": {
         "formation_banner": {
-          "bbox": [640, 585, 540, 32],
-          "note": "FORMATION-SELECT sub-view: centered '<Formation> - N Plays' banner (e.g. 'Trips - 12 Plays'). PRIMARY formation read on the live feed — clean OCR, maps to canonical-8 well. Blanks mid-scroll (returns null that frame). Confirmed across 18 live frames (v2.3.0-live)."
+          "bbox": [
+            640,
+            585,
+            540,
+            32
+          ],
+          "note": "FORMATION-SELECT sub-view: centered '<Formation> - N Plays' banner (e.g. 'Trips - 12 Plays'). PRIMARY formation read on the live feed \u2014 clean OCR, maps to canonical-8 well. Blanks mid-scroll (returns null that frame). Confirmed across 18 live frames (v2.3.0-live)."
         },
         "formation_name": {
-          "bbox": [136, 868, 275, 30],
+          "bbox": [
+            136,
+            868,
+            275,
+            30
+          ],
           "note": "PLAY-SELECT sub-view fallback: card-1 (leftmost) subtitle '<Family> <Sub-formation>', e.g. 'Singleback Deuce Close'. Used when the formation_banner is absent (user drilled into a formation's plays). See ADR 0014."
         },
         "formation_name_2": {
-          "bbox": [740, 868, 275, 30],
-          "note": "Card-2 subtitle — same formation text; used for majority-vote redundancy."
+          "bbox": [
+            740,
+            868,
+            275,
+            30
+          ],
+          "note": "Card-2 subtitle \u2014 same formation text; used for majority-vote redundancy."
         },
         "formation_name_3": {
-          "bbox": [1345, 868, 275, 30],
-          "note": "Card-3 subtitle — same formation text; used for majority-vote redundancy."
+          "bbox": [
+            1345,
+            868,
+            275,
+            30
+          ],
+          "note": "Card-3 subtitle \u2014 same formation text; used for majority-vote redundancy."
         },
         "plays_count": {
-          "bbox": [1745, 510, 140, 44],
+          "bbox": [
+            1745,
+            510,
+            140,
+            44
+          ],
           "note": "Top-right '<N> Plays' counter. Play-call-screen STATE SIGNAL (replaces the v2.2.0 banner 'N Plays' suffix)."
         },
         "formation_tab": {
-          "bbox": [262, 510, 162, 40],
+          "bbox": [
+            262,
+            510,
+            162,
+            40
+          ],
           "note": "Selected formation tab (sub-formation only, e.g. 'Deuce Close'). Secondary / disambiguation source; not the primary read."
         }
       }

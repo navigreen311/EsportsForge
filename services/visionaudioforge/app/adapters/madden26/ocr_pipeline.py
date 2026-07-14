@@ -778,7 +778,16 @@ class OCRPipeline:
         sub = sb.get(zone_name) or dd.get(zone_name)
         if sub is None:
             return None
-        s, _ = reader.read_patch(_crop(frame, sub), n_slots=1)
+        patch = _crop(frame, sub)
+        if zone_name == "quarter_digit":
+            # The quarter ordinal renders DIM GREY (unlike the bright clock/down), so it
+            # fails read_patch's white-on-dark field_present gate. A min-max contrast
+            # stretch brightens the digit while keeping the box background dark, so the
+            # patch reads (the NCC vec is brightness-invariant, so the templates match).
+            g = cv2.cvtColor(patch, cv2.COLOR_BGR2GRAY) if patch.ndim == 3 else patch
+            patch = cv2.cvtColor(cv2.normalize(g, None, 0, 255, cv2.NORM_MINMAX),
+                                 cv2.COLOR_GRAY2BGR)
+        s, _ = reader.read_patch(patch, n_slots=1)
         if s is None:
             return None
         v = int(s)
@@ -804,18 +813,26 @@ class OCRPipeline:
         return f"{m}:{secs}"
 
     def _read_distance(self, frame: np.ndarray) -> int | None:
-        """Read the 1-2 digit distance (1-25) with the distance templates. With the
-        EasyOCR cross-check gone, safety rests on abstain + the 1-25 validity rule;
-        the `1<->7` fix is intrinsic (the reader reads the real glyph). Marginal or
-        out-of-range -> None."""
+        """Read the 1-2 digit distance (1-25) with the distance templates. Uses the
+        SAME segment_patch/read_patch extraction the templates were fit with (the old
+        _read_1or2_digits used a divergent 8x-upscale CC isolation that misread the PS5
+        glyphs, e.g. "10"->"18", v2.5.0-ps5). Distance is 1 OR 2 digits: try 2 slots then
+        1, take the first that yields a valid 1-25. Safety rests on abstain + the range
+        rule; marginal or out-of-range -> None (never fabricate)."""
         reader = self._distance_reader
         if reader is None:
             return None
         sub = self.regions["down_distance"]["subregions"].get("distance_field")
         if sub is None:
             return None
-        v = self._read_1or2_digits(reader, _crop(frame, sub))
-        return v if v is not None and 1 <= v <= 25 else None
+        patch = _crop(frame, sub)
+        for slots in (2, 1):
+            s, _ = reader.read_patch(patch, n_slots=slots)
+            if s is not None and s.isdigit():
+                v = int(s)
+                if 1 <= v <= 25:
+                    return v
+        return None
 
     def _read_play_clock(self, frame: np.ndarray) -> str | None:
         """Read the dark-on-white play-clock (0-40) with the 2-head CNN. Returns the
