@@ -91,6 +91,42 @@ jobs:
         run: mypy app/ --ignore-missing-imports --warn-unused-ignores --warn-redundant-casts --strict-equality
 
   # ---------------------------------------------------------------------------
+  # VisionAudioForge Tests — pytest (light footprint, no torch/easyocr)
+  # The vision adapter's ~90 tests previously ran NOWHERE in CI (only the backend
+  # had a pytest job, so VAF regressions weren't gated). app/ imports the ML libs
+  # lazily/guarded, so the CI-safe suite (OCR is faked) runs on requirements-ci.txt
+  # — torch/torchvision/onnx/easyocr excluded (~800MB saved); the light onnxruntime
+  # is kept so the play-clock ONNX reader tests run. One fixture-gated WS test skips.
+  # ---------------------------------------------------------------------------
+  test-vaf:
+    name: Test VisionAudioForge
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/visionaudioforge
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-vaf-${{ hashFiles('services/visionaudioforge/requirements-ci.txt') }}
+          restore-keys: pip-vaf-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements-ci.txt
+
+      - name: Run tests
+        run: pytest -q
+
+  # ---------------------------------------------------------------------------
   # Capture Agent Linting — flake8 + mypy
   # The capture-agent (HDMI capture -> WS -> VAF core) is a standalone Python
   # service that was previously unlinted. Same treatment as the VAF job: flake8/mypy
