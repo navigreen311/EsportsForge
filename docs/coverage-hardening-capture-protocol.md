@@ -110,3 +110,31 @@ Ran the harness against everything in `~/madden-recal-refs/digit-campaign`:
 **Action:** capture `cov_g5+_<coverage>` **coach-cam / play-art** clips per the recipe
 above (≥3 new games × the 10 coverages), then re-run. That produces the first real
 held-out macro-F1 for the ADR 0010 gate.
+
+## Also grab: 2-digit scores (same session, for `_read_score`)
+
+`_read_score` reads live scores via patch-NCC (PR #132). Single-digit is **confirmed**
+(`game_hud_1`: KC 0 / LV 6, 19/20 frames); **2-digit values (>9) are UNVERIFIED** — that
+capture never scored >9, so the 2-slot segmentation path has never been checked against a
+real ≥10 score. The coverage games naturally cross 9 points as they progress, so grab this
+in the **same PS5 session** — no extra setup, and it's a plain gameplay frame (no coach-cam
+needed for scores).
+
+Once either team's score is 2-digit, record a short clip with the scorebug visible,
+labeling the clip with the **actual score** (the ground truth):
+
+```
+cd ~/madden-recal-refs/digit-campaign
+<vaf-venv-python> grab_live.py --record --label score_<game>_<home>-<away> --seconds 8
+# e.g.  score_g5_14-10   when it reads 14–10
+```
+
+Aim for a spread across the **tens digit** — one clip in the 10–19 range, one in 20+ — so
+each 2-digit shape is exercised (not just, say, "10" over and over).
+
+**Evaluate:** run `read_fields` (score fields) over the extracted frames and confirm
+`score_home`/`score_away` match each clip's label — the same offline check that confirmed
+single-digit. A correct read on **≥2 distinct 2-digit values with different tens digits**
+closes "2-digit scores confirmed." If a value misreads, the fix is small and local (the
+score glyphs already match the distance templates; expect at most a per-digit template
+touch-up or a `segment_patch` slot-width tweak — see `_read_score` / `_read_distance`).
