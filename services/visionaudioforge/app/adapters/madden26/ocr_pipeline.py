@@ -723,17 +723,15 @@ class OCRPipeline:
                 confs.append(conf)
             return text
 
-        # Scores — the large italic score numeral does NOT reliably OCR on this
-        # bar (EasyOCR's detector drops it: a known-7-7 frame reads None/None, and
-        # combined-box attempts return spurious 0/5 noise). Per the pre-agreed E5
-        # stopping point: NULL scores rather than emit misreads; the payload is
-        # nullable so SNAPSHOT still flows. BANKED FOLLOW-UP: scores need a
-        # dedicated pass (digit template match / small classifier), not a glyph
-        # tweak. _parse_scores_pair / scores_combined are kept for that revisit.
+        # Scores — patch-NCC digit read (the banked "dedicated pass"). EasyOCR's
+        # detector dropped the italic numeral, but the PS5 score glyphs are the same
+        # broadcast-bar digit family the distance templates read, so _read_score
+        # reuses that reader (segment_patch 2-then-1, abstain-over-guess). Replaces
+        # the E5 null stub; still nullable (abstains on an unreadable bar).
         if "score_home" in want:
-            out["score_home"] = None
+            out["score_home"] = self._read_score(frame, "score_home")
         if "score_away" in want:
-            out["score_away"] = None
+            out["score_away"] = self._read_score(frame, "score_away")
         if "team_home_abbr" in want:
             out["team_home_abbr"] = (rd(sb["team_home_abbr"], self._ABBR_ALLOW).upper().strip() or None)
         if "team_away_abbr" in want:
@@ -831,6 +829,33 @@ class OCRPipeline:
             if s is not None and s.isdigit():
                 v = int(s)
                 if 1 <= v <= 25:
+                    return v
+        return None
+
+    def _read_score(self, frame: np.ndarray, key: str) -> int | None:
+        """Read a 0-99 team score via patch-NCC (key = "score_home"/"score_away").
+
+        The PS5 score glyphs are the same broadcast-bar digit family the distance
+        templates read — verified reading the single-digit KC 0 / LV 6 live — so reuse
+        the distance reader with the SAME segment_patch 2-then-1 flow as _read_distance:
+        try 2 slots then 1, first valid 0-99 wins, else abstain (never fabricate a 0 on
+        an unreadable bar; the payload is nullable). This replaces the read_fields null
+        stub (EasyOCR's detector dropped the italic numeral). NOTE: 2-digit values (>9)
+        go through the 2-slot segmentation but are UNVERIFIED live — the game_hud_1
+        capture never scored >9; confirm with a scoring>9 capture (see the
+        coverage-hardening-style follow-up)."""
+        reader = self._distance_reader
+        if reader is None:
+            return None
+        sub = self.regions["scoreboard"]["subregions"].get(key)
+        if sub is None:
+            return None
+        patch = _crop(frame, sub)
+        for slots in (2, 1):
+            s, _ = reader.read_patch(patch, n_slots=slots)
+            if s is not None and s.isdigit():
+                v = int(s)
+                if 0 <= v <= 99:
                     return v
         return None
 
