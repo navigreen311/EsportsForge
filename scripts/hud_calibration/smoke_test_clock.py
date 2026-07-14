@@ -57,7 +57,7 @@ def main() -> int:
         print(f"no frames at {target}", file=sys.stderr)
         return 2
 
-    print(f"constructing OCRPipeline (warms EasyOCR ~2s)...", file=sys.stderr)
+    print("constructing OCRPipeline (warms EasyOCR ~2s)...", file=sys.stderr)
     ocr = OCRPipeline()
 
     any_clock = False
