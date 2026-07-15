@@ -20,6 +20,20 @@ treating it as EOF. A black-but-alive stream (no-signal while ffmpeg keeps
 delivering black frames) is *logged* rather than restart-churned — real frames
 resume automatically when signal returns, so restarting ffmpeg would be futile
 churn (see ``_note_black``). Restart is reserved for actual process/read failure.
+
+**Driver-recovery backoff (2026-07-15).** A generic USB dshow card can *wedge* if
+you open/close it too fast when the device is gone/busy (the failure then needs a
+physical re-plug). So recovery distinguishes two cases by whether the dead ffmpeg
+proc ever delivered a frame:
+  - **Mid-stream drop** (frames were flowing, then stopped — a cable knock, brief
+    rest): recover FAST (0.5 s), because the device is fine and signal usually
+    returns in seconds.
+  - **Failed open** (ffmpeg died before a single frame — device busy/gone): this
+    is the churn that wedges the driver, so consecutive failed opens escalate the
+    backoff through tiers (0.5→1→2 s, then 5 s, then a 30 s cooldown) and, once in
+    the cooldown tier, log a loud "re-plug the card" once. We never hard-exit — a
+    re-plug recovers automatically and logs ``hdmi_recovered`` — but a prolonged
+    absence pokes dshow at most once per 30 s instead of the old once per 5 s.
 """
 
 from __future__ import annotations
@@ -45,6 +59,9 @@ _BLACK_MEAN_THRESH = 3.0        # mean pixel < this ≈ no-signal black (probe: 
 _BLACK_WARN_AFTER = 60          # consecutive black reads before logging "signal appears lost"
 _BACKOFF_INITIAL = 0.5
 _BACKOFF_MAX = 5.0
+_BACKOFF_COOLDOWN = 30.0        # prolonged failed-open: stop churning (potentially wedging) dshow
+_QUICK_RETRIES = 3             # failed opens 1..3 use fast exponential backoff (0.5→1→2 s)
+_STEADY_RETRIES = 6            # 4..6 hold at _BACKOFF_MAX; 7+ escalate to the cooldown tier
 
 
 class HdmiCaptureSource:
@@ -70,6 +87,10 @@ class HdmiCaptureSource:
         self._closed = False
         self._black_run = 0
         self._black_warned = False
+        # Driver-recovery state.
+        self._failed_spawns = 0        # consecutive spawns that delivered ZERO frames
+        self._frames_since_spawn = 0   # frames the CURRENT ffmpeg proc has delivered
+        self._wedge_warned = False     # "re-plug the card" logged once per outage
 
     @property
     def device_label(self) -> str:
@@ -94,6 +115,7 @@ class HdmiCaptureSource:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
         )
+        self._frames_since_spawn = 0  # this proc has delivered nothing yet
         logger.info(
             "hdmi_ffmpeg_spawned",
             extra={"device": self.device_name, "wh": (self.width, self.height)},
@@ -139,8 +161,26 @@ class HdmiCaptureSource:
             buf.extend(chunk)
         return bytes(buf)
 
+    def _recovery_backoff(self) -> float:
+        """Backoff before the next respawn, escalating with consecutive failed opens.
+
+        Mid-stream drops (``_failed_spawns == 0``) recover fast; a device that
+        never opens escalates through tiers to a long cooldown so we stop
+        hammering — and potentially wedging — the dshow driver.
+        """
+        n = self._failed_spawns
+        if n <= _QUICK_RETRIES:
+            # n==0 (mid-stream drop) or 1..3: 0.5, 0.5, 1, 2 s.
+            return min(_BACKOFF_INITIAL * (2 ** max(n - 1, 0)), _BACKOFF_MAX)
+        if n <= _STEADY_RETRIES:
+            return _BACKOFF_MAX
+        return _BACKOFF_COOLDOWN
+
     def _restart(self, backoff: float) -> None:
-        logger.warning("hdmi_signal_lost_restarting", extra={"backoff_s": round(backoff, 2)})
+        logger.warning(
+            "hdmi_restarting",
+            extra={"backoff_s": round(backoff, 2), "failed_spawns": self._failed_spawns},
+        )
         self._teardown_proc()
         time.sleep(backoff)
         self._black_run = 0
@@ -159,18 +199,41 @@ class HdmiCaptureSource:
             self.open()
         period = 1.0 / self.target_fps
         next_due = time.monotonic()
-        backoff = _BACKOFF_INITIAL
 
         while not self._closed:
             buf = self._read_exact(self._frame_bytes)
             if buf is None:  # process/read failure -> recover
                 if self._closed:
                     break
-                self._restart(backoff)
-                backoff = min(backoff * 2, _BACKOFF_MAX)
+                if self._frames_since_spawn == 0:
+                    # ffmpeg died before delivering a single frame -> a FAILED OPEN
+                    # (device busy/gone). This is the churn that can wedge dshow, so
+                    # escalate the backoff and, past the steady tier, ask for a re-plug.
+                    self._failed_spawns += 1
+                    if self._failed_spawns == _STEADY_RETRIES + 1 and not self._wedge_warned:
+                        logger.error(
+                            "hdmi_device_unavailable_replug",
+                            extra={
+                                "device": self.device_name,
+                                "failed_opens": self._failed_spawns,
+                                "cooldown_s": _BACKOFF_COOLDOWN,
+                            },
+                        )
+                        self._wedge_warned = True
+                else:
+                    # Frames WERE flowing, then stopped -> a mid-stream drop; recover fast.
+                    self._failed_spawns = 0
+                self._restart(self._recovery_backoff())
                 next_due = time.monotonic()
                 continue
-            backoff = _BACKOFF_INITIAL  # a full frame arrived; reset recovery backoff
+
+            # A full frame arrived: the device is open and delivering. If we were
+            # recovering from failed opens, announce the recovery and reset.
+            if self._frames_since_spawn == 0 and self._failed_spawns:
+                logger.info("hdmi_recovered", extra={"after_failed_opens": self._failed_spawns})
+                self._failed_spawns = 0
+                self._wedge_warned = False
+            self._frames_since_spawn += 1
 
             image = np.frombuffer(buf, dtype=np.uint8).reshape(
                 self.height, self.width, _CHANNELS

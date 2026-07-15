@@ -74,12 +74,18 @@ crash, no empty banner — Arsenal still detects coverages, it just can't recomm
 The 1c.3 wiring already fires the trigger on a live coverage — it just needs a key to answer.
 **Risk:** low — one-line mount + a setup-script warning; the secret stays the owner's.
 
-## Not on this list (separate robustness track)
+## Robustness track (separate from ignition)
 
-- **Capture-card driver lockup** on a bad feed → currently needs a physical USB re-plug (the
-  agent's restart-on-open-failure churns the dshow driver). Real, but it's "recover from a
-  crash," not "start it solo."
-- **No service supervisor** — a dead core/backend/frontend stays dead. A `make live` foreground
+- **Capture-card driver lockup** on a bad feed → **mitigated (2026-07-15).** The agent used to
+  respawn ffmpeg every ≤5 s forever on a gone/busy device, and that open/close churn is what
+  wedged the dshow driver. `hdmi_capture.py` now distinguishes a **mid-stream drop** (frames were
+  flowing → fast 0.5 s retry, signal usually returns) from a **failed open** (ffmpeg died before a
+  frame → device gone); consecutive failed opens escalate the backoff through tiers (0.5→1→2 s,
+  then 5 s, then a **30 s cooldown**) and log a one-shot "re-plug the card" prompt, so a prolonged
+  outage pokes dshow ≤ once/30 s and auto-recovers (`hdmi_recovered`) on re-plug. It doesn't
+  *prevent* a hardware wedge, but it removes the churn that caused most of them. Covered by 4 new
+  hardware-free unit tests.
+- **No service supervisor** — a dead core/backend/frontend stays dead. A `live.sh` foreground
   supervisor (restart on exit) would help, but is polish, not the ignition key.
 
 **Achieved (#1+#3+#2 all shipped):** solo run = `bash scripts/live.sh` → open any page → (feed live)
