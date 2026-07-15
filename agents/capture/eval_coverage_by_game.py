@@ -134,6 +134,9 @@ def main() -> int:
     ap.add_argument("--root", required=True, help="dir of cov_<game>_<coverage> subdirs")
     ap.add_argument("--tuning-game", default="cc",
                     help="game id treated as in-sample (excluded from held-out report)")
+    ap.add_argument("--games", default=None,
+                    help="comma-separated game ids to include (default: all; e.g. cc,g5,g6,g7 "
+                         "to skip the dead post-snap-vision g1-g4 clips)")
     ap.add_argument("--stride-s", type=float, default=2.0, help="seconds between sampled frames")
     ap.add_argument("--max-frames", type=int, default=10, help="max frames scored per clip")
     args = ap.parse_args()
@@ -148,6 +151,7 @@ def main() -> int:
     ocr = OCRPipeline()
     ocr.warmup()
 
+    games_filter = set(args.games.split(",")) if args.games else None
     skipped: list[tuple[str, str]] = []
     rows: list[ClipResult] = []
     for d in clips:
@@ -156,6 +160,8 @@ def main() -> int:
             skipped.append((d.name, "unparseable name"))
             continue
         game, cov_suffix = parsed
+        if games_filter is not None and game not in games_filter:
+            continue
         label = _label_for(cov_suffix)
         if label is None:
             skipped.append((d.name, f"unmapped coverage '{cov_suffix}'"))

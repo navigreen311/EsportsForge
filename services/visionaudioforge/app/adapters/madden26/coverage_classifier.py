@@ -48,6 +48,11 @@ _TOKEN_FIX = {
     "QUAT": "SQUAT", "SQUA": "SQUAT", "SQUAT.": "SQUAT",
     "3RECV": "3REC", "3REG": "3REC",
     "READ.": "READ", "MId": "MID",
+    # QUARTER OCRs poorly on the far-edge flat labels (Q->Z/J, dropped leading
+    # letter) — the exact misreads seen driving the Cover 6/9 asymmetry. Exact-match
+    # (not a suffix rule) so a real "CARTER" player name is never mapped in.
+    "ZARTER": "QUARTER", "JARTER": "QUARTER", "ARTER": "QUARTER",
+    "OUARTER": "QUARTER", "QUARTE": "QUARTER", "QUARTR": "QUARTER",
 }
 
 _X_TOL = 0.05   # tokens of one label share x within this

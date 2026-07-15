@@ -1159,6 +1159,13 @@ class OCRPipeline:
             if not self._detect_man_lines(frame):
                 return None
         blitz = self._detect_blitz(band)
+        # NOTE (Cover 6/9 residual limit): 6 and 9 are MIRROR coverages, distinguished
+        # only by which side the QUARTER-flat is on. The coach-cam L/R orientation flips
+        # with drive direction, so an edge-upscale pass that surfaces the far-edge labels
+        # still gets the SIDE wrong on flipped captures (measured: g5 read 6<->9 swapped)
+        # — and it costs ~3x the budget. Not fixable by OCR; the marginal 6/9 confusion is
+        # accepted (held-out macro-F1 0.92). Fuzzy QUARTER matching (coverage_classifier
+        # _TOKEN_FIX) does recover the misspelled far-edge quarter labels cheaply.
         return classify_coverage(tokens, is_coach_cam=True, blitz=blitz)
 
     def is_play_call_screen(self, frame: np.ndarray) -> bool:
