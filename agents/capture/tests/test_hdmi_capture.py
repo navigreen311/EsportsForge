@@ -130,3 +130,101 @@ def test_open_raises_when_ffmpeg_absent(monkeypatch):
     src = HdmiCaptureSource()
     with pytest.raises(RuntimeError, match="ffmpeg not found"):
         src.open()
+
+
+# ---------------------------------------------------------------------------
+# Driver-recovery backoff (2026-07-15)
+# ---------------------------------------------------------------------------
+
+
+def _install_proc_sequence(monkeypatch, blob_lists: list[list[bytes]]) -> list:
+    """Each Popen call serves the next blob-list (a spawn); an empty list => a
+    proc that EOFs immediately (a FAILED OPEN). Returns the list of procs made."""
+    procs: list = []
+    seq = list(blob_lists)
+
+    def _fake_popen(*_a, **_k):
+        blobs = seq.pop(0) if seq else []  # extra spawns just fail (empty)
+        proc = _FakeProc(_FakeStdout(list(blobs)))
+        procs.append(proc)
+        return proc
+
+    monkeypatch.setattr(hdmi_capture.subprocess, "Popen", _fake_popen)
+    return procs
+
+
+def _record_sleeps(monkeypatch) -> list:
+    sleeps: list = []
+    monkeypatch.setattr(hdmi_capture.time, "sleep", lambda s, *_a, **_k: sleeps.append(s))
+    return sleeps
+
+
+def test_recovery_backoff_tiers():
+    src = HdmiCaptureSource()
+    # n==0 is a mid-stream drop (fast); 1..3 exponential; 4..6 steady; 7+ cooldown.
+    expected = {
+        0: 0.5, 1: 0.5, 2: 1.0, 3: 2.0,
+        4: hdmi_capture._BACKOFF_MAX, 5: hdmi_capture._BACKOFF_MAX, 6: hdmi_capture._BACKOFF_MAX,
+        7: hdmi_capture._BACKOFF_COOLDOWN, 12: hdmi_capture._BACKOFF_COOLDOWN,
+    }
+    for n, want in expected.items():
+        src._failed_spawns = n
+        assert src._recovery_backoff() == want, f"failed_spawns={n}"
+
+
+def test_failed_opens_escalate_then_recover(_mock_ffmpeg):
+    """7 consecutive failed opens escalate the backoff + warn once; the 8th
+    spawn delivers a frame and clears the recovery state."""
+    sleeps = _record_sleeps(_mock_ffmpeg)
+    # 7 empty spawns (immediate EOF) then one good frame.
+    _install_proc_sequence(_mock_ffmpeg, [[], [], [], [], [], [], [], [_frame_blob(60)]])
+    src = HdmiCaptureSource(device_name="Fake Card")
+
+    first = next(iter(src.frames()))
+    src.close()
+
+    assert int(first.image.mean()) == 60
+    # Backoff tiers actually applied before each respawn: 0.5,1,2 then 5,5,5 then 30.
+    assert sleeps == [0.5, 1.0, 2.0, 5.0, 5.0, 5.0, hdmi_capture._BACKOFF_COOLDOWN]
+    # A frame arrived -> recovery state cleared.
+    assert src._failed_spawns == 0
+    assert src._wedge_warned is False
+
+
+def test_wedge_warning_logged_once(_mock_ffmpeg, caplog):
+    sleeps = _record_sleeps(_mock_ffmpeg)
+    _install_proc_sequence(_mock_ffmpeg, [[], [], [], [], [], [], [], [_frame_blob(60)]])
+    src = HdmiCaptureSource(device_name="Fake Card")
+
+    import logging as _logging
+
+    with caplog.at_level(_logging.ERROR, logger="capture.hdmi"):
+        next(iter(src.frames()))
+    src.close()
+
+    replug = [r for r in caplog.records if r.getMessage() == "hdmi_device_unavailable_replug"]
+    assert len(replug) == 1  # exactly one re-plug prompt per outage
+    assert len(sleeps) == 7
+
+
+def test_midstream_drop_recovers_fast_without_escalating(_mock_ffmpeg):
+    """Frames flowing then a drop is NOT a failed open: fast (0.5 s) retry, no
+    escalation, no wedge warning."""
+    sleeps = _record_sleeps(_mock_ffmpeg)
+    # spawn 1 delivers two frames then EOF; spawn 2 delivers one more.
+    _install_proc_sequence(
+        _mock_ffmpeg, [[_frame_blob(40), _frame_blob(50)], [_frame_blob(60)]]
+    )
+    src = HdmiCaptureSource(device_name="Fake Card")
+
+    frames: list[Frame] = []
+    for fr in src.frames():
+        frames.append(fr)
+        if len(frames) >= 3:
+            break
+    src.close()
+
+    assert [int(f.image.mean()) for f in frames] == [40, 50, 60]
+    assert sleeps == [0.5]  # single fast retry across the drop
+    assert src._failed_spawns == 0
+    assert src._wedge_warned is False
