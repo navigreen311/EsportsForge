@@ -27,6 +27,7 @@ import {
   DEFENSE_LABEL_BY_TITLE,
 } from '@/components/shared/SideToggle';
 import { WatchingPageHint } from '@/components/global/WatchingPageHint';
+import { ArsenalAlert } from '@/components/session/ArsenalAlert';
 
 type Tab = 'my' | 'all';
 
@@ -76,6 +77,12 @@ function ArsenalPageBody() {
 
   return (
     <div className="space-y-6">
+      {/* Live ArsenalAI trigger — self-provisions a vision session and fires on a
+          detected coverage (COVERAGE_LOCKED). Renders null until a weapon fires, so
+          it's inert without a live feed / ANTHROPIC_API_KEY. Surfaces the trigger on
+          the Arsenal library too (it already shows on dashboard/gameplan/war-room). */}
+      <ArsenalAlert />
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

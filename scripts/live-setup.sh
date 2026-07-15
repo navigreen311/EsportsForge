@@ -57,4 +57,21 @@ else
   done
 fi
 
+# --- ArsenalAI key: warn (don't fail) if no ANTHROPIC_API_KEY is reachable ---
+# The backend reads it via pydantic settings from backend/.env OR the shell env
+# (field `anthropic_api_key`). With none set, /arsenal/trigger 503s and the
+# ArsenalAlert stays silent — everything else still works. The key is the OWNER's
+# to supply; it is never written by this script.
+BE_ENV="$BE/.env"
+if [ -n "${ANTHROPIC_API_KEY:-}" ] \
+   || { [ -f "$BE_ENV" ] && grep -qE '^[[:space:]]*ANTHROPIC_API_KEY=..' "$BE_ENV"; }; then
+  echo "[live-setup] ArsenalAI: ANTHROPIC_API_KEY found — live weapon triggers enabled."
+else
+  echo "[live-setup] ⚠  ArsenalAI is OFF — no ANTHROPIC_API_KEY set."
+  echo "               Arsenal detects coverages but can't recommend a weapon (trigger 503s)."
+  echo "               To enable, add your own key to $BE_ENV:"
+  echo "                   echo 'ANTHROPIC_API_KEY=sk-ant-...' >> backend/.env"
+  echo "               (or export it in the shell before: bash scripts/live.sh)"
+fi
+
 echo "[live-setup] done. Now:  bash scripts/live.sh"

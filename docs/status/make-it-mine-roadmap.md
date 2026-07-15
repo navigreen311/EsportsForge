@@ -40,17 +40,25 @@ up together) for free. Fold the capture-agent auto-start into `make live`.
 **Risk:** medium — touches the session model in 3 places (broker, core registry, capture config).
 Must stay strictly behind the local flag so the real multi-user session path is untouched.
 
-## #3 — Arsenal live-triggering  *(~½ session, low risk)*
+## #3 — Arsenal live-triggering  *(~½ session, low risk)* — ✅ DONE (this PR)
 
 **Gap:** two small things — (a) `backend/app/services/arsenal_ai.py` needs
 `settings.anthropic_api_key`; with none set the endpoint 503s ("ANTHROPIC_API_KEY not
 configured"), so no weapon recommendation; (b) the trigger surface (`ArsenalAlert` via
 `CompetitionModeCard`) already mounts on **dashboard / gameplan / war-room**, but NOT the Arsenal
 *library* page.
-**Build:** (a) document + wire `ANTHROPIC_API_KEY` into the backend `.env` (owner supplies the
-key); (b) optionally mount `ArsenalAlert` on the Arsenal page too. The 1c.3 wiring already fires
-the trigger on a live coverage — it just needs a key to answer.
-**Risk:** low — config + a one-line mount.
+**Build (DONE):** (a) the key was *already* wired — `config.py` has an `anthropic_api_key`
+settings field that pydantic loads from `backend/.env` **or** the shell env, so no code was
+needed; instead `scripts/live-setup.sh` now **detects** whether a key is reachable and, if not,
+prints exactly how the owner adds their own (`echo 'ANTHROPIC_API_KEY=sk-ant-...' >> backend/.env`)
+— the key is never written by the script. (b) `ArsenalAlert` is now mounted on the Arsenal
+library page (`app/(dashboard)/arsenal/page.tsx`); it self-provisions a vision session via
+`useArsenalAI` and renders null until a weapon fires, so it's inert without a live feed / key.
+**Graceful degrade verified (no key):** service `call_claude()` returns `""`, the router 503s,
+`useArsenalAI.poll()` swallows the error, `visible` stays false → the alert renders null. No
+crash, no empty banner — Arsenal still detects coverages, it just can't recommend a weapon.
+The 1c.3 wiring already fires the trigger on a live coverage — it just needs a key to answer.
+**Risk:** low — one-line mount + a setup-script warning; the secret stays the owner's.
 
 ## Not on this list (separate robustness track)
 
