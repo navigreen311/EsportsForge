@@ -30,6 +30,11 @@ export interface FootballPayload {
   // existing partial payload literals (tests) don't need updating — the matcher
   // treats absent as no-coverage.
   defensive_coverage?: string | null;
+  // Situational fields carried on the payload (best-effort — the fixed-bbox HUD is
+  // matchup-calibrated, so these can be null off the calibrated matchup, PR #135).
+  // Optional so existing partial payload literals don't need updating.
+  down?: number | null;
+  distance?: number | null;
   [key: string]: unknown;
 }
 
