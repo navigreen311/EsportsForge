@@ -1,11 +1,54 @@
 # EsportsForge — Distance to Local Feature-Complete (Static Recon Map)
 
 - **Date:** 2026-07-07
-- **Status:** ⚠️ **STATIC MAP — not a live-verified state.** Every status below was derived by **reading code, tests, and committed validation JSONs — nothing was executed.** This is the current best map, to be **VERIFIED when Tier 1 is actually built**, not settled fact. Treat "done" claims as "done in code + tests," not "demonstrated running end-to-end."
+- **Status:** ✅ **SUPERSEDED — LOCAL FEATURE-COMPLETE ACHIEVED 2026-07-14** (see the update section directly below). The original 2026-07-07 map read: ⚠️ **STATIC MAP — not a live-verified state.** Every status below was derived by **reading code, tests, and committed validation JSONs — nothing was executed.** This is the current best map, to be **VERIFIED when Tier 1 is actually built**, not settled fact. Treat "done" claims as "done in code + tests," not "demonstrated running end-to-end."
 - **Method:** 4 parallel read-only recon passes (docs/ADRs, VAF+capture, backend, frontend) + a git-state check, against trunk `main @ b3240a4` and the unmerged feature branches, on 2026-07-07.
 - **Related:** [ADR 0010](../adr/0010-phase-1c-gated-on-adapter-v0-3.md) (v0.3 gate), ADR 0017 (COVERAGE_LOCKED contract — *on unmerged `feat/v0.3-coverage-contract`*), ADR 0018 (coverage classifier — *on unmerged `ai-feature/coverage-seedstab`*).
 
-## Done definition (scope of this map)
+---
+
+## ✅ 2026-07-14 UPDATE — LOCAL FEATURE-COMPLETE ACHIEVED (live-verified). Tag `v0.3.0-phase1c-complete`.
+
+The static map below (2026-07-07) is **superseded**. Everything it scoped is now shipped to
+`main` with green CI, and the spine has been **run live off the real PS5**, not just built.
+Distance to local feature-complete: **done.**
+
+**Tier 1 — the live v0.1 spine — DONE + LIVE-VERIFIED.** HDMI capture-card source built and
+run live; `SNAPSHOT` + `FORMATION_LOCKED` proven end-to-end PS5 → capture → core → events →
+**browser** (Drill Lab reps auto-completed off a live feed). Recipe banked in
+`docs/runbooks/1a-drill-lab-flag.md`. The `.env.local`/port/DB gotchas from that first live
+run are documented there.
+
+**Tier 2 — all intended phases — DONE.**
+- **Snap boundaries:** `PLAY_STARTED` / `PLAY_ENDED` wired from the M5b snap detector and
+  fired **live** off the PS5.
+- **v0.2 defensive front + v0.3 coverage:** shipped; `COVERAGE_LOCKED` live on the bus.
+- **Coverage hardening — GATE CLEARED:** by-game validation across 3 new games (Jags/Chiefs,
+  Chiefs/Ravens, Colts/Rams), **held-out macro-F1 = 0.92** (ADR-0010 ≥0.85). The reader
+  generalizes by-game. See `docs/coverage-hardening-results.md`.
+- **Phase 1c (Arsenal + War Room) cutover:** shipped (1c.0–1c.3). **War Room live-verified**
+  — a real PS5 coverage rendered the "Cover 3 detected" banner in the browser. Arsenal rides
+  the same live-proven `useCoverageGameState` bridge (event-driven trigger + manual fallback).
+- Gameplan coverage-highlight, live scores (single-digit), VAF CI test gate: all shipped.
+
+**Known limits (characterized, non-blocking, documented):**
+- **Cover 6/9** are mirror coverages; the coach-cam L/R orientation flips with drive
+  direction, so the side is marginally confusable (not OCR-fixable) — folded into the 0.92.
+- **Cross-matchup SNAPSHOT HUD** (scores/clock/down/quarter) is matchup-calibrated (the PS5
+  bar shifts with team-abbrev width) — coverage is unaffected; situational fields are
+  best-effort off KC/LV. Dynamic-layout HUD is the tracked follow-up.
+- **Play-clock CNN** on the grey game box: investigated, EasyOCR kept (honest negative — no
+  independent GT showed the CNN beats it). See `tools/play_clock/game-box-retrain-findings.md`.
+- The **capture-card dshow driver** locks up if the agent thrashes on a lost feed (USB
+  re-plug to recover); the **Arsenal trigger surface** is competition-mode-only (its live
+  log-confirmation was deferred, not a code gap).
+
+**Out of scope (unchanged):** public / AWS / multi-user deployment; the ADR-0010 "7-day
+production-stable" staging gate (a rollout gate, not a local prerequisite).
+
+---
+
+## Done definition (scope of this map — historical, 2026-07-07)
 
 **Local feature-complete = PS5 → capture → vision → events → app surfaces them, working end-to-end for the owner's own local use, all intended phases wired.** **PUBLIC / AWS / multi-user DEPLOYMENT IS OUT OF SCOPE** (parked as separate future work). Split into two tiers:
 
