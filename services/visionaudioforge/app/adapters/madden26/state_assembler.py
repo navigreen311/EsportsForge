@@ -42,7 +42,10 @@ from .ocr_pipeline import OCRSnapshot, _formation_to_canonical
 if TYPE_CHECKING:
     from .coverage_classifier import CoverageReading
 
-ADAPTER_VERSION = "madden26@0.0.1-phase-0"
+# v0.3: formation (v0.1) + defensive front (v0.2) + coverage/COVERAGE_LOCKED (v0.3)
+# all shipped and the coverage gate is met (held-out macro-F1 0.92, ADR 0010) — bumped
+# off the phase-0 placeholder now that Phase 1c consumers key on this version.
+ADAPTER_VERSION = "madden26@0.3.0"
 
 # Live-gameplay HUD fields (smoothed under the live_gameplay context).
 _LIVE_FIELDS = ("score_home", "score_away", "down", "distance",

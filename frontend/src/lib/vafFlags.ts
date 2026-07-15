@@ -35,3 +35,25 @@ export function simlabVisionEnabled(): boolean {
 export function gameplanVisionEnabled(): boolean {
   return process.env.NEXT_PUBLIC_VAF_GAMEPLAN_ENABLED === 'true';
 }
+
+/**
+ * Arsenal live-vision gate (Phase 1c — Arsenal cutover). Same env-only shape as
+ * the other VAF flags (ADR 0001). Arsenal keys on COVERAGE_LOCKED (live on the
+ * bus since v0.3; the coverage gate is met — held-out macro-F1 0.92, see
+ * docs/coverage-hardening-results.md). Gates whether the Arsenal page provisions
+ * a session + feeds live coverage into game_state to fire weapon triggers.
+ */
+export function arsenalVisionEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_VAF_ARSENAL_ENABLED === 'true';
+}
+
+/**
+ * War Room live-vision gate (Phase 1c — War Room cutover). Same env-only shape
+ * as the other VAF flags (ADR 0001). War Room keys on COVERAGE_LOCKED to surface
+ * a "Cover N detected" live banner. The backend master (VAF_DRILL_LAB_ENABLED,
+ * the shared broker gate) is still authoritative — this frontend flag is the
+ * per-surface opt-in.
+ */
+export function warRoomVisionEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_VAF_WAR_ROOM_ENABLED === 'true';
+}
