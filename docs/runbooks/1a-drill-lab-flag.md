@@ -88,18 +88,33 @@ curl -s -XPOST :8002/api/v1/visionaudio/sessions/start -H "Authorization: Bearer
 ### 2. Browser: log in + open Drill Lab
 Open `http://localhost:3002`, log in (`dev@example.com` / `devpass123`), navigate to **Drill Lab**. With the flag on, the page POSTs `sessions/start`, gets `{session_id, token, ws_url}`, and opens a WS to core `/ws/events/{session_id}`.
 
-### 3. Pin the capture agent to the BROWSER's session (the one coordination point)
+### 3. Launch the capture agent
 
-Ingest (`/ws/ingest?session_id=X`) and events (`/ws/events/{session_id}`) are keyed by the **same** `session_id`, and the browser mints a **fresh** session each load. So the capture agent must ingest into *that* session. Scrape it from the core log (the WS accept line carries it in the path):
+**Solo local dev (recommended — no pin): local single-session mode.** With
+`VAF_LOCAL_SESSION=true`, core's `/sessions/open` returns ONE fixed id
+(`ses_localdev`) via get-or-create, so every browser surface **and** the capture
+agent auto-share the same session — no scraping, no `--session-id`. `bash
+scripts/live.sh` already boots core with this flag on; just run the agent with it
+too (it opens-or-gets the fixed session on core itself, so the browser order
+doesn't matter). Preflight the card first (brightness ~16 = black/no-signal;
+30–90 = live game):
+```
+cd agents/capture
+VAF_LOCAL_SESSION=true VAF_CORE_URL=http://127.0.0.1:8100 \
+  <vaf-venv-python> -m capture_agent.main --config ./config.capture-card.toml
+```
+
+**Manual pin (multi-user / when local mode is OFF).** Ingest
+(`/ws/ingest?session_id=X`) and events (`/ws/events/{session_id}`) are keyed by
+the **same** `session_id`, and outside local mode the browser mints a **fresh**
+session each load. So the agent must ingest into *that* session — scrape it from
+the core log (the WS accept line carries it in the path) and pass `--session-id`:
 ```
 grep -aE "WebSocket /ws/events" core.log | tail -1
 #   ... "WebSocket /ws/events/ses_XXXX?token=esf-cap-dev-placeholder" [accepted]
-```
-Preflight the card (brightness ~16 = black/no-signal; 30–90 = live game), then launch the agent pinned to that session:
-```
+
 cd agents/capture
-ESF_CAPTURE_AGENT_CONFIG=./config.capture-card.toml \
-  <vaf-venv-python> -m capture_agent.main --config ./config.capture-card.toml --session-id ses_XXXX
+<vaf-venv-python> -m capture_agent.main --config ./config.capture-card.toml --session-id ses_XXXX
 ```
 Agent log should show `hdmi_ffmpeg_spawned` → `session_open` → `agent_connected`; core shows `agent_connected` → `title_locked`.
 

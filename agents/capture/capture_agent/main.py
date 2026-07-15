@@ -27,9 +27,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import logging
+import os
 import sys
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 from .capture import FilePlaybackSource, HdmiCaptureSource, TestVideoSource
@@ -37,6 +41,48 @@ from .config import AgentConfig, load_config
 from .transport import WSClient
 
 logger = logging.getLogger("capture.main")
+
+
+def _resolve_session_id(cli_session_id: str | None) -> str:
+    """Resolve the session id for this run.
+
+    Precedence: explicit --session-id > local single-session mode > error.
+    In local mode (VAF_LOCAL_SESSION=true, make-it-mine #2) the agent opens-or-
+    gets the fixed session on core itself, so it needs no manual pin and works
+    regardless of whether a browser opened the session first. Core is the single
+    authority on the id (open_or_get returns the same fixed id it hands the
+    browser), so both sides converge with no coordination.
+
+    Uses stdlib urllib (not httpx) to keep the production agent's dependency list
+    lean — this is a single one-shot POST at startup.
+    """
+    if cli_session_id:
+        return cli_session_id
+    if os.environ.get("VAF_LOCAL_SESSION") == "true":
+        core = os.environ.get("VAF_CORE_URL", "http://127.0.0.1:8100")
+        body = json.dumps(
+            {"user_id": "founder", "integrity_mode": "offline_lab", "active_title": "madden26"}
+        ).encode("utf-8")
+        req = urllib.request.Request(
+            f"{core}/api/v1/sessions/open",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10.0) as resp:
+                sid = str(json.loads(resp.read())["session_id"])
+        except (urllib.error.URLError, KeyError, ValueError) as exc:
+            raise SystemExit(
+                f"VAF_LOCAL_SESSION: could not open the local session on core ({core}): {exc}. "
+                "Is core up? (bash scripts/live.sh)"
+            )
+        logger.info("agent_local_session", extra={"session_id": sid})
+        return sid
+    raise SystemExit(
+        "--session-id is required. For solo local dev, set VAF_LOCAL_SESSION=true "
+        "to auto-share the browser's session (no pin) — see docs/runbooks/1a-drill-lab-flag.md §3."
+    )
 
 
 def _build_source(cfg: AgentConfig):
@@ -138,8 +184,9 @@ def main() -> None:
     parser.add_argument("--config", type=Path, help="Override config path")
     parser.add_argument(
         "--session-id",
-        required=True,
-        help="Session ID issued by VAF core service /api/v1/sessions/open",
+        default=None,
+        help="Session ID from VAF core /api/v1/sessions/open. Optional when "
+        "VAF_LOCAL_SESSION=true (the agent auto-shares the local session).",
     )
     args = parser.parse_args()
 
@@ -149,8 +196,10 @@ def main() -> None:
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
     )
 
+    session_id = _resolve_session_id(args.session_id)
+
     try:
-        asyncio.run(run(cfg, args.session_id))
+        asyncio.run(run(cfg, session_id))
     except KeyboardInterrupt:
         logger.info("agent_quit_via_keyboard")
         sys.exit(0)

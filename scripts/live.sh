@@ -53,8 +53,10 @@ then
 fi
 
 # --- boot the three services (background children of THIS shell) ---
-echo "[live] booting core :8100 ..."
-( cd "$VAF" && ESF_BACKEND_URL=http://127.0.0.1:8002 PYTHONPATH="$VAF" \
+echo "[live] booting core :8100 (local single-session mode) ..."
+# VAF_LOCAL_SESSION=true: /sessions/open returns ONE fixed id (get-or-create), so
+# every browser surface + the capture agent share a session with no manual pin (#2).
+( cd "$VAF" && ESF_BACKEND_URL=http://127.0.0.1:8002 VAF_LOCAL_SESSION=true PYTHONPATH="$VAF" \
     "$VAF_PY" -m uvicorn app.main:app --host 127.0.0.1 --port 8100 ) \
   > "$LOGDIR/core.log" 2>&1 & pids+=($!)
 echo "[live] booting backend :8002 ..."
@@ -84,8 +86,10 @@ cat <<EOF
   Backend  : http://127.0.0.1:8002       Core : http://127.0.0.1:8100
   Logs     : $LOGDIR/{core,backend,frontend}.log
 
-  Next (until roadmap #2 auto session-coord ships): pin the capture agent —
-  open a page, then follow docs/runbooks/1a-drill-lab-flag.md §3.
+  Capture agent (no pin needed — local single-session mode):
+    cd agents/capture && VAF_LOCAL_SESSION=true VAF_CORE_URL=http://127.0.0.1:8100 \\
+      "$VAF_PY" -m capture_agent.main --config ./config.capture-card.toml
+  (start it only with the PS5 feed live — a lost feed can thrash the dshow driver.)
 
   Ctrl-C to stop everything.
 EOF

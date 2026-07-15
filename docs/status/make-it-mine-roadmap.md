@@ -1,15 +1,17 @@
 # "Make it actually mine" — solo-usability roadmap
 
-The vision spine is **feature-complete and live-verified** (`v0.3.0-phase1c-complete`), but
-running it solo today is an expert operation: ~4 terminals + env-exports, a fiddly
-capture-agent-to-browser **session pin** (grep the core log, copy a ULID), Arsenal effectively
-off (no LLM key), and no service supervisor. This roadmap turns "an engine I own" into
-"boot it and play." Three follow-ups; **the goal is:** `bash scripts/live.sh` → open a page →
-play Madden. (`make live` also works *if* you have `make` — it isn't installed on the dev box,
-so the scripts are the primary interface.)
+The vision spine is **feature-complete and live-verified** (`v0.3.0-phase1c-complete`). Running it
+solo *used* to be an expert operation: ~4 terminals + env-exports, a fiddly capture-agent-to-browser
+**session pin** (grep the core log, copy a ULID), Arsenal effectively off (no LLM key), and no
+service supervisor. This roadmap turned "an engine I own" into "boot it and play."
 
-Sequence: **#1 → #3 → #2** (quick ergonomics wins first; the big architectural friction-killer
-last, with a clean home to slot into).
+**✅ All three follow-ups are DONE.** Solo run is now: `bash scripts/live-setup.sh` (once) →
+`bash scripts/live.sh` → open any page → (feed live) start the pin-free capture agent → play Madden.
+(`make live` also works *if* you have `make` — it isn't installed on the dev box, so the scripts are
+the primary interface.)
+
+Sequence delivered: **#1 → #3 → #2** (quick ergonomics wins first; the big architectural
+friction-killer last, with a clean home to slot into).
 
 ## #1 — One-command launcher  *(~1 session, low risk)* — ✅ DONE (this PR)
 
@@ -26,19 +28,31 @@ launcher prints the runbook §3 hint. Smoke-tested: all three boot to READY, `Ct
 backgrounding are the only fiddly parts (the script stays foreground and `wait`s so children
 persist; `Ctrl-C` cleans up).
 
-## #2 — Auto session-coordination  *(~1–2 sessions, medium risk — the big one)*
+## #2 — Auto session-coordination  *(~1–2 sessions, medium risk — the big one)* — ✅ DONE (this PR)
 
-**Gap:** the browser mints a fresh `ses_{ULID}` per page load (`services/visionaudioforge/app/
-api/sessions.py`); the capture agent must be pinned to *that* id — today via grep-the-log. This
-is the #1 friction, and it's why multiple surfaces don't share events.
-**Build:** a **local single-session mode** (env-gated, e.g. `VAF_LOCAL_SESSION=true`): the broker
-(`backend/.../visionaudio_phase0.py:start_session`) returns a **fixed** session id instead of a
-fresh ULID; core `open_session` becomes get-or-create for that id; the capture agent config
-defaults to the same id. Then **every surface + the capture agent auto-share one session** — no
-scraping, no pin — and it fixes the multi-surface problem (War Room + Arsenal + Drill Lab light
-up together) for free. Fold the capture-agent auto-start into `make live`.
-**Risk:** medium — touches the session model in 3 places (broker, core registry, capture config).
-Must stay strictly behind the local flag so the real multi-user session path is untouched.
+**Gap:** the browser mints a fresh `ses_{ULID}` per page load; the capture agent must be pinned
+to *that* id — today via grep-the-log. This is the #1 friction, and it's why multiple surfaces
+don't share events.
+**Build (DONE):** a **local single-session mode**, env-gated `VAF_LOCAL_SESSION=true`. It landed in
+just **2 places, not 3** — the broker (`backend/.../visionaudio_phase0.py`) is a pure pass-through
+of core's id, so it needed **zero** changes:
+- **Core** (`services/visionaudioforge/app/api/sessions.py` + `app/core/session.py`): when the flag
+  is on, `/sessions/open` returns ONE fixed id (`ses_localdev`, override via `VAF_LOCAL_SESSION_ID`)
+  through a new `registry.open_or_get` (get-or-create — repeated opens don't wipe an in-flight
+  session's `adapter_state`/`frame_history`). Flag off → the real fresh-`ses_{ULID}`-per-open path
+  is byte-for-byte untouched (regression-tested).
+- **Capture agent** (`agents/capture/capture_agent/main.py`): `--session-id` is now optional; with
+  the flag set it opens-or-gets the fixed session on core itself (stdlib `urllib`, no new dep), so
+  it's **order-independent** — no browser-first requirement, no pin.
+- Core is the **single authority** on the id, so browser + agent converge with no coordination.
+  `scripts/live.sh` boots core with the flag on and prints the pin-free agent command.
+**Verified:** 5 new core tests (idempotent get-or-create, flag helpers, fixed-id-twice, real-path
+regression) + a live smoke — two browser opens **and** the agent resolver all returned
+`ses_localdev`. **Every surface + the agent now auto-share one session.**
+**Not folded in:** capture-agent **auto-start** in `live.sh` — deliberately left manual. A lost feed
+can thrash the dshow driver into a lockup (known limit below), so the agent should start only with
+the PS5 feed live. The pin friction — the actual ask — is gone.
+**Risk (realized):** low-medium — strictly behind the flag; the multi-user path has a regression test.
 
 ## #3 — Arsenal live-triggering  *(~½ session, low risk)* — ✅ DONE (this PR)
 
@@ -68,5 +82,7 @@ The 1c.3 wiring already fires the trigger on a live coverage — it just needs a
 - **No service supervisor** — a dead core/backend/frontend stays dead. A `make live` foreground
   supervisor (restart on exit) would help, but is polish, not the ignition key.
 
-**After #1+#3+#2:** solo run = `bash scripts/live.sh` → open any page → play. No terminal-juggling, no
-session pin, Arsenal live.
+**Achieved (#1+#3+#2 all shipped):** solo run = `bash scripts/live.sh` → open any page → (feed live)
+start the pin-free agent → play. No terminal-juggling, no session pin, Arsenal live. The remaining
+rough edges are the robustness track above (driver lockup recovery, service supervisor) — polish,
+not ignition.
