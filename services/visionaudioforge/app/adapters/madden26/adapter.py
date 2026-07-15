@@ -3,7 +3,7 @@
 Composes context detection + sampled OCR + formation detection + snap detection
 + state assembly.
 
-Adapter version: madden26@0.0.1-phase-0
+Adapter version: madden26@0.3.0 (v0.1 formation + v0.2 front + v0.3 coverage)
 Budget (ADR 0006 -> ADR 0015 tiered): hot-path <=80 ms every frame; OCR-tier
 sampled frames <=500 ms and exempt from the hot-path drop.
 Cadence: football archetype, 12 fps base / 24 max (ADR 0005).

@@ -1,7 +1,25 @@
 # ADR 0010 — Phase 1c Cutover Gated on Madden Adapter v0.3
 
-- **Status:** Accepted
+- **Status:** Accepted — **gate MET 2026-07-14** (see Gate status below)
 - **Date:** 2026-05-06
+
+## Gate status (2026-07-14)
+
+The v0.3 dependency is **shipped and validated**, unblocking Phase 1c:
+
+- `COVERAGE_LOCKED` is live on the bus (v0.3 classifier + emit merged to main).
+- The kickoff checklist's quality bar — **coverage-classifier macro-F1 ≥ 0.85 on a held-out
+  set** — is **met: held-out macro-F1 = 0.92** across 3 by-game captures (PR #135,
+  `docs/coverage-hardening-results.md`). This is the group-held-out (by-game) number, not a
+  by-clip one.
+- `ADAPTER_VERSION` bumped off the `phase-0` placeholder to `madden26@0.3.0`.
+- **Out of scope for local/owner use:** the "production-stable for ≥7 days" and
+  "emit-rate ≥5/session p50" conditions are **staging/production rollout gates** (public
+  multi-user), not local prerequisites — they apply when exposing these features beyond the
+  owner. Phase 1c local cutover proceeds on the macro-F1 + emit gates above.
+- **Known residual (non-blocking):** the fixed-bbox SNAPSHOT HUD (down/distance/quarter) is
+  matchup-calibrated and degrades off KC/LV (dynamic bar layout, PR #135) — Phase 1c keys on
+  COVERAGE, which is unaffected; situational fields are best-effort.
 - **Reference:** [FORGE_ARCHITECTURE_PATTERN.md](../FORGE_ARCHITECTURE_PATTERN.md) — Rule 4 (events are structured and canonical — consumers gated on event existence, not on schema-promise vs schema-ship).
 - **Modifies:** [specs/03-mock-removal-and-page-wiring.md §3 "Cutover phases" (Phase 1c)](../specs/03-mock-removal-and-page-wiring.md). **Updates the dependency model** for Phase 1c.
 
