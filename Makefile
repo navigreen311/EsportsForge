@@ -1,7 +1,8 @@
 # =============================================================================
 # EsportsForge — Makefile
 # =============================================================================
-.PHONY: help dev-setup dev-start dev-stop test test-backend test-frontend \
+.PHONY: help dev-setup dev-start dev-stop live live-setup live-stop \
+        test test-backend test-frontend \
         build build-backend build-frontend docker-up docker-down \
         lint lint-fix db-migrate db-reset deploy-staging deploy-prod
 
@@ -37,6 +38,21 @@ dev-stop: ## Stop all development services
 	@-pkill -f "uvicorn app.main:app" 2>/dev/null || true
 	@-pkill -f "next dev" 2>/dev/null || true
 	@echo "All services stopped."
+
+live-setup: ## One-time setup for the live-vision stack (dev DB seed + .env.local)
+	bash scripts/live-setup.sh
+
+live: ## Boot the LIVE-VISION stack (core:8100 + backend:8002 + frontend:3002); Ctrl-C stops
+	bash scripts/live.sh
+
+live-stop: ## Force-stop the live-vision stack (free ports 8100/8002/3002 + ffmpeg)
+	@for port in 8100 8002 3002; do \
+		for pid in $$(netstat -ano 2>/dev/null | grep -E ":$$port .*LISTENING" | grep -oE '[0-9]+$$' | sort -u); do \
+			taskkill //F //PID $$pid //T >/dev/null 2>&1 || kill $$pid 2>/dev/null || true; \
+		done; \
+	done; \
+	taskkill //F //IM ffmpeg.exe >/dev/null 2>&1 || true; \
+	echo "live-vision stack stopped."
 
 # =============================================================================
 # Testing
