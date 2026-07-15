@@ -85,10 +85,16 @@ The 1c.3 wiring already fires the trigger on a live coverage — it just needs a
   outage pokes dshow ≤ once/30 s and auto-recovers (`hdmi_recovered`) on re-plug. It doesn't
   *prevent* a hardware wedge, but it removes the churn that caused most of them. Covered by 4 new
   hardware-free unit tests.
-- **No service supervisor** — a dead core/backend/frontend stays dead. A `live.sh` foreground
-  supervisor (restart on exit) would help, but is polish, not the ignition key.
+- **No service supervisor** → **done (2026-07-15).** `scripts/live.sh` now supervises the three
+  services: after READY it polls liveness and **restarts any that exits** (sweeping its port first
+  so it rebinds cleanly). A service that **crash-loops** — dies within 20 s of start, `MAX_FLAPS`
+  times running — is *given up on* with a loud pointer to its log instead of spun forever; a
+  service that was healthy for a while and then dies is treated as a fresh incident (flap counter
+  resets). `Ctrl-C` still tears everything down via the same trap. Smoke-tested: killing core
+  mid-run auto-restarted it on a new pid; SIGTERM freed all three ports.
 
-**Achieved (#1+#3+#2 all shipped):** solo run = `bash scripts/live.sh` → open any page → (feed live)
-start the pin-free agent → play. No terminal-juggling, no session pin, Arsenal live. The remaining
-rough edges are the robustness track above (driver lockup recovery, service supervisor) — polish,
-not ignition.
+**Achieved (#1+#3+#2 all shipped; robustness track cleared):** solo run = `bash scripts/live.sh`
+→ open any page → (feed live) start the pin-free agent → play. No terminal-juggling, no session
+pin, Arsenal live, a crashed service auto-restarts, and the capture agent rides out a lost feed
+without wedging the card. What's left is genuinely optional (capture-agent auto-start, log
+rotation) — not ignition.
