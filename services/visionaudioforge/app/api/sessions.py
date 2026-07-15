@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from ulid import ULID
 
-from app.core.session import registry
+from app.core.session import local_session_enabled, local_session_id, registry
 from app.schemas.enums import IntegrityMode, TitleEnum
 
 router = APIRouter(prefix="/api/v1/sessions")
@@ -39,13 +39,25 @@ class IntegrityModeUpdate(BaseModel):
 
 @router.post("/open", response_model=OpenSessionResponse)
 async def open_session(req: OpenSessionRequest) -> OpenSessionResponse:
-    session_id = f"ses_{ULID()}"
-    await registry.open(
-        session_id=session_id,
-        user_id=req.user_id,
-        integrity_mode=req.integrity_mode,
-        active_title_hint=req.active_title,
-    )
+    if local_session_enabled():
+        # Local single-session mode: one fixed id, get-or-create, so every
+        # browser surface + the capture agent share it with no pin. See
+        # app/core/session.py for the rationale + the flag contract.
+        session_id = local_session_id()
+        await registry.open_or_get(
+            session_id=session_id,
+            user_id=req.user_id,
+            integrity_mode=req.integrity_mode,
+            active_title_hint=req.active_title,
+        )
+    else:
+        session_id = f"ses_{ULID()}"
+        await registry.open(
+            session_id=session_id,
+            user_id=req.user_id,
+            integrity_mode=req.integrity_mode,
+            active_title_hint=req.active_title,
+        )
     return OpenSessionResponse(
         session_id=session_id,
         agent_endpoint="ws://127.0.0.1:8100/ws/ingest",

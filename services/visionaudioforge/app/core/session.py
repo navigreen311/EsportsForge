@@ -12,12 +12,34 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import os
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
 from app.schemas.enums import IntegrityMode, TitleEnum
+
+# ---------------------------------------------------------------------------
+# Local single-session mode (make-it-mine #2)
+#
+# For solo local dev the browser-mints-a-fresh-ULID-per-load model forces a
+# manual "session pin" (grep the core log, copy the ULID into the capture
+# agent's --session-id). When VAF_LOCAL_SESSION=true, /sessions/open instead
+# returns ONE fixed id (get-or-create), so every browser surface AND the
+# capture agent converge on the same session with no pin. Strictly local /
+# single-user — the real multi-user ULID path is untouched when the flag is
+# off. VAF_LOCAL_SESSION_ID overrides the id (default "ses_localdev").
+# ---------------------------------------------------------------------------
+LOCAL_SESSION_ID_DEFAULT = "ses_localdev"
+
+
+def local_session_enabled() -> bool:
+    return os.environ.get("VAF_LOCAL_SESSION") == "true"
+
+
+def local_session_id() -> str:
+    return os.environ.get("VAF_LOCAL_SESSION_ID") or LOCAL_SESSION_ID_DEFAULT
 
 
 def _hash_user_id(user_id: str) -> str:
@@ -90,6 +112,32 @@ class SessionRegistry:
         active_title_hint: TitleEnum | None = None,
     ) -> SessionContext:
         async with self._lock:
+            ctx = SessionContext.open(
+                session_id=session_id,
+                user_id=user_id,
+                integrity_mode=integrity_mode,
+                active_title_hint=active_title_hint,
+            )
+            self._sessions[session_id] = ctx
+            return ctx
+
+    async def open_or_get(
+        self,
+        session_id: str,
+        user_id: str,
+        integrity_mode: IntegrityMode,
+        active_title_hint: TitleEnum | None = None,
+    ) -> SessionContext:
+        """Return the existing context for session_id, or create it.
+
+        Used by local single-session mode: repeated /sessions/open calls (each
+        browser load + the capture agent) must converge on ONE context without
+        wiping the accumulated adapter_state / frame_history of an in-flight one.
+        """
+        async with self._lock:
+            existing = self._sessions.get(session_id)
+            if existing is not None:
+                return existing
             ctx = SessionContext.open(
                 session_id=session_id,
                 user_id=user_id,
