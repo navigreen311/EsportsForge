@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # AI
     anthropic_api_key: str = ""
-    claude_model: str = "claude-sonnet-4-20250514"
+    claude_model: str = "claude-sonnet-5"
 
     # Stripe
     stripe_secret_key: str = ""

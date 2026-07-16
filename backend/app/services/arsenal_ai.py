@@ -10,7 +10,7 @@ import anthropic
 from app.core.config import settings
 
 
-CLAUDE_MODEL = "claude-sonnet-4-20250514"
+CLAUDE_MODEL = "claude-sonnet-5"
 
 
 # ---------------------------------------------------------------------------
