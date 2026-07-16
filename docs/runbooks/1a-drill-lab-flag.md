@@ -25,6 +25,28 @@ Both must be `"true"` for the live path to run end-to-end (frontend attempts; ba
 
 This is the concrete "how to run the whole thing off a real PS5 locally" recipe. Verified: driving a play-call rep on the PS5 auto-completed a Drill Lab rep in the browser (`FORMATION_LOCKED` → `useDrillLabAutoRep`), with `COVERAGE_LOCKED` + `SNAPSHOT` also flowing.
 
+### 0. Shell & working directory — READ FIRST (the #1 first-boot trip-wire)
+
+**Boot the stack in Git Bash — NOT PowerShell or cmd.** Git Bash ships with Git for
+Windows (`C:\Program Files\Git\git-bash.exe`). Open it via **Start menu → type "Git Bash"**,
+or right-click the repo folder in Explorer → **"Git Bash Here"**. In **PowerShell**, `bash`
+resolves to **WSL** — which has no distro installed on this box — so `bash scripts/live.sh`
+dies with a WSL error, and bare `live.sh` is "not recognized". Those are *shell* mistakes,
+not stack failures.
+
+From the **repo root**, in Git Bash (note the `/c/...` path form):
+```bash
+cd /c/Users/ivann/Projects/EsportsForge
+bash scripts/live-setup.sh   # first run only — dev DB seed + .env.local + ANTHROPIC key check
+bash scripts/live.sh         # boots + supervises core :8100 / backend :8002 / frontend :3002
+```
+("Git Bash Here" from the repo folder skips the `cd`.)
+
+**The one exception:** the capture agent (§3) runs in its **own PowerShell window**, because
+its launch command uses PowerShell `$env:VAR=` syntax. So: **services in Git Bash, capture
+agent in PowerShell.** Don't cross them — the agent line pasted into Git Bash, or the `live.sh`
+line pasted into PowerShell, both fail.
+
 **Dev-path caveat:** this uses `next dev` (unbundled), **not** a production build. `NEXT_PUBLIC_*` still inlines at dev-server start, so a running dev server must be **restarted** (not just HMR) to pick up an `.env.local` change. Dev mode exercises the exact browser event-flow (broker → core WS → hook → render); the dev-vs-prod distinction is about bundling/inlining, not whether events reach the UI. For a prod bundle, rebuild + redeploy per "Enable (engineer)" above.
 
 ### Topology / ports (local)
