@@ -5,8 +5,11 @@ solo *used* to be an expert operation: ~4 terminals + env-exports, a fiddly capt
 **session pin** (grep the core log, copy a ULID), Arsenal effectively off (no LLM key), and no
 service supervisor. This roadmap turned "an engine I own" into "boot it and play."
 
-**✅ All three follow-ups are DONE.** Solo run is now: `bash scripts/live-setup.sh` (once) →
-`bash scripts/live.sh` → open any page → (feed live) start the pin-free capture agent → play Madden.
+**✅ All three follow-ups are DONE.** Solo run is now — **in Git Bash (NOT PowerShell/cmd; in
+PowerShell `bash` hits WSL and dies), from the repo root** `cd /c/Users/ivann/Projects/EsportsForge`:
+`bash scripts/live-setup.sh` (once) → `bash scripts/live.sh` → open any page → (feed live) start the
+pin-free capture agent **in its own PowerShell window** (§3 of the runbook — that command is
+PowerShell syntax) → play Madden. Full shell/cwd detail: `docs/runbooks/1a-drill-lab-flag.md` §0.
 (`make live` also works *if* you have `make` — it isn't installed on the dev box, so the scripts are
 the primary interface.)
 
