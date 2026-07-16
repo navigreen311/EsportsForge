@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import time
 from typing import Any
 
@@ -135,7 +137,15 @@ async def trigger(
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Evaluate the player's saved weapons against current game state."""
-    cache_key = f"{current_user.id}::{body.session_id or '_'}::{body.title_id}"
+    # Include a hash of game_state in the key so a NEW coverage/situation forces a fresh
+    # evaluation. Without this the cache is coverage-blind: an on-mount poll (no coverage)
+    # caches trigger:false for 90s, and the real coverage-driven call returns that stale
+    # false — the live "no card ever shows" bug (2026-07-16). Repeated identical states
+    # still dedupe within the window.
+    _gs_hash = hashlib.md5(
+        json.dumps(body.game_state or {}, sort_keys=True, default=str).encode()
+    ).hexdigest()[:12]
+    cache_key = f"{current_user.id}::{body.session_id or '_'}::{body.title_id}::{_gs_hash}"
     cached = _trigger_cache.get(cache_key)
     if cached and time.time() - cached[0] < 90:
         return cached[1]
