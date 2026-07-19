@@ -83,6 +83,10 @@ export function useArsenalAI() {
   const poll = async () => {
     if (inFlight.current) return;
     if (!effectivePlaying) return;
+    // Vision-driven mode: do NOT fire a blind trigger before a coverage exists — it
+    // returns trigger:false and clobbers a live coverage-driven trigger:true via setLast
+    // (the "card never shows" race, live-diagnosed 2026-07-16). Coverage events drive it.
+    if (visionActive && !liveCoverage.current) return;
     inFlight.current = true;
     try {
       // Merge the live detected coverage into game_state so the trigger weighs it.
