@@ -67,8 +67,11 @@ async def discover(
     system = build_discover_system(body.title_id, body.patch_version)
     raw = await call_claude(
         system=system,
+        # 8000 (was 3000): web_search reasoning + full weapon entries overflowed 3000,
+        # truncating the JSON array mid-object so it never parsed -> 0 weapons. The
+        # prompt now caps at 6 plays so the array completes inside the budget.
         user_content=body.query,
-        max_tokens=3000,
+        max_tokens=8000,
         tools=[{"type": "web_search_20250305", "name": "web_search"}],
     )
     if not raw:

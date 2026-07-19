@@ -41,9 +41,63 @@ def parse_json_object(text: str) -> dict[str, Any] | None:
     return None
 
 
+def _strip_cite_tags(text: str) -> str:
+    """web_search injects <cite index="...">...</cite> tags inside string values —
+    valid JSON content, but they pollute stored fields. Strip them."""
+    text = re.sub(r"<cite\b[^>]*>", "", text)
+    return text.replace("</cite>", "")
+
+
+def _salvage_json_objects(text: str) -> list[dict[str, Any]]:
+    """Extract every COMPLETE top-level {...} object from a (possibly truncated)
+    JSON array. Robust to max_tokens truncation cutting off the final entry."""
+    start = text.find("[")
+    if start == -1:
+        return []
+    out: list[dict[str, Any]] = []
+    i, n = start + 1, len(text)
+    while i < n:
+        while i < n and text[i] not in "{]":
+            i += 1
+        if i >= n or text[i] == "]":
+            break
+        depth, j, in_str, esc, closed = 0, i, False, False, False
+        while j < n:
+            ch = text[j]
+            if in_str:
+                if esc:
+                    esc = False
+                elif ch == "\\":
+                    esc = True
+                elif ch == '"':
+                    in_str = False
+            elif ch == '"':
+                in_str = True
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        obj = json.loads(text[i:j + 1])
+                        if isinstance(obj, dict):
+                            out.append(obj)
+                    except Exception:
+                        pass
+                    closed = True
+                    j += 1
+                    break
+            j += 1
+        if not closed:  # truncated final object — stop here
+            break
+        i = j
+    return out
+
+
 def parse_json_array(text: str) -> list[dict[str, Any]]:
-    """Best-effort: extract the first JSON array from `text`."""
-    text = _strip_json_fence(text)
+    """Best-effort: extract JSON objects from `text` — tolerant of ```json fences,
+    web_search <cite> tags, and max_tokens truncation (salvages complete objects)."""
+    text = _strip_cite_tags(_strip_json_fence(text))
     try:
         parsed = json.loads(text)
         if isinstance(parsed, list):
@@ -52,6 +106,9 @@ def parse_json_array(text: str) -> list[dict[str, Any]]:
             return [parsed]
     except Exception:
         pass
+    salvaged = _salvage_json_objects(text)
+    if salvaged:
+        return salvaged
     match = re.search(r"\[.*\]", text, flags=re.DOTALL)
     if match:
         try:
@@ -166,7 +223,7 @@ Baseball: include count, pitch name, batter situation
 Golf: include club, wind conditions, lie type
 Poker: include hand type, optimal hold pattern
 
-Return ONLY a valid JSON array. No markdown. No preamble.
+Return ONLY a valid JSON array of AT MOST 6 plays. No markdown. No preamble. No <cite> tags.
 Format: [{{ "name", "category", "formation", "play_name",
 "description", "instructions": [], "setup_steps": [], "when_to_use",
 "trigger_conditions": {{}}, "difficulty", "source_url" }}]
