@@ -41,6 +41,7 @@ import {
 } from '@/hooks/useArsenal';
 import api from '@/lib/api';
 import { AnimaPlayer } from '@/components/animaforge/AnimaPlayer';
+import { PlayDiagram } from '@/components/arsenal/PlayDiagram';
 import { useAnimaForgeAvailable } from '@/hooks/useAnimaForge';
 import { TITLE_TRIGGER_KEYS } from '@/lib/arsenal/titleMeta';
 import { VoiceForgeService } from '@/lib/services/voiceforge';
@@ -686,11 +687,11 @@ function WeaponDetailBody({
         </Section>
       )}
 
-      {/* AnimaForge animated play diagram — appears once user clicks
-          [Watch Animation] in the header, or auto-shows if a previously
-          rendered job exists for this weapon. */}
-      {animation.open && (animation.videoUrl || animation.jobId) && (
-        <Section title="Animated Play Diagram" icon={Film}>
+      {/* Animated play diagram. If an AnimaForge render exists (video/job), play
+          it; otherwise fall back to the self-contained client-side diagram so the
+          play always demonstrates — no render service required. */}
+      <Section title="Animated Play Diagram" icon={Film}>
+        {animation.open && (animation.videoUrl || animation.jobId) ? (
           <AnimaPlayer
             jobId={animation.jobId ?? undefined}
             videoUrl={animation.videoUrl ?? undefined}
@@ -698,8 +699,10 @@ function WeaponDetailBody({
             type="weapon-diagram"
             onReady={onAnimationReady}
           />
-        </Section>
-      )}
+        ) : (
+          <PlayDiagram weapon={weapon} />
+        )}
+      </Section>
 
       {/* Why it works */}
       <Section title="Why It Works" highlighted={active?.section === 'why'}>
