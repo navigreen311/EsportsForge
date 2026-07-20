@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import type { Play, Gameplan, PackageTab, MetaStatus } from '@/types/gameplan';
+import { generateBackendGameplan } from '@/lib/gameplan/api';
 
 const mockPlays: Play[] = [
   {
@@ -227,8 +228,14 @@ export function useGameplan() {
   const [activeTab, setActiveTab] = useState<PackageTab>('all');
   const [selectedPlayId, setSelectedPlayId] = useState<string | null>('play-1');
   const [isGenerating, setIsGenerating] = useState(false);
+  // Live plays from the backend generate endpoint. Null until the user hits
+  // "Generate" and it succeeds; on failure we keep the mock so the page never
+  // breaks. When present, live plays carry real (validated) route geometry.
+  const [livePlays, setLivePlays] = useState<Play[] | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
 
   const opponent = mockOpponents.find((o) => o.id === selectedOpponentId) ?? mockOpponents[0]!;
+  const plays = livePlays ?? mockPlays;
 
   const gameplan: Gameplan = useMemo(
     () => ({
@@ -236,16 +243,16 @@ export function useGameplan() {
       name: `Gameplan vs ${opponent.name}`,
       opponentId: opponent.id,
       opponentName: opponent.name,
-      plays: mockPlays,
-      killSheet: mockPlays.filter((p) => p.isKillSheetPlay),
-      redZonePackage: mockPlays.filter((p) => p.situationTags.includes('red-zone')),
-      antiBlitzPackage: mockPlays.filter((p) => p.situationTags.includes('anti-blitz')),
-      twoMinDrillPackage: mockPlays.filter((p) => p.situationTags.includes('2-minute')),
+      plays,
+      killSheet: plays.filter((p) => p.isKillSheetPlay),
+      redZonePackage: plays.filter((p) => p.situationTags.includes('red-zone')),
+      antiBlitzPackage: plays.filter((p) => p.situationTags.includes('anti-blitz')),
+      twoMinDrillPackage: plays.filter((p) => p.situationTags.includes('2-minute')),
       metaStatus: mockMetaStatus,
       createdAt: '2026-03-20T10:00:00Z',
       updatedAt: '2026-03-21T18:30:00Z',
     }),
-    [opponent]
+    [opponent, plays]
   );
 
   const filteredPlays = useMemo(() => {
@@ -263,14 +270,24 @@ export function useGameplan() {
     }
   }, [activeTab, gameplan]);
 
-  const selectedPlay = mockPlays.find((p) => p.id === selectedPlayId) ?? null;
+  const selectedPlay =
+    plays.find((p) => p.id === selectedPlayId) ?? plays[0] ?? null;
 
-  const generateGameplan = useCallback(() => {
+  const generateGameplan = useCallback(async () => {
     setIsGenerating(true);
-    // Simulate generation delay
-    setTimeout(() => {
+    setGenerateError(null);
+    try {
+      const live = await generateBackendGameplan({ scheme: 'west_coast' });
+      if (live.length > 0) {
+        setLivePlays(live);
+        setSelectedPlayId(live[0]!.id); // select into the new list
+      }
+    } catch {
+      // Backend unreachable / errored — keep the mock plays in place.
+      setGenerateError('Live generation is unavailable — showing the sample gameplan.');
+    } finally {
       setIsGenerating(false);
-    }, 1500);
+    }
   }, []);
 
   const selectPlay = useCallback((play: Play) => {
@@ -290,5 +307,7 @@ export function useGameplan() {
     selectPlay,
     isGenerating,
     generateGameplan,
+    isLive: livePlays !== null,
+    generateError,
   };
 }
