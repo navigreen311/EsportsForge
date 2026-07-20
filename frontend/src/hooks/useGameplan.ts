@@ -29,6 +29,15 @@ const mockPlays: Play[] = [
         targetPlay: 'Quick Slant',
       },
     ],
+    // Explicit route geometry (proves the Phase-2 data path). Gun Trips TE:
+    // dual crossers underneath (X over, slot shallow) + TE leaking to the flat.
+    routes: [
+      { receiver: 'X', points: [[10, 60], [10, 42], [66, 40]] },
+      { receiver: 'SL', points: [[32, 59], [32, 54], [72, 51]] },
+      { receiver: 'TE', points: [[64, 60], [64, 57], [88, 55]] },
+      { receiver: 'Z', points: [[90, 60], [90, 34], [85, 38]] },
+      { receiver: 'HB', points: [[46, 72], [46, 66], [58, 64]] },
+    ],
   },
   {
     id: 'play-2',
@@ -68,6 +77,15 @@ const mockPlays: Play[] = [
         trigger: 'Single-high safety',
         targetPlay: 'Corner Strike',
       },
+    ],
+    // Explicit route geometry. Shotgun Bunch mesh: opposing shallow crossers
+    // (X and Z) + slot corner + TE sit + HB to the flat.
+    routes: [
+      { receiver: 'X', points: [[12, 60], [12, 56], [64, 53]] },
+      { receiver: 'Z', points: [[88, 60], [88, 56], [34, 53]] },
+      { receiver: 'SL', points: [[30, 59], [30, 44], [16, 36]] },
+      { receiver: 'TE', points: [[62, 60], [62, 48], [62, 52]] },
+      { receiver: 'HB', points: [[46, 72], [46, 68], [66, 66]] },
     ],
   },
   {
