@@ -116,7 +116,7 @@ export default function DashboardPage() {
 
   const guideHighlight =
     visitCount > 0 && visitCount <= 3
-      ? 'ring-2 ring-emerald-500/40 animate-pulse rounded-xl'
+      ? 'ring-2 ring-emerald-500/40 rounded-xl'
       : '';
 
   // FIX 10 guard — hide tournament card body if date is in the past
