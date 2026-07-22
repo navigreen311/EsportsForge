@@ -19,6 +19,19 @@ from app.schemas.madden26.gameplan import (
 from app.schemas.madden26.scheme import CoverageType
 from app.services.agents.madden26.scheme_ai import SchemeAI
 from app.services.agents.madden26.meta_bot import MetaBot
+from app.services.agents.madden26.route_validator import validate_routes
+from app.services.agents.madden26.template_routes import routes_for
+
+# Coordinate contract handed to the LLM (and mirrored by route_validator +
+# the frontend). Kept as a constant so the prompt and the validator can't drift.
+_ROUTE_CONTRACT = (
+    "Play-diagram coordinate space is 0-100 x 0-100. The line of scrimmage is "
+    "at y=60; the offense lines up below it (y>60 is the backfield) and routes "
+    "run UP the field, i.e. y DECREASES downfield (the end zone is near y=0). "
+    "x grows left->right. Receivers start at/near the LOS (y about 58-62). "
+    "Each route is a polyline of [x,y] points; the first point is the pre-snap "
+    "alignment."
+)
 
 
 class GameplanAI:
@@ -60,8 +73,19 @@ class GameplanAI:
                     f"Generate a 10-play gameplan for the '{effective_scheme}' scheme "
                     "in Madden 26. Return JSON with keys: plays (list of 10 objects each "
                     "with name, formation, play_type, concept, primary_read, beats, "
-                    "situation_tags, notes), opening_script (list of 5 play names), "
-                    "gameplan_notes (str)."
+                    "situation_tags, notes, routes), opening_script (list of 5 play "
+                    "names), gameplan_notes (str).\n\n"
+                    "Each play's `routes` is a list of the receivers' routes for an "
+                    "animated play diagram: [{\"receiver\": \"X\"|\"Z\"|\"SL\"|\"TE\"|"
+                    "\"HB\", \"points\": [[x,y], ...]}]. Provide one entry per skill "
+                    "player (typically 4-5). " + _ROUTE_CONTRACT + "\n"
+                    "Example route (a slant from the left outside receiver): "
+                    "{\"receiver\": \"X\", \"points\": [[12,60],[12,55],[26,50]]}.",
+                    system=(
+                        "You are an expert Madden 26 offensive coordinator. Respond "
+                        "with valid JSON only. Route coordinates must obey the stated "
+                        "coordinate contract exactly."
+                    ),
                 )
                 plays = [
                     Play(
@@ -73,6 +97,9 @@ class GameplanAI:
                         beats=p.get("beats", []),
                         situation_tags=p.get("situation_tags", []),
                         notes=p.get("notes"),
+                        # Guard the LLM geometry: invalid/degenerate routes are
+                        # dropped (None) so the frontend falls back to a template.
+                        routes=validate_routes(p.get("routes")),
                     )
                     for p in response.get("plays", [])
                 ]
@@ -454,6 +481,7 @@ class GameplanAI:
                     primary_read=read,
                     beats=self._get_concept_beats(concept),
                     situation_tags=self._get_concept_situations(concept),
+                    routes=routes_for(name),
                 )
             )
 
@@ -470,6 +498,7 @@ class GameplanAI:
                 primary_read="Crossing route in the back of the end zone",
                 beats=["cover_3", "cover_1"],
                 situation_tags=["red_zone"],
+                routes=routes_for("PA Crossers"),
             ),
             Play(
                 name="Fade Route",

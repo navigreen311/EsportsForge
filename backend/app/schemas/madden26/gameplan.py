@@ -40,6 +40,23 @@ class PlayType(str, enum.Enum):
 # Core play schema
 # ---------------------------------------------------------------------------
 
+class RouteSpec(BaseModel):
+    """
+    A single receiver's route path for the animated play diagram.
+
+    Coordinate space: 0–100 × 0–100, line of scrimmage at y=60, offense below
+    (y>60), routes run UP the field (decreasing y); x grows left→right. Mirrors
+    the frontend `DiagramRoute` shape. Emitted geometry is passed through
+    `route_validator.validate_routes` before it reaches a Play, so a Play never
+    carries out-of-bounds or degenerate paths.
+    """
+
+    receiver: str = Field(..., description="Receiver label, e.g. 'X', 'Z', 'TE', 'SL', 'HB'")
+    points: list[list[float]] = Field(
+        ..., description="Polyline [[x,y], ...]; points[0] is the pre-snap alignment"
+    )
+
+
 class Play(BaseModel):
     """A single play in a gameplan."""
 
@@ -58,6 +75,14 @@ class Play(BaseModel):
         default_factory=list, description="Situations this play is ideal for"
     )
     notes: Optional[str] = Field(None, description="AI coaching notes")
+    routes: Optional[list[RouteSpec]] = Field(
+        None,
+        description=(
+            "Validated per-receiver route geometry for the animated play "
+            "diagram. None when unavailable/invalid — the frontend then derives "
+            "a concept approximation from name+tags."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
