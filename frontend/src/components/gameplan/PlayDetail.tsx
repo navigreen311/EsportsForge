@@ -449,24 +449,29 @@ export default function PlayDetail({
         </div>
       )}
 
-      {/* When to Call */}
-      {play.situationTags.length > 0 && (
+      {/* When to Call — prefer the play's actionable prose; fall back to the
+          situation-tag bullets when no prose is available. */}
+      {(play.whenToCall || play.situationTags.length > 0) && (
         <div>
           <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-dark-200">
             <Target className="h-4 w-4 text-amber-400" />
             When to Call
           </h3>
-          <ul className="space-y-1.5">
-            {play.situationTags.map((tag) => (
-              <li
-                key={tag}
-                className="flex items-center gap-2 text-sm text-dark-300"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-dark-500" />
-                {situationLabels[tag] ?? tag}
-              </li>
-            ))}
-          </ul>
+          {play.whenToCall ? (
+            <p className="text-sm leading-relaxed text-dark-300">{play.whenToCall}</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {play.situationTags.map((tag) => (
+                <li
+                  key={tag}
+                  className="flex items-center gap-2 text-sm text-dark-300"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-dark-500" />
+                  {situationLabels[tag] ?? tag}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
@@ -489,7 +494,7 @@ export default function PlayDetail({
       </div>
 
       {/* 2. ProofAI Evidence Panel */}
-      <EvidencePanel playId={play.id} />
+      <EvidencePanel playId={play.id} evidence={play.evidence} />
 
       {/* ProofAI Statistical Evidence */}
       <ProofAIEvidence playId={play.id} />
@@ -502,6 +507,7 @@ export default function PlayDetail({
           </h3>
           <ThreeLayerAudible
             playName={play.name}
+            baseRead={play.baseRead}
             audibles={play.audibleOptions}
           />
         </div>

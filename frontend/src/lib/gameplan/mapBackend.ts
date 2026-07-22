@@ -12,6 +12,8 @@ import type {
   ConceptTag,
   SituationTag,
   DiagramRoute,
+  AudibleNode,
+  PlayEvidence,
 } from '@/types/gameplan';
 
 // -- backend wire shapes (subset we consume) --------------------------------
@@ -19,6 +21,24 @@ import type {
 export interface BackendRoute {
   receiver: string;
   points: number[][];
+}
+
+export interface BackendEvidence {
+  why: string;
+  data: string;
+  risk: string;
+  comparable: string;
+}
+
+export interface BackendAudible {
+  label: string;
+  trigger?: string;
+  target_play?: string;
+  look_for?: string | null;
+  recognize?: string | null;
+  do?: string | null;
+  counter_look_for?: string | null;
+  counter_do?: string | null;
 }
 
 export interface BackendPlay {
@@ -30,6 +50,10 @@ export interface BackendPlay {
   beats?: string[];
   situation_tags?: string[];
   notes?: string | null;
+  base_read?: string | null;
+  when_to_call?: string | null;
+  evidence?: BackendEvidence | null;
+  audibles?: BackendAudible[] | null;
   routes?: BackendRoute[] | null;
 }
 
@@ -83,6 +107,30 @@ function mapRoutes(routes: BackendRoute[] | null | undefined): DiagramRoute[] | 
   }));
 }
 
+const orNull = (s: string | null | undefined): string | undefined => s ?? undefined;
+
+function mapAudibles(
+  audibles: BackendAudible[] | null | undefined,
+): AudibleNode[] | undefined {
+  if (!audibles || audibles.length === 0) return undefined;
+  return audibles.map((a, i) => ({
+    id: `be-aud-${i}`,
+    label: a.label,
+    trigger: a.trigger ?? '',
+    targetPlay: a.target_play ?? '',
+    lookFor: orNull(a.look_for),
+    recognize: orNull(a.recognize),
+    do: orNull(a.do),
+    counterLookFor: orNull(a.counter_look_for),
+    counterDo: orNull(a.counter_do),
+  }));
+}
+
+function mapEvidence(e: BackendEvidence | null | undefined): PlayEvidence | undefined {
+  if (!e || !(e.why || e.data || e.risk || e.comparable)) return undefined;
+  return { why: e.why, data: e.data, risk: e.risk, comparable: e.comparable };
+}
+
 export function mapBackendPlay(p: BackendPlay, index: number, confidence: number): Play {
   const conceptTags: ConceptTag[] = [];
   const c = PLAY_TYPE_TO_CONCEPT[p.play_type];
@@ -105,6 +153,12 @@ export function mapBackendPlay(p: BackendPlay, index: number, confidence: number
     description: p.notes || p.primary_read,
     beats: p.beats && p.beats.length > 0 ? prettifyBeat(p.beats[0]!) : undefined,
     routes: mapRoutes(p.routes),
+    // Depth fields — carry them so the UI renders real content instead of the
+    // id-keyed static maps (which never match backend-generated play ids).
+    baseRead: orNull(p.base_read),
+    whenToCall: orNull(p.when_to_call),
+    evidence: mapEvidence(p.evidence),
+    audibleOptions: mapAudibles(p.audibles),
   };
 }
 
