@@ -57,6 +57,34 @@ class RouteSpec(BaseModel):
     )
 
 
+class PlayEvidence(BaseModel):
+    """WHY/DATA/RISK/COMPARABLE, written in plain language for a normal player."""
+
+    why: str = Field(..., description="Why this play works, in plain English")
+    data: str = Field(..., description="A supporting stat + what it means for the call")
+    risk: str = Field(..., description="The look that hurts it, the tell, and the bail-out")
+    comparable: str = Field(..., description="A comparable result the player can relate to")
+
+
+class PlayAudible(BaseModel):
+    """
+    One audible option that teaches the read, not just the action.
+
+    Layer 2 (`look_for`/`recognize`/`do`) = read the pre-snap look and change the
+    play. Layer 3 (`counter_look_for`/`counter_do`) = what to do once the defense
+    adjusts to that adjustment. All plain language; define any term inline.
+    """
+
+    label: str = Field(..., description="Short action name, e.g. 'Check to Inside Zone'")
+    trigger: str = Field("", description="Short trigger phrase (legacy/compat)")
+    target_play: str = Field("", description="Play to audible into")
+    look_for: Optional[str] = Field(None, description="What to look for pre-snap")
+    recognize: Optional[str] = Field(None, description="How to recognize it / define the term")
+    do: Optional[str] = Field(None, description="Exactly what to do")
+    counter_look_for: Optional[str] = Field(None, description="How to spot their counter-adjustment")
+    counter_do: Optional[str] = Field(None, description="What to do about the counter")
+
+
 class Play(BaseModel):
     """A single play in a gameplan."""
 
@@ -74,7 +102,24 @@ class Play(BaseModel):
     situation_tags: list[str] = Field(
         default_factory=list, description="Situations this play is ideal for"
     )
-    notes: Optional[str] = Field(None, description="AI coaching notes")
+    notes: Optional[str] = Field(
+        None,
+        description=(
+            "Concept breakdown in plain English — WHY it works + the read, not "
+            "just the route names. This feeds the frontend Concept Breakdown."
+        ),
+    )
+    # --- Depth fields (plain language, define jargon inline) ---
+    base_read: Optional[str] = Field(
+        None, description="One-line base-call read for Call Structure Layer 1"
+    )
+    when_to_call: Optional[str] = Field(
+        None, description="Actionable 'when to call' prose (not a vague bucket)"
+    )
+    evidence: Optional[PlayEvidence] = Field(None, description="WHY/DATA/RISK/COMPARABLE")
+    audibles: Optional[list[PlayAudible]] = Field(
+        None, description="Teaching audibles (Layer 2 read + Layer 3 counter)"
+    )
     routes: Optional[list[RouteSpec]] = Field(
         None,
         description=(

@@ -74,6 +74,14 @@ export interface Play {
    * degrades to a concept template, then a formation-only view, then text.
    */
   routes?: DiagramRoute[];
+  // --- Depth fields (AI-generated at Generate time; when absent the UI falls
+  // back to the static maps). Plain language, no jargon. ---
+  /** One-line "base call" read for Layer 1 of the Call Structure. */
+  baseRead?: string;
+  /** Actionable "when to call" prose — replaces the vague tag labels. */
+  whenToCall?: string;
+  /** WHY / DATA / RISK / COMPARABLE, written for a normal player. */
+  evidence?: PlayEvidence;
 }
 
 export interface AudibleNode {
@@ -82,6 +90,21 @@ export interface AudibleNode {
   trigger: string; // e.g., "Cover 3 detected", "Blitz look"
   targetPlay: string;
   children?: AudibleNode[];
+  // Plain-language teaching depth. Layer 2 ("if the pre-snap look is wrong"):
+  lookFor?: string; // what to look for pre-snap
+  recognize?: string; // how to recognize it / define the term in plain words
+  do?: string; // exactly what to do
+  // Layer 3 ("if they adjust to your adjustment"):
+  counterLookFor?: string; // how to spot their counter-adjustment
+  counterDo?: string; // what to do about it
+}
+
+/** Deep, plain-language evidence for a play (WHY / DATA / RISK / COMPARABLE). */
+export interface PlayEvidence {
+  why: string;
+  data: string;
+  risk: string;
+  comparable: string;
 }
 
 export type MetaRating = 'Exploit' | 'Strong' | 'Neutral' | 'Countered';

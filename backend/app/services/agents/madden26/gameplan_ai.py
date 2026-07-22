@@ -13,6 +13,8 @@ from app.schemas.madden26.gameplan import (
     KillSheet,
     MetaReport,
     Play,
+    PlayAudible,
+    PlayEvidence,
     PlayType,
     ValidatedGameplan,
 )
@@ -32,6 +34,79 @@ _ROUTE_CONTRACT = (
     "Each route is a polyline of [x,y] points; the first point is the pre-snap "
     "alignment."
 )
+
+
+# Plain-language depth instructions for the generation prompt. The whole point:
+# a normal player should understand what's happening and what to DO.
+_DEPTH_INSTRUCTIONS = (
+    "Write for a NORMAL player, not a coach. Plain English, no jargon. If you use "
+    "a term a casual player might not know (light box, single-high safety, WILL "
+    "linebacker), define it briefly inline. Aim for depth and clarity, NOT word "
+    "count — no filler, no marketing fluff.\n"
+    "Per play, also return these fields:\n"
+    "- notes: the Concept Breakdown — WHY the play works and what to read after the "
+    "snap, not just the route names (2-4 plain sentences).\n"
+    "- base_read: one line telling the player what to read after the snap.\n"
+    "- when_to_call: exactly when to call it (down, distance, field position, score) "
+    "and why it fits — specific and actionable, never a vague bucket like 'opening drive'.\n"
+    "- evidence: an object {why, data, risk, comparable}. why = why it works vs this "
+    "opponent in plain words; data = one supporting stat AND what it means for the "
+    "call; risk = the defensive look that hurts it, the pre-snap tell, and the bail-out; "
+    "comparable = a relatable past result.\n"
+    "- audibles: 1-2 objects, each {label, target_play, look_for, recognize, do, "
+    "counter_look_for, counter_do}. look_for = what to see pre-snap; recognize = how "
+    "to know it / define the term; do = exactly what to do; counter_look_for + "
+    "counter_do = if the defense adjusts to THAT adjustment, how to spot it and what "
+    "to do instead."
+)
+
+
+def _parse_evidence(raw: Any) -> Optional[PlayEvidence]:
+    """Build PlayEvidence from a raw dict, or None if empty/malformed."""
+    if not isinstance(raw, dict):
+        return None
+    if not any(raw.get(k) for k in ("why", "data", "risk", "comparable")):
+        return None
+    try:
+        return PlayEvidence(
+            why=str(raw.get("why", "")).strip(),
+            data=str(raw.get("data", "")).strip(),
+            risk=str(raw.get("risk", "")).strip(),
+            comparable=str(raw.get("comparable", "")).strip(),
+        )
+    except Exception:
+        return None
+
+
+def _parse_audibles(raw: Any) -> Optional[list[PlayAudible]]:
+    """Build a list of PlayAudible, tolerating snake/camel keys; None if empty."""
+    if not isinstance(raw, list) or not raw:
+        return None
+    out: list[PlayAudible] = []
+    for a in raw:
+        if not isinstance(a, dict) or not a.get("label"):
+            continue
+
+        def pick(*keys: str) -> Optional[str]:
+            for k in keys:
+                v = a.get(k)
+                if v:
+                    return str(v).strip()
+            return None
+
+        out.append(
+            PlayAudible(
+                label=str(a["label"]).strip(),
+                trigger=pick("trigger") or "",
+                target_play=pick("target_play", "targetPlay") or "",
+                look_for=pick("look_for", "lookFor"),
+                recognize=pick("recognize"),
+                do=pick("do"),
+                counter_look_for=pick("counter_look_for", "counterLookFor"),
+                counter_do=pick("counter_do", "counterDo"),
+            )
+        )
+    return out or None
 
 
 class GameplanAI:
@@ -73,8 +148,9 @@ class GameplanAI:
                     f"Generate a 10-play gameplan for the '{effective_scheme}' scheme "
                     "in Madden 26. Return JSON with keys: plays (list of 10 objects each "
                     "with name, formation, play_type, concept, primary_read, beats, "
-                    "situation_tags, notes, routes), opening_script (list of 5 play "
-                    "names), gameplan_notes (str).\n\n"
+                    "situation_tags, notes, base_read, when_to_call, evidence, audibles, "
+                    "routes), opening_script (list of 5 play names), gameplan_notes (str)."
+                    "\n\n" + _DEPTH_INSTRUCTIONS + "\n\n"
                     "Each play's `routes` is a list of the receivers' routes for an "
                     "animated play diagram: [{\"receiver\": \"X\"|\"Z\"|\"SL\"|\"TE\"|"
                     "\"HB\", \"points\": [[x,y], ...]}]. Provide one entry per skill "
@@ -82,9 +158,9 @@ class GameplanAI:
                     "Example route (a slant from the left outside receiver): "
                     "{\"receiver\": \"X\", \"points\": [[12,60],[12,55],[26,50]]}.",
                     system=(
-                        "You are an expert Madden 26 offensive coordinator. Respond "
-                        "with valid JSON only. Route coordinates must obey the stated "
-                        "coordinate contract exactly."
+                        "You are an expert Madden 26 offensive coordinator who teaches "
+                        "casual players in plain language. Respond with valid JSON only. "
+                        "Route coordinates must obey the stated coordinate contract exactly."
                     ),
                 )
                 plays = [
@@ -97,6 +173,10 @@ class GameplanAI:
                         beats=p.get("beats", []),
                         situation_tags=p.get("situation_tags", []),
                         notes=p.get("notes"),
+                        base_read=p.get("base_read"),
+                        when_to_call=p.get("when_to_call"),
+                        evidence=_parse_evidence(p.get("evidence")),
+                        audibles=_parse_audibles(p.get("audibles")),
                         # Guard the LLM geometry: invalid/degenerate routes are
                         # dropped (None) so the frontend falls back to a template.
                         routes=validate_routes(p.get("routes")),
