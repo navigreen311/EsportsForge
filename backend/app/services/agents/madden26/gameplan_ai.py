@@ -23,6 +23,7 @@ from app.services.agents.madden26.scheme_ai import SchemeAI
 from app.services.agents.madden26.meta_bot import MetaBot
 from app.services.agents.madden26.route_validator import validate_routes
 from app.services.agents.madden26.template_routes import routes_for
+from app.services.agents.madden26.template_depth import depth_for
 
 # Coordinate contract handed to the LLM (and mirrored by route_validator +
 # the frontend). Kept as a constant so the prompt and the validator can't drift.
@@ -562,6 +563,9 @@ class GameplanAI:
                     beats=self._get_concept_beats(concept),
                     situation_tags=self._get_concept_situations(concept),
                     routes=routes_for(name),
+                    # Plain-language depth so the no-API-key path is as rich as the
+                    # AI path. Empty for any play without authored depth.
+                    **depth_for(name),
                 )
             )
 
