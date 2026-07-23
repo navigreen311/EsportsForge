@@ -30,20 +30,31 @@ interface SituationalPackage {
   scheme: string;
   adjustment: string;
   confidence: number;
-  reasoning: string;
+  why?: string;
+  reasoning?: string; // legacy fallback
 }
 
 interface OpponentCounter {
   opponent_tendency: string;
   your_adjustment: string;
   confidence: number;
-  evidence: string;
+  why?: string;
+  evidence?: string; // legacy fallback
 }
 
+// Teaching structure: what to look for → how to recognize it → what to do.
 interface AdjustmentTrigger {
   trigger: string;
-  adjustment: string;
-  reason: string;
+  look_for?: string;
+  how_to_tell?: string;
+  do?: string;
+  adjustment?: string; // legacy fallback
+  reason?: string; // legacy fallback
+}
+
+interface PreSnapKey {
+  look_for: string;
+  means: string;
 }
 
 interface PrimaryScheme {
@@ -59,7 +70,7 @@ export interface DefensivePlan {
   primary_scheme: PrimaryScheme;
   situational_packages: SituationalPackage[];
   opponent_counters: OpponentCounter[];
-  pre_snap_keys: string[];
+  pre_snap_keys: (string | PreSnapKey)[]; // string is the legacy form
   adjustment_triggers: AdjustmentTrigger[];
   weaknesses: string[];
   practice_points: string[];
@@ -219,7 +230,7 @@ export default function DefensiveGameplanView({
                   {c.your_adjustment}
                 </p>
                 <p className="mt-1 text-[11px] text-dark-400">
-                  <span className="font-semibold">Why:</span> {c.evidence}
+                  <span className="font-semibold">Why:</span> {c.why ?? c.evidence}
                 </p>
                 <p className="text-[10px] text-dark-500">
                   Confidence: {Math.round(c.confidence * 100)}%
@@ -242,7 +253,7 @@ export default function DefensiveGameplanView({
                 <p className="mt-1 text-sm font-medium text-dark-100">
                   {p.scheme} — {p.adjustment}
                 </p>
-                <p className="mt-1 text-[11px] text-dark-400">{p.reasoning}</p>
+                <p className="mt-1 text-[11px] text-dark-400">{p.why ?? p.reasoning}</p>
                 <p className="text-[10px] text-dark-500">
                   Confidence: {Math.round(p.confidence * 100)}%
                 </p>
@@ -250,13 +261,22 @@ export default function DefensiveGameplanView({
             ))}
           </Section>
 
-          {/* Pre-snap keys */}
+          {/* Pre-snap keys — what to look at, and what it tells you */}
           <Section title="Pre-Snap Keys" icon={Eye} empty="No pre-snap keys.">
-            {plan.pre_snap_keys.map((k, i) => (
-              <li key={i} className="rounded-md bg-dark-800/60 p-2 text-sm text-dark-200">
-                {k}
-              </li>
-            ))}
+            {plan.pre_snap_keys.map((k, i) =>
+              typeof k === 'string' ? (
+                <li key={i} className="rounded-md bg-dark-800/60 p-2 text-sm text-dark-200">
+                  {k}
+                </li>
+              ) : (
+                <li key={i} className="rounded-lg bg-dark-800/60 p-3">
+                  <p className="text-sm font-medium text-dark-100">{k.look_for}</p>
+                  <p className="mt-1 text-[11px] text-dark-400">
+                    <span className="font-semibold">Means:</span> {k.means}
+                  </p>
+                </li>
+              )
+            )}
           </Section>
 
           {/* Adjustment triggers */}
@@ -270,10 +290,18 @@ export default function DefensiveGameplanView({
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-300">
                   If {t.trigger}
                 </p>
-                <p className="mt-1 text-sm font-medium text-dark-100">
-                  {t.adjustment}
-                </p>
-                <p className="mt-1 text-[11px] text-dark-400">{t.reason}</p>
+                {t.look_for || t.how_to_tell || t.do ? (
+                  <div className="mt-1.5 flex flex-col gap-1">
+                    {t.look_for && <ReadLine label="Look for" text={t.look_for} />}
+                    {t.how_to_tell && <ReadLine label="How to tell" text={t.how_to_tell} />}
+                    {t.do && <ReadLine label="Do" text={t.do} />}
+                  </div>
+                ) : (
+                  <>
+                    <p className="mt-1 text-sm font-medium text-dark-100">{t.adjustment}</p>
+                    <p className="mt-1 text-[11px] text-dark-400">{t.reason}</p>
+                  </>
+                )}
               </li>
             ))}
           </Section>
@@ -309,6 +337,18 @@ export default function DefensiveGameplanView({
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/** A labeled micro-line: Look for / How to tell / Do. */
+function ReadLine({ label, text }: { label: string; text: string }) {
+  return (
+    <div className="flex gap-2 text-xs">
+      <span className="w-[4.5rem] shrink-0 pt-px text-[10px] font-semibold uppercase tracking-wider text-dark-500">
+        {label}
+      </span>
+      <span className="flex-1 text-dark-300">{text}</span>
     </div>
   );
 }
