@@ -17,7 +17,6 @@ import MetaExpiryWarning from '@/components/gameplan/MetaExpiryWarning';
 import { PLAY_META_RISK } from '@/components/gameplan/MetaVersionExpiry';
 import { PLAY_MASTERY } from '@/components/gameplan/MasteryDot';
 import AnimaPlayer from '@/components/animaforge/AnimaPlayer';
-import AnimatedPlayDiagram from '@/components/gameplan/AnimatedPlayDiagram';
 import { useAnimaForgeAvailable } from '@/hooks/useAnimaForge';
 import {
   getPlayDiagramStatus,
@@ -360,17 +359,9 @@ export default function PlayDetail({
         </div>
       </div>
 
-      {/* Inline animated play diagram — always available, client-side (no render
-          service). Player dots ride their routes over a timeline. Complements
-          the optional AnimaForge server-rendered video below. Self-degrades to
-          formation / null, so it's safe to mount unconditionally. */}
-      <div>
-        <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-dark-200">
-          <span aria-hidden="true">🏈</span>
-          Play Diagram
-        </h3>
-        <AnimatedPlayDiagram play={play} />
-      </div>
+      {/* Inline animated play diagram (AnimatedPlayDiagram) intentionally removed
+          from the gameplan surface — parked with the play-art / play-diagram idea.
+          The component + route plumbing remain; re-mount here to bring it back. */}
 
       {/* AnimaForge animated play diagram. Mounted any time [Watch] is open;
           renders pending / error / video states inline so the panel never just
