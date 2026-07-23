@@ -110,7 +110,10 @@ async def generate_defensive_gameplan(
             f"Generate the defensive gameplan vs "
             f"{opponent['id'] if opponent else 'unknown opponent'}."
         ),
-        max_tokens=2200,
+        # 2200 truncated the (now deeper) JSON mid-object → unparseable 502s.
+        # 8000 fits the full plan with the plain-language teaching fields, matching
+        # the Discover fix.
+        max_tokens=8000,
     )
     if not raw:
         # Same convention as discover/trigger — explicit 503 so the UI can
